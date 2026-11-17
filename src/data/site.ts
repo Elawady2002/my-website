@@ -3,7 +3,12 @@ export interface InfoRowItem {
   value: string;
 }
 
-export type WorkProjectLinkType = "appStore" | "googlePlay" | "web" | "figma";
+export type WorkProjectLinkType =
+  | "appStore"
+  | "googlePlay"
+  | "web"
+  | "figma"
+  | "video";
 
 export interface WorkProjectLink {
   type: WorkProjectLinkType;
@@ -168,6 +173,10 @@ export const siteConfig = {
           "/images/projects/quranic-radio-2.png",
         ],
         links: [
+          {
+            type: "video",
+            href: "https://www.facebook.com/reel/1864644460753214",
+          },
           {
             type: "figma",
             href: "https://www.figma.com/design/gbqTrzytAQLRcNWAvw5vyO/Quranic-Radio-%F0%9F%8E%A7?node-id=0-1",
