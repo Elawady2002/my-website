@@ -167,6 +167,12 @@ export const siteConfig = {
           "/images/projects/quranic-radio-1.png",
           "/images/projects/quranic-radio-2.png",
         ],
+        links: [
+          {
+            type: "figma",
+            href: "https://www.figma.com/design/gbqTrzytAQLRcNWAvw5vyO/Quranic-Radio-%F0%9F%8E%A7?node-id=0-1",
+          },
+        ],
       },
       {
         id: "fi-el-sekka",
@@ -192,7 +198,7 @@ export const siteConfig = {
         id: "wanas-ai",
         title: "WANAS AI",
         category: "AI WELLNESS / MOBILE APP",
-        stageBg: "#0F241D",
+        stageBg: "#0B583C",
         stageAccent: "#2AC58D",
         cardBg: "#0C1D17",
         cardAccent: "#0EBE7F",
@@ -200,12 +206,13 @@ export const siteConfig = {
         headline: "CONNECTED\nMIND CARE",
         subcopy:
           "Arabic mental wellness and tele-therapy platform featuring live moderated support rooms, licensed specialists, and AI guidance.",
-        layout: "mobile",
-        imageSrc: "/images/projects/wanas-ai-bg.webp",
-        mobileScreens: [
-          "/images/projects/wanas-ai-2.png",
-          "/images/projects/wanas-ai-1.png",
-          "/images/projects/wanas-ai-3.png",
+        layout: "desktop",
+        imageSrc: "/images/projects/wanas-ai-showcase.webp",
+        links: [
+          {
+            type: "figma",
+            href: "https://www.figma.com/design/N8iSt8ctzQODLEwlzAvZId/Wanas-Ai-%D9%88%D9%86%D8%B3-?node-id=285-20730&t=eLBaqikobroLCw7R-1",
+          },
         ],
       },
       {
@@ -226,6 +233,12 @@ export const siteConfig = {
           "/images/projects/foxus-2.png",
           "/images/projects/foxus-1.png",
           "/images/projects/foxus-3.png",
+        ],
+        links: [
+          {
+            type: "figma",
+            href: "https://www.figma.com/design/G0mquJC19n9qXrKTBnntPB/Foxus?node-id=627-840",
+          },
         ],
       },
       {
@@ -280,6 +293,12 @@ export const siteConfig = {
           "/images/projects/nursy-1.png",
           "/images/projects/nursy-3.png",
           "/images/projects/nursy-2.png",
+        ],
+        links: [
+          {
+            type: "figma",
+            href: "https://www.figma.com/design/7gteXIlESSCoUq8haoZMQU/Nursy-app?node-id=0-1",
+          },
         ],
       },
     ] as WorkProjectItem[],

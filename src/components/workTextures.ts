@@ -489,7 +489,7 @@ export function createProjectTexture(
   const width = project.mobileScreens?.length
     ? Math.min(isMobile ? 1536 : 2240, maxTex)
     : project.imageSrc
-    ? Math.min(isMobile ? 1536 : 2048, maxTex)
+    ? Math.min(isMobile ? 1536 : 2400, maxTex)
     : 1600;
   const height = Math.round((width * WORK_PLANE_HEIGHT) / WORK_PLANE_WIDTH);
   const canvas = document.createElement("canvas");
@@ -743,6 +743,11 @@ export function createProjectTexture(
       ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, width, height);
       ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+      const edgeWidth = Math.max(1.5, 1.8 * (width / 1600));
+      const inset = edgeWidth * 0.5;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.085)";
+      ctx.lineWidth = edgeWidth;
+      ctx.strokeRect(inset, inset, width - edgeWidth, height - edgeWidth);
       texture.needsUpdate = true;
       onTextureUpdated?.();
     };
