@@ -329,12 +329,22 @@ export const siteConfig = {
       {
         label: "LINKEDIN",
         handle: "@ABDULLAHELAWADY",
-        href: "https://linkedin.com",
+        href: "https://www.linkedin.com/in/abdullah-elawady-019129330",
+      },
+      {
+        label: "GITHUB",
+        handle: "@ELAWADY2002",
+        href: "https://github.com/Elawady2002",
       },
       {
         label: "INSTAGRAM",
-        handle: "@ABDULLAHELAWADY.STUDIO",
-        href: "https://instagram.com",
+        handle: "@ABDLLA_67",
+        href: "https://www.instagram.com/abdlla_67",
+      },
+      {
+        label: "FACEBOOK",
+        handle: "ABDULLAH ELAWADY",
+        href: "https://www.facebook.com/share/1A3SmiAnEj/?mibextid=wwXIfr",
       },
     ],
     marqueePrimary: "ABDULLAHELAWADY",

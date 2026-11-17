@@ -133,7 +133,10 @@ export function FooterSection() {
             </div>
 
             {/* Right Column: Socials */}
-            <div data-footer-obstacle="" className="pointer-events-auto space-y-5 sm:text-right">
+            <div
+              data-footer-obstacle=""
+              className="pointer-events-auto grid grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-5 sm:text-right"
+            >
               {siteConfig.contactSection.socials.map((social, idx) => (
                 <div
                   key={social.label}
