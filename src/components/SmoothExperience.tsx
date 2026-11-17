@@ -72,73 +72,22 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     let isHovered = false;
     let trailAlpha = 0;
     let currentMode = "legacy";
+    let rafId = 0;
+    let scrollRafId = 0;
+    let canvasCleared = true;
+    let canvasHidden = true;
+
+    canvas.style.visibility = "hidden";
 
     const nodes = Array.from({ length: TRAIL_NODES }, () => ({
       x: mouseX,
       y: mouseY,
     }));
 
-    const syncMode = (target: HTMLElement | null) => {
-      if (target) {
-        inHero = Boolean(target.closest("[data-hero-section]"));
-        isHovered = Boolean(target.closest("a, button, [data-cursor-hover]"));
-      } else {
-        inHero = false;
-        isHovered = false;
-      }
-
-      const nextMode = inHero
-        ? isHovered
-          ? "hover"
-          : "default"
-        : isHovered
-        ? "legacy-hover"
-        : "legacy";
-
-      if (nextMode !== currentMode) {
-        currentMode = nextMode;
-        dotEl.setAttribute("data-mode", nextMode);
-      }
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      const target = e.target as HTMLElement | null;
-
-      if (!isVisible) {
-        isVisible = true;
-        dotX = mouseX;
-        dotY = mouseY;
-        for (let i = 0; i < TRAIL_NODES; i += 1) {
-          nodes[i].x = mouseX;
-          nodes[i].y = mouseY;
-        }
-        dotEl.style.opacity = "1";
-      }
-
-      syncMode(target);
-    };
-
-    const onScroll = () => {
-      if (!isVisible) return;
-      const underPointer = document.elementFromPoint(
-        mouseX,
-        mouseY
-      ) as HTMLElement | null;
-      syncMode(underPointer);
-    };
-
-    const onMouseLeave = () => {
-      isVisible = false;
-      inHero = false;
-      trailAlpha = 0;
-      dotEl.style.opacity = "0";
-      ctx.clearRect(0, 0, vw, vh);
-    };
-
-    let rafId = 0;
     const tick = () => {
+      rafId = 0;
+      if (!isVisible) return;
+
       const dotLerp = inHero ? 0.55 : 0.18;
       dotX += (mouseX - dotX) * dotLerp;
       dotY += (mouseY - dotY) * dotLerp;
@@ -148,7 +97,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
         1
       )}px, 0) translate(-50%, -50%) scale(${scale})`;
 
-      trailAlpha += ((inHero && isVisible ? 1 : 0) - trailAlpha) * 0.16;
+      trailAlpha += ((inHero ? 1 : 0) - trailAlpha) * 0.16;
 
       if (inHero) {
         nodes[0].x += (mouseX - nodes[0].x) * 0.52;
@@ -169,9 +118,13 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
         );
       }
 
-      ctx.clearRect(0, 0, vw, vh);
-
-      if (isVisible && trailAlpha > 0.02 && chainLength > 1.5) {
+      if (trailAlpha > 0.02 && chainLength > 1.5) {
+        if (canvasHidden) {
+          canvas.style.visibility = "visible";
+          canvasHidden = false;
+        }
+        ctx.clearRect(0, 0, vw, vh);
+        canvasCleared = false;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
@@ -196,23 +149,131 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
           prevX = midX;
           prevY = midY;
         }
+      } else {
+        if (!canvasCleared) {
+          ctx.clearRect(0, 0, vw, vh);
+          canvasCleared = true;
+        }
+        if (!canvasHidden && trailAlpha <= 0.005) {
+          canvas.style.visibility = "hidden";
+          canvasHidden = true;
+        }
+      }
+
+      const dotSettled =
+        Math.abs(mouseX - dotX) < 0.05 && Math.abs(mouseY - dotY) < 0.05;
+      const trailSettled = inHero
+        ? trailAlpha > 0.99 && chainLength < 0.2
+        : trailAlpha <= 0.005 && chainLength < 0.2;
+
+      if (dotSettled && trailSettled) {
+        dotX = mouseX;
+        dotY = mouseY;
+        dotEl.style.transform = `translate3d(${dotX.toFixed(1)}px, ${dotY.toFixed(
+          1
+        )}px, 0) translate(-50%, -50%) scale(${scale})`;
+        return;
       }
 
       rafId = window.requestAnimationFrame(tick);
+    };
+
+    const wakeCursor = () => {
+      if (!isVisible || rafId !== 0) return;
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    const syncMode = (target: HTMLElement | null) => {
+      const prevInHero = inHero;
+      if (target) {
+        inHero = Boolean(target.closest("[data-hero-section]"));
+        isHovered = Boolean(target.closest("a, button, [data-cursor-hover]"));
+      } else {
+        inHero = false;
+        isHovered = false;
+      }
+
+      const nextMode = inHero
+        ? isHovered
+          ? "hover"
+          : "default"
+        : isHovered
+        ? "legacy-hover"
+        : "legacy";
+
+      if (nextMode !== currentMode) {
+        currentMode = nextMode;
+        dotEl.setAttribute("data-mode", nextMode);
+        wakeCursor();
+      } else if (prevInHero !== inHero) {
+        wakeCursor();
+      }
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      const target = e.target as HTMLElement | null;
+
+      if (!isVisible) {
+        isVisible = true;
+        dotX = mouseX;
+        dotY = mouseY;
+        for (let i = 0; i < TRAIL_NODES; i += 1) {
+          nodes[i].x = mouseX;
+          nodes[i].y = mouseY;
+        }
+        dotEl.style.opacity = "1";
+      }
+
+      syncMode(target);
+      wakeCursor();
+    };
+
+    const onScroll = () => {
+      if (!isVisible || scrollRafId !== 0) return;
+      scrollRafId = window.requestAnimationFrame(() => {
+        scrollRafId = 0;
+        if (!isVisible) return;
+        const underPointer = document.elementFromPoint(
+          mouseX,
+          mouseY
+        ) as HTMLElement | null;
+        syncMode(underPointer);
+      });
+    };
+
+    const onMouseLeave = () => {
+      isVisible = false;
+      inHero = false;
+      trailAlpha = 0;
+      dotEl.style.opacity = "0";
+      if (!canvasCleared) {
+        ctx.clearRect(0, 0, vw, vh);
+        canvasCleared = true;
+      }
+      if (!canvasHidden) {
+        canvas.style.visibility = "hidden";
+        canvasHidden = true;
+      }
+      if (rafId !== 0) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
     };
 
     window.addEventListener("mousemove", onMouseMove, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", resizeCanvas);
     document.addEventListener("mouseleave", onMouseLeave);
-    rafId = window.requestAnimationFrame(tick);
 
     return () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", resizeCanvas);
       document.removeEventListener("mouseleave", onMouseLeave);
-      window.cancelAnimationFrame(rafId);
+      if (rafId !== 0) window.cancelAnimationFrame(rafId);
+      if (scrollRafId !== 0) window.cancelAnimationFrame(scrollRafId);
     };
   }, []);
 

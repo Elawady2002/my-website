@@ -10,9 +10,11 @@ interface WordToken {
 }
 
 export function AboutSection() {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const charRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const narrativeRef = useRef<HTMLDivElement | null>(null);
+  const isNearRef = useRef(false);
 
   const { words, totalChars } = useMemo(() => {
     const rawWords = siteConfig.aboutSection.waveHeading.split(" ");
@@ -33,14 +35,24 @@ export function AboutSection() {
   }, []);
 
   useEffect(() => {
+    let vh = window.innerHeight || 900;
+    let lastProgress = -1;
+    // 0 = uninitialized, 1 = dim, 2 = active wave, 3 = fully lit
+    const charState = new Uint8Array(totalChars);
+
     const updateWave = () => {
+      if (!isNearRef.current && (lastProgress === 0 || lastProgress === 1)) {
+        return;
+      }
       const headingEl = headingRef.current;
       if (!headingEl) return;
 
-      const vh = window.innerHeight || 900;
       const rect = headingEl.getBoundingClientRect();
       const rawProgress = (vh * 0.86 - rect.top) / (vh * 0.58);
       const progress = Math.min(1, Math.max(0, rawProgress));
+      if (progress === lastProgress) return;
+      lastProgress = progress;
+
       const wavePos = progress * 1.24 - 0.12;
       const denom = Math.max(1, totalChars - 1);
 
@@ -52,9 +64,13 @@ export function AboutSection() {
         const delta = wavePos - t;
 
         if (delta < -0.09) {
-          el.style.color = "rgba(231, 225, 215, 0.18)";
-          el.style.transform = "translate3d(0, 0px, 0)";
+          if (charState[i] !== 1) {
+            charState[i] = 1;
+            el.style.color = "rgba(231, 225, 215, 0.18)";
+            el.style.transform = "translate3d(0, 0px, 0)";
+          }
         } else if (delta <= 0.05) {
+          charState[i] = 2;
           const u = (delta + 0.09) / 0.14;
           const bell = Math.sin(u * Math.PI);
 
@@ -75,18 +91,44 @@ export function AboutSection() {
 
           el.style.transform = `translate3d(0, ${(-3 * bell).toFixed(2)}px, 0)`;
         } else {
-          el.style.color = "#e7e1d7";
-          el.style.transform = "translate3d(0, 0px, 0)";
+          if (charState[i] !== 3) {
+            charState[i] = 3;
+            el.style.color = "#e7e1d7";
+            el.style.transform = "translate3d(0, 0px, 0)";
+          }
         }
       }
     };
 
+    const handleResize = () => {
+      vh = window.innerHeight || 900;
+      lastProgress = -1;
+      updateWave();
+    };
+
+    const sectionEl = sectionRef.current;
+    let nearObserver: IntersectionObserver | null = null;
+    if (sectionEl) {
+      nearObserver = new IntersectionObserver(
+        (entries) => {
+          const near = entries.some((entry) => entry.isIntersecting);
+          isNearRef.current = near;
+          if (near) {
+            updateWave();
+          }
+        },
+        { rootMargin: "250px 0px", threshold: 0 }
+      );
+      nearObserver.observe(sectionEl);
+    }
+
     updateWave();
     window.addEventListener("scroll", updateWave, { passive: true });
-    window.addEventListener("resize", updateWave);
+    window.addEventListener("resize", handleResize);
     return () => {
+      nearObserver?.disconnect();
       window.removeEventListener("scroll", updateWave);
-      window.removeEventListener("resize", updateWave);
+      window.removeEventListener("resize", handleResize);
     };
   }, [totalChars]);
 
@@ -112,6 +154,7 @@ export function AboutSection() {
   return (
     <section
       id="about"
+      ref={sectionRef}
       className="relative z-10 w-full bg-[#0b0b0b] px-4 sm:px-6 pt-32 sm:pt-44 pb-24 sm:pb-32"
     >
       {/* Scroll-Scrubbed Gradient Wave Display Heading */}
@@ -133,7 +176,7 @@ export function AboutSection() {
                   charRefs.current[item.globalIndex] = el;
                 }}
                 style={{ color: "rgba(231, 225, 215, 0.18)" }}
-                className={`inline-block will-change-[color,transform] ${
+                className={`inline-block ${
                   item.isO ? "playfair-o" : ""
                 }`}
               >

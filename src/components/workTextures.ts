@@ -1,4 +1,9 @@
-import type * as ThreeNamespace from "three";
+import {
+  CanvasTexture,
+  LinearMipmapLinearFilter,
+  SRGBColorSpace,
+  type WebGLRenderer,
+} from "three";
 import type { WorkProjectItem } from "@/data/site";
 
 export const WORK_PLANE_WIDTH = 4.52;
@@ -370,23 +375,26 @@ function drawDesktopFrame(
 }
 
 export function createProjectTexture(
-  THREE: typeof ThreeNamespace,
-  renderer: ThreeNamespace.WebGLRenderer,
-  project: WorkProjectItem
-): ThreeNamespace.CanvasTexture {
+  renderer: WebGLRenderer,
+  project: WorkProjectItem,
+  onTextureUpdated?: () => void
+): CanvasTexture {
   const maxTex = renderer.capabilities.maxTextureSize || 4096;
-  const width = project.imageSrc ? Math.min(3200, maxTex) : 1600;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const width = project.imageSrc
+    ? Math.min(isMobile ? 1536 : 2048, maxTex)
+    : 1600;
   const height = Math.round((width * WORK_PLANE_HEIGHT) / WORK_PLANE_WIDTH);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
   texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.minFilter = LinearMipmapLinearFilter;
 
   if (!ctx) return texture;
 
@@ -402,6 +410,8 @@ export function createProjectTexture(
     const posterImg = new window.Image();
     bgImg.crossOrigin = "anonymous";
     posterImg.crossOrigin = "anonymous";
+    bgImg.decoding = "async";
+    posterImg.decoding = "async";
 
     let loaded = 0;
     const renderComposite = () => {
@@ -435,6 +445,7 @@ export function createProjectTexture(
 
       ctx.drawImage(posterImg, ix + pad, iy + pad, iw - pad * 2, ih - pad * 2);
       texture.needsUpdate = true;
+      onTextureUpdated?.();
     };
 
     bgImg.onload = renderComposite;
@@ -453,6 +464,7 @@ export function createProjectTexture(
 
     const img = new window.Image();
     img.crossOrigin = "anonymous";
+    img.decoding = "async";
     img.onload = () => {
       const scale = Math.max(width / img.width, height / img.height);
       const dw = img.width * scale;
@@ -462,6 +474,7 @@ export function createProjectTexture(
       ctx.clearRect(0, 0, width, height);
       ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
       texture.needsUpdate = true;
+      onTextureUpdated?.();
     };
     img.src = project.imageSrc;
 

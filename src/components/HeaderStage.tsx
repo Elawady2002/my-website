@@ -40,6 +40,8 @@ function MaskedChars({
 }
 
 export function HeaderStage() {
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
   const portraitCardRef = useRef<HTMLDivElement | null>(null);
   const portraitInnerRef = useRef<HTMLDivElement | null>(null);
   const glowRef = useRef<HTMLDivElement | null>(null);
@@ -48,15 +50,29 @@ export function HeaderStage() {
 
   const targetMouseRef = useRef({ x: 0, y: 0 });
   const curMouseRef = useRef({ x: 0, y: 0 });
+  const isHeaderNearRef = useRef(true);
+  const heroRectRef = useRef<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const heroRectDirtyRef = useRef(true);
+  const wakeTiltRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-    const updateOnScroll = () => {
-      const y = window.scrollY;
-      const vh = window.innerHeight || 900;
-      const progress = Math.min(1, Math.max(0, y / (vh * 0.85)));
-      const eased = 1 - Math.pow(1 - progress, 1.6);
+    let vh = window.innerHeight || 900;
+    let lastProgress = -1;
+    let lastStarY = -1;
 
-      if (portraitCardRef.current) {
+    const updateOnScroll = () => {
+      heroRectDirtyRef.current = true;
+      const y = window.scrollY;
+      const progress = Math.min(1, Math.max(0, y / (vh * 0.85)));
+
+      if (progress !== lastProgress && portraitCardRef.current) {
+        lastProgress = progress;
+        const eased = 1 - Math.pow(1 - progress, 1.6);
         const scale = 1 - eased * 0.14;
         const translateY = -eased * 18;
         portraitCardRef.current.style.transform = `translate3d(0, ${translateY.toFixed(
@@ -64,32 +80,62 @@ export function HeaderStage() {
         )}px, 0) scale(${scale.toFixed(4)})`;
       }
 
-      if (starScrollRef.current) {
+      if (
+        isHeaderNearRef.current &&
+        y !== lastStarY &&
+        starScrollRef.current
+      ) {
+        lastStarY = y;
         starScrollRef.current.style.transform = `rotate(${(y * 0.28).toFixed(
           1
         )}deg)`;
       }
     };
 
+    const handleResize = () => {
+      vh = window.innerHeight || 900;
+      heroRectDirtyRef.current = true;
+      lastProgress = -1;
+      lastStarY = -1;
+      updateOnScroll();
+    };
+
+    const headerEl = headerRef.current;
+    let io: IntersectionObserver | null = null;
+    if (headerEl) {
+      io = new IntersectionObserver(
+        (entries) => {
+          const near = entries.some((entry) => entry.isIntersecting);
+          isHeaderNearRef.current = near;
+          if (near) {
+            headerEl.setAttribute("data-in-view", "true");
+            updateOnScroll();
+            wakeTiltRef.current();
+          } else {
+            headerEl.removeAttribute("data-in-view");
+          }
+        },
+        { rootMargin: "200px 0px", threshold: 0 }
+      );
+      io.observe(headerEl);
+    }
+
     updateOnScroll();
     window.addEventListener("scroll", updateOnScroll, { passive: true });
-    window.addEventListener("resize", updateOnScroll);
+    window.addEventListener("resize", handleResize);
     return () => {
+      io?.disconnect();
       window.removeEventListener("scroll", updateOnScroll);
-      window.removeEventListener("resize", updateOnScroll);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
   useEffect(() => {
     let rafId = 0;
+    let disposed = false;
 
-    const tick = () => {
-      const target = targetMouseRef.current;
+    const applyTilt = () => {
       const cur = curMouseRef.current;
-
-      cur.x += (target.x - cur.x) * 0.085;
-      cur.y += (target.y - cur.y) * 0.085;
-
       if (portraitInnerRef.current) {
         portraitInnerRef.current.style.transform = `perspective(1100px) rotateY(${(
           cur.x * 7.5
@@ -112,28 +158,88 @@ export function HeaderStage() {
           -cur.x * 10
         ).toFixed(1)}px, ${(-cur.y * 4).toFixed(1)}px, 0)`;
       }
+    };
 
+    const tick = () => {
+      rafId = 0;
+      if (disposed || !isHeaderNearRef.current) return;
+
+      const target = targetMouseRef.current;
+      const cur = curMouseRef.current;
+      const dx = target.x - cur.x;
+      const dy = target.y - cur.y;
+
+      if (Math.abs(dx) <= 0.0004 && Math.abs(dy) <= 0.0004) {
+        cur.x = target.x;
+        cur.y = target.y;
+        applyTilt();
+        return;
+      }
+
+      cur.x += dx * 0.085;
+      cur.y += dy * 0.085;
+      applyTilt();
       rafId = window.requestAnimationFrame(tick);
     };
 
-    rafId = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(rafId);
+    wakeTiltRef.current = () => {
+      if (disposed || !isHeaderNearRef.current || rafId !== 0) return;
+      const target = targetMouseRef.current;
+      const cur = curMouseRef.current;
+      if (
+        Math.abs(target.x - cur.x) > 0.0004 ||
+        Math.abs(target.y - cur.y) > 0.0004
+      ) {
+        rafId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    applyTilt();
+
+    return () => {
+      disposed = true;
+      wakeTiltRef.current = () => {};
+      if (rafId !== 0) window.cancelAnimationFrame(rafId);
+    };
   }, []);
 
+  const syncHeroRect = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    heroRectRef.current = {
+      left: r.left,
+      top: r.top,
+      width: r.width,
+      height: r.height,
+    };
+    heroRectDirtyRef.current = false;
+    return heroRectRef.current;
+  };
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
+    syncHeroRect(e.currentTarget);
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect =
+      !heroRectRef.current || heroRectDirtyRef.current
+        ? syncHeroRect(e.currentTarget)
+        : heroRectRef.current;
     targetMouseRef.current.x = (e.clientX - rect.left) / rect.width - 0.5;
     targetMouseRef.current.y = (e.clientY - rect.top) / rect.height - 0.5;
+    wakeTiltRef.current();
   };
 
   const handleMouseLeave = () => {
     targetMouseRef.current.x = 0;
     targetMouseRef.current.y = 0;
+    wakeTiltRef.current();
   };
 
   return (
     <div
       id="header"
+      ref={headerRef}
+      data-in-view="true"
       className="relative w-full bg-[#0b0b0b] overflow-x-clip"
     >
       {/* Shared Sticky Pinned Portrait Backdrop (-mb-[100svh] overlays Hero & Info cleanly) */}
@@ -161,7 +267,8 @@ export function HeaderStage() {
                 src={siteConfig.portraitSrc}
                 alt={siteConfig.portraitAlt}
                 fill
-                priority
+                preload
+                quality={85}
                 sizes="(max-width: 768px) 85vw, 35vw"
                 className="object-cover object-[50%_14%]"
               />
@@ -192,7 +299,9 @@ export function HeaderStage() {
 
       {/* SECTION 1: Hero Viewport */}
       <section
+        ref={heroSectionRef}
         data-hero-section=""
+        onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="relative z-10 min-h-svh w-full px-4 sm:px-6 flex flex-col justify-between pb-28 sm:pb-28"
@@ -233,6 +342,7 @@ export function HeaderStage() {
             <div data-intro-fade="" className="md:col-span-3 flex items-center md:justify-center">
               <div ref={starScrollRef} className="will-change-transform">
                 <svg
+                  data-hero-star=""
                   width="42"
                   height="48"
                   viewBox="0 0 42 48"

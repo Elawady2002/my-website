@@ -393,3 +393,11 @@ html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
     inset 0 -1px 0 rgba(255, 255, 255, 0.045),
     0 8px 24px rgba(0, 0, 0, 0.32);
 }
+
+#header:not([data-in-view="true"]) [data-hero-star] {
+  animation-play-state: paused;
+}
+
+#contact:not([data-in-view="true"]) .footer-marquee-track {
+  animation-play-state: paused;
+}

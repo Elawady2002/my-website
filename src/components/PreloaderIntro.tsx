@@ -180,15 +180,6 @@ export function PreloaderIntro() {
     const radius = diameter / 2;
     const floorY = Math.max(radius + 40, vh - radius);
 
-    if (ballRef.current) {
-      ballRef.current.style.width = `${diameter.toFixed(1)}px`;
-      ballRef.current.style.height = `${diameter.toFixed(1)}px`;
-    }
-    if (shadowRef.current) {
-      shadowRef.current.style.width = `${(diameter * 1.1).toFixed(1)}px`;
-      shadowRef.current.style.height = `${(diameter * 0.2).toFixed(1)}px`;
-    }
-
     const colBounds = activeCols.map((col) => {
       const r = col.getBoundingClientRect();
       return { left: r.left, right: r.right, mid: (r.left + r.right) * 0.5 };
@@ -206,6 +197,15 @@ export function PreloaderIntro() {
       }
       buckets[colIdx].push(el);
     });
+
+    if (ballRef.current) {
+      ballRef.current.style.width = `${diameter.toFixed(1)}px`;
+      ballRef.current.style.height = `${diameter.toFixed(1)}px`;
+    }
+    if (shadowRef.current) {
+      shadowRef.current.style.width = `${(diameter * 1.1).toFixed(1)}px`;
+      shadowRef.current.style.height = `${(diameter * 0.2).toFixed(1)}px`;
+    }
 
     const sim = simulateTrajectory(vw, vh, radius);
     const triggerTimes = colBounds.map((b, idx) => {

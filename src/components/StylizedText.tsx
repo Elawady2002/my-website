@@ -1,6 +1,6 @@
 import React from "react";
 
-export function StylizedText({
+export const StylizedText = React.memo(function StylizedText({
   text,
   className = "",
 }: {
@@ -20,4 +20,4 @@ export function StylizedText({
       )}
     </span>
   );
-}
+});

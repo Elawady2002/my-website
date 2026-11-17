@@ -98,8 +98,8 @@ export const siteConfig = {
         subcopy:
           "Arabic-first UI/UX design academy and design studio uniting practical projects, career coaching, and Vibe Coding.",
         layout: "desktop",
-        imageSrc: "/images/projects/yusr-academy-bg.png",
-        posterSrc: "/images/projects/yusr-academy-poster.png",
+        imageSrc: "/images/projects/yusr-academy-bg.webp",
+        posterSrc: "/images/projects/yusr-academy-poster.webp",
         videoSrc: "/videos/projects/yusr-academy-tour.mp4",
       },
       {
@@ -115,8 +115,8 @@ export const siteConfig = {
         subcopy:
           "End-to-end campaign discovery and creator matching web platform crafted for clarity and conversion.",
         layout: "desktop",
-        imageSrc: "/images/projects/active-bg.png",
-        posterSrc: "/images/projects/active-poster.png",
+        imageSrc: "/images/projects/active-bg.webp",
+        posterSrc: "/images/projects/active-poster.webp",
         videoSrc: "/videos/projects/active-tour.mp4",
       },
       {

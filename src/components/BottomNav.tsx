@@ -62,12 +62,14 @@ export function BottomNav() {
   const activeTabRef = useRef<string>("home");
   const scrollSpyLockedRef = useRef<boolean>(false);
   const scrollSpyTimerRef = useRef<number | null>(null);
+  const syncOnScrollRef = useRef<() => void>(() => {});
 
   const isOpen = menuPhase === "opening" || menuPhase === "open";
   const showMenuLayer = menuPhase !== "closed";
 
   useEffect(() => {
     isNavDockedRef.current = isNavDocked;
+    syncOnScrollRef.current();
   }, [isNavDocked]);
 
   useEffect(() => {
@@ -116,34 +118,45 @@ export function BottomNav() {
   }, [activeTab]);
 
   useEffect(() => {
-    const handleScrollSpy = () => {
+    let cancelled = false;
+    let lastNavYStr = "";
+    const metrics = {
+      vh: 900,
+      docHeight: 4000,
+      barHeight: 102,
+      infoTop: Number.POSITIVE_INFINITY,
+      workTop: Number.POSITIVE_INFINITY,
+      contactTop: Number.POSITIVE_INFINITY,
+    };
+
+    const syncOnScroll = () => {
+      const y = window.scrollY;
+
+      const el = navBarRef.current;
+      if (el) {
+        const maxOffset = Math.max(0, metrics.vh - metrics.barHeight);
+        const progress = Math.min(1, Math.max(0, y / (metrics.vh * 0.65)));
+        const eased = 1 - Math.pow(1 - progress, 2.2);
+        const yOffset = isNavDockedRef.current ? 0 : maxOffset * (1 - eased);
+        const nextYStr = yOffset.toFixed(1);
+        if (nextYStr !== lastNavYStr) {
+          lastNavYStr = nextYStr;
+          el.style.transform = `translate3d(0, ${nextYStr}px, 0)`;
+        }
+      }
+
       if (scrollSpyLockedRef.current) return;
-      const vh = window.innerHeight || 900;
-      const probeY = window.scrollY + vh * 0.38;
-      const docHeight = document.documentElement.scrollHeight;
-
-      const contactEl = document.querySelector<HTMLElement>("#contact");
-      const workIntroEl =
-        document.querySelector<HTMLElement>("#work-intro") ||
-        document.querySelector<HTMLElement>("#work");
-      const infoEl = document.querySelector<HTMLElement>("#info");
-
-      const contactTop = contactEl
-        ? contactEl.getBoundingClientRect().top + window.scrollY
-        : Number.POSITIVE_INFINITY;
-      const workTop = workIntroEl
-        ? workIntroEl.getBoundingClientRect().top + window.scrollY
-        : Number.POSITIVE_INFINITY;
-      const infoTop = infoEl
-        ? infoEl.getBoundingClientRect().top + window.scrollY
-        : Number.POSITIVE_INFINITY;
+      const probeY = y + metrics.vh * 0.38;
 
       let nextTab = "home";
-      if (window.scrollY + vh >= docHeight - 80 || contactTop <= probeY) {
+      if (
+        y + metrics.vh >= metrics.docHeight - 80 ||
+        metrics.contactTop <= probeY
+      ) {
         nextTab = "connect";
-      } else if (workTop <= probeY) {
+      } else if (metrics.workTop <= probeY) {
         nextTab = "work";
-      } else if (infoTop <= probeY) {
+      } else if (metrics.infoTop <= probeY) {
         nextTab = "about";
       }
 
@@ -153,44 +166,65 @@ export function BottomNav() {
       }
     };
 
-    const initSpy = window.setTimeout(handleScrollSpy, 60);
-    window.addEventListener("scroll", handleScrollSpy, { passive: true });
-    window.addEventListener("resize", handleScrollSpy);
+    const measureLayout = () => {
+      const y = window.scrollY;
+      const vh = window.innerHeight || 900;
+      const docHeight = document.documentElement.scrollHeight;
+      const el = navBarRef.current;
+      const barHeight =
+        el?.offsetHeight || (window.innerWidth >= 768 ? 102 : 76);
+
+      const contactEl = document.querySelector<HTMLElement>("#contact");
+      const workIntroEl =
+        document.querySelector<HTMLElement>("#work-intro") ||
+        document.querySelector<HTMLElement>("#work");
+      const infoEl = document.querySelector<HTMLElement>("#info");
+
+      metrics.vh = vh;
+      metrics.docHeight = docHeight;
+      metrics.barHeight = barHeight;
+      metrics.contactTop = contactEl
+        ? contactEl.getBoundingClientRect().top + y
+        : Number.POSITIVE_INFINITY;
+      metrics.workTop = workIntroEl
+        ? workIntroEl.getBoundingClientRect().top + y
+        : Number.POSITIVE_INFINITY;
+      metrics.infoTop = infoEl
+        ? infoEl.getBoundingClientRect().top + y
+        : Number.POSITIVE_INFINITY;
+
+      syncOnScroll();
+    };
+
+    syncOnScrollRef.current = syncOnScroll;
+    measureLayout();
+
+    const initTimer = window.setTimeout(measureLayout, 60);
+    const resizeObserver = new ResizeObserver(measureLayout);
+    resizeObserver.observe(document.documentElement);
+    if (navBarRef.current) {
+      resizeObserver.observe(navBarRef.current);
+    }
+
+    document.fonts?.ready.then(() => {
+      if (!cancelled) measureLayout();
+    });
+
+    window.addEventListener("scroll", syncOnScroll, { passive: true });
+    window.addEventListener("resize", measureLayout);
+
     return () => {
-      window.clearTimeout(initSpy);
+      cancelled = true;
+      syncOnScrollRef.current = () => {};
+      window.clearTimeout(initTimer);
       if (scrollSpyTimerRef.current !== null) {
         window.clearTimeout(scrollSpyTimerRef.current);
       }
-      window.removeEventListener("scroll", handleScrollSpy);
-      window.removeEventListener("resize", handleScrollSpy);
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", syncOnScroll);
+      window.removeEventListener("resize", measureLayout);
     };
   }, []);
-
-  useEffect(() => {
-    const updatePosition = () => {
-      const el = navBarRef.current;
-      if (!el) return;
-      const barHeight =
-        el.offsetHeight || (window.innerWidth >= 768 ? 102 : 76);
-      const maxOffset = Math.max(0, window.innerHeight - barHeight);
-      const progress = Math.min(
-        1,
-        Math.max(0, window.scrollY / (window.innerHeight * 0.65))
-      );
-      const eased = 1 - Math.pow(1 - progress, 2.2);
-      const yOffset = isNavDockedRef.current ? 0 : maxOffset * (1 - eased);
-      el.style.transform = `translate3d(0, ${yOffset.toFixed(1)}px, 0)`;
-    };
-
-    updatePosition();
-    window.addEventListener("scroll", updatePosition, { passive: true });
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.removeEventListener("scroll", updatePosition);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [isNavDocked]);
 
   const stopMenuRaf = () => {
     if (rafRef.current !== null) {

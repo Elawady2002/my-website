@@ -5,7 +5,7 @@ import { StylizedText } from "@/components/StylizedText";
 import { FooterPhysicsOrbs } from "@/components/FooterPhysicsOrbs";
 import { siteConfig } from "@/data/site";
 
-function MarqueeSequence() {
+const MarqueeSequence = React.memo(function MarqueeSequence() {
   const repeats = [0, 1, 2];
   return (
     <div className="flex items-baseline shrink-0">
@@ -24,7 +24,7 @@ function MarqueeSequence() {
       ))}
     </div>
   );
-}
+});
 
 export function FooterSection() {
   const footerRef = useRef<HTMLElement | null>(null);
@@ -44,11 +44,16 @@ export function FooterSection() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            el.setAttribute("data-revealed", "true");
+            el.setAttribute("data-in-view", "true");
+            if (entry.intersectionRatio >= 0.14) {
+              el.setAttribute("data-revealed", "true");
+            }
+          } else {
+            el.removeAttribute("data-in-view");
           }
         });
       },
-      { threshold: 0.14 }
+      { threshold: [0, 0.14], rootMargin: "120px 0px" }
     );
     observer.observe(el);
 
