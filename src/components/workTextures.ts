@@ -486,10 +486,10 @@ export function createProjectTexture(
 ): CanvasTexture {
   const maxTex = renderer.capabilities.maxTextureSize || 4096;
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-  const width = project.imageSrc
-    ? Math.min(isMobile ? 1536 : 2048, maxTex)
-    : project.mobileScreens
+  const width = project.mobileScreens?.length
     ? Math.min(isMobile ? 1536 : 2240, maxTex)
+    : project.imageSrc
+    ? Math.min(isMobile ? 1536 : 2048, maxTex)
     : 1600;
   const height = Math.round((width * WORK_PLANE_HEIGHT) / WORK_PLANE_WIDTH);
   const canvas = document.createElement("canvas");
@@ -563,61 +563,80 @@ export function createProjectTexture(
     return texture;
   }
 
-  if (project.imageSrc) {
-    // Solid stage fill while real project image finishes decoding (zero mockup flash)
-    ctx.fillStyle = project.stageBg;
-    ctx.fillRect(0, 0, width, height);
-    texture.needsUpdate = true;
-
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.decoding = "async";
-    img.onload = () => {
-      const scale = Math.max(width / img.width, height / img.height);
-      const dw = img.width * scale;
-      const dh = img.height * scale;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
-      texture.needsUpdate = true;
-      onTextureUpdated?.();
-    };
-    img.src = project.imageSrc;
-
-    return texture;
-  }
-
   if (project.mobileScreens && project.mobileScreens.length > 0) {
-    drawStageBackdrop(ctx, width, height, project);
+    if (project.imageSrc) {
+      ctx.fillStyle = project.stageBg;
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      drawStageBackdrop(ctx, width, height, project);
+    }
     texture.needsUpdate = true;
 
     const screenSrcs = project.mobileScreens;
     const loadedScreens: (HTMLImageElement | null)[] = new Array(
       screenSrcs.length
     ).fill(null);
+    let loadedBg: HTMLImageElement | null = null;
+    const totalToSettle = screenSrcs.length + (project.imageSrc ? 1 : 0);
     let settled = 0;
 
     const renderMobileScreens = () => {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, width, height);
-      drawStageBackdrop(ctx, width, height, project);
 
       const s = width / 1600;
-      const outerRadius = width * (screenSrcs.length >= 3 ? 0.43 : 0.34);
-      const ambientGlow = ctx.createRadialGradient(
-        width * 0.5,
-        height * 0.51,
-        width * 0.04,
-        width * 0.5,
-        height * 0.51,
-        outerRadius
-      );
-      ambientGlow.addColorStop(0, hexToRgba(project.stageAccent, 0.07));
-      ambientGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = ambientGlow;
-      ctx.fillRect(0, 0, width, height);
+
+      if (loadedBg && loadedBg.naturalWidth > 0 && loadedBg.naturalHeight > 0) {
+        const bgScale = Math.max(
+          width / loadedBg.naturalWidth,
+          height / loadedBg.naturalHeight
+        );
+        const bgW = loadedBg.naturalWidth * bgScale;
+        const bgH = loadedBg.naturalHeight * bgScale;
+        ctx.drawImage(
+          loadedBg,
+          (width - bgW) * 0.5,
+          (height - bgH) * 0.5,
+          bgW,
+          bgH
+        );
+
+        const vignette = ctx.createRadialGradient(
+          width * 0.5,
+          height * 0.5,
+          width * 0.16,
+          width * 0.5,
+          height * 0.5,
+          width * 0.74
+        );
+        vignette.addColorStop(0, "rgba(0, 0, 0, 0.08)");
+        vignette.addColorStop(1, "rgba(0, 0, 0, 0.34)");
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, width, height);
+
+        const edgeWidth = Math.max(1.5, 1.8 * s);
+        const inset = edgeWidth * 0.5;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.085)";
+        ctx.lineWidth = edgeWidth;
+        ctx.strokeRect(inset, inset, width - edgeWidth, height - edgeWidth);
+      } else {
+        drawStageBackdrop(ctx, width, height, project);
+
+        const outerRadius = width * (screenSrcs.length >= 3 ? 0.43 : 0.34);
+        const ambientGlow = ctx.createRadialGradient(
+          width * 0.5,
+          height * 0.51,
+          width * 0.04,
+          width * 0.5,
+          height * 0.51,
+          outerRadius
+        );
+        ambientGlow.addColorStop(0, hexToRgba(project.stageAccent, 0.07));
+        ambientGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = ambientGlow;
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const slots =
         screenSrcs.length >= 3
@@ -646,14 +665,14 @@ export function createProjectTexture(
         const dy = slot.topY;
 
         ctx.save();
-        ctx.shadowColor = "rgba(0, 0, 0, 0.52)";
-        ctx.shadowBlur = 46 * s;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.58)";
+        ctx.shadowBlur = 48 * s;
         ctx.shadowOffsetY = 24 * s;
         ctx.drawImage(img, dx, dy, dw, dh);
         ctx.restore();
 
         ctx.save();
-        ctx.shadowColor = "rgba(0, 0, 0, 0.26)";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.30)";
         ctx.shadowBlur = 12 * s;
         ctx.shadowOffsetY = 5 * s;
         ctx.drawImage(img, dx, dy, dw, dh);
@@ -664,6 +683,26 @@ export function createProjectTexture(
       onTextureUpdated?.();
     };
 
+    if (project.imageSrc) {
+      const bgImg = new window.Image();
+      bgImg.crossOrigin = "anonymous";
+      bgImg.decoding = "async";
+      bgImg.onload = () => {
+        loadedBg = bgImg;
+        settled += 1;
+        if (settled === totalToSettle) {
+          renderMobileScreens();
+        }
+      };
+      bgImg.onerror = () => {
+        settled += 1;
+        if (settled === totalToSettle) {
+          renderMobileScreens();
+        }
+      };
+      bgImg.src = project.imageSrc;
+    }
+
     screenSrcs.forEach((src, idx) => {
       const img = new window.Image();
       img.crossOrigin = "anonymous";
@@ -671,18 +710,43 @@ export function createProjectTexture(
       img.onload = () => {
         loadedScreens[idx] = img;
         settled += 1;
-        if (settled === screenSrcs.length) {
+        if (settled === totalToSettle) {
           renderMobileScreens();
         }
       };
       img.onerror = () => {
         settled += 1;
-        if (settled === screenSrcs.length) {
+        if (settled === totalToSettle) {
           renderMobileScreens();
         }
       };
       img.src = src;
     });
+
+    return texture;
+  }
+
+  if (project.imageSrc) {
+    // Solid stage fill while real project image finishes decoding (zero mockup flash)
+    ctx.fillStyle = project.stageBg;
+    ctx.fillRect(0, 0, width, height);
+    texture.needsUpdate = true;
+
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    img.onload = () => {
+      const scale = Math.max(width / img.width, height / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+      texture.needsUpdate = true;
+      onTextureUpdated?.();
+    };
+    img.src = project.imageSrc;
 
     return texture;
   }

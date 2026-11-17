@@ -150,6 +150,7 @@ export const siteConfig = {
         subcopy:
           "Minimalist Arabic Quran radio experience pairing tactile vinyl turntable motion with curated reciter sleeves.",
         layout: "mobile",
+        imageSrc: "/images/projects/quranic-radio-bg.webp",
         mobileScreens: [
           "/images/projects/quranic-radio-1.png",
           "/images/projects/quranic-radio-2.png",
@@ -168,6 +169,7 @@ export const siteConfig = {
         subcopy:
           "Intercity shuttle booking and digital wallet app with instant QR seat boarding passes, route tracking, and verified captains.",
         layout: "mobile",
+        imageSrc: "/images/projects/fielsekka-bg.webp",
         mobileScreens: [
           "/images/projects/fielsekka-3.png",
           "/images/projects/fielsekka-1.png",
@@ -187,6 +189,7 @@ export const siteConfig = {
         subcopy:
           "Arabic mental wellness and tele-therapy platform featuring live moderated support rooms, licensed specialists, and AI guidance.",
         layout: "mobile",
+        imageSrc: "/images/projects/wanas-ai-bg.webp",
         mobileScreens: [
           "/images/projects/wanas-ai-2.png",
           "/images/projects/wanas-ai-1.png",
@@ -206,6 +209,7 @@ export const siteConfig = {
         subcopy:
           "Bilingual Egyptian marketplace app uniting real estate, automotive, and electronics discovery with instant seller chat.",
         layout: "mobile",
+        imageSrc: "/images/projects/foxus-bg.webp",
         mobileScreens: [
           "/images/projects/foxus-2.png",
           "/images/projects/foxus-1.png",
@@ -225,6 +229,7 @@ export const siteConfig = {
         subcopy:
           "Trusted school ride-booking app giving parents flexible car or seat plans, multi-child profiles, and verified school routes.",
         layout: "mobile",
+        imageSrc: "/images/projects/tride-bg.webp",
         mobileScreens: [
           "/images/projects/tride-2.png",
           "/images/projects/tride-1.png",
@@ -244,6 +249,7 @@ export const siteConfig = {
         subcopy:
           "On-demand home nursing platform pairing real-time Cairo geolocation matching with patient care history and live chat.",
         layout: "mobile",
+        imageSrc: "/images/projects/nursy-bg.webp",
         mobileScreens: [
           "/images/projects/nursy-1.png",
           "/images/projects/nursy-3.png",
