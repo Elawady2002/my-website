@@ -489,7 +489,7 @@ export function createProjectTexture(
   const width = project.imageSrc
     ? Math.min(isMobile ? 1536 : 2048, maxTex)
     : project.mobileScreens
-    ? Math.min(isMobile ? 1600 : 2400, maxTex)
+    ? Math.min(isMobile ? 1536 : 2240, maxTex)
     : 1600;
   const height = Math.round((width * WORK_PLANE_HEIGHT) / WORK_PLANE_WIDTH);
   const canvas = document.createElement("canvas");
@@ -588,12 +588,14 @@ export function createProjectTexture(
     return texture;
   }
 
-  if (project.mobileScreens) {
+  if (project.mobileScreens && project.mobileScreens.length > 0) {
     drawStageBackdrop(ctx, width, height, project);
     texture.needsUpdate = true;
 
     const screenSrcs = project.mobileScreens;
-    const loadedScreens: (HTMLImageElement | null)[] = [null, null];
+    const loadedScreens: (HTMLImageElement | null)[] = new Array(
+      screenSrcs.length
+    ).fill(null);
     let settled = 0;
 
     const renderMobileScreens = () => {
@@ -603,25 +605,39 @@ export function createProjectTexture(
       drawStageBackdrop(ctx, width, height, project);
 
       const s = width / 1600;
+      const outerRadius = width * (screenSrcs.length >= 3 ? 0.43 : 0.34);
       const ambientGlow = ctx.createRadialGradient(
         width * 0.5,
         height * 0.51,
         width * 0.04,
         width * 0.5,
         height * 0.51,
-        width * 0.34
+        outerRadius
       );
-      ambientGlow.addColorStop(0, "rgba(255, 252, 246, 0.055)");
+      ambientGlow.addColorStop(0, hexToRgba(project.stageAccent, 0.07));
       ambientGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = ambientGlow;
       ctx.fillRect(0, 0, width, height);
 
-      const slots = [
-        { centerX: 577.5 * s, topY: 114 * s, height: 760 * s },
-        { centerX: 1022.5 * s, topY: 154 * s, height: 760 * s },
-      ];
+      const slots =
+        screenSrcs.length >= 3
+          ? [
+              { centerX: 418 * s, topY: 162 * s, height: 696 * s, drawOrder: 0 },
+              { centerX: 800 * s, topY: 118 * s, height: 708 * s, drawOrder: 2 },
+              { centerX: 1182 * s, topY: 162 * s, height: 696 * s, drawOrder: 1 },
+            ]
+          : [
+              { centerX: 577.5 * s, topY: 114 * s, height: 760 * s, drawOrder: 0 },
+              { centerX: 1022.5 * s, topY: 154 * s, height: 760 * s, drawOrder: 1 },
+            ];
 
-      loadedScreens.forEach((img, idx) => {
+      const orderedIndices = Array.from(
+        { length: Math.min(screenSrcs.length, slots.length) },
+        (_, i) => i
+      ).sort((a, b) => slots[a].drawOrder - slots[b].drawOrder);
+
+      orderedIndices.forEach((idx) => {
+        const img = loadedScreens[idx];
         if (!img || img.naturalWidth === 0 || img.naturalHeight === 0) return;
         const slot = slots[idx];
         const dh = slot.height;
