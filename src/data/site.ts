@@ -193,6 +193,12 @@ export const siteConfig = {
           "/images/projects/fielsekka-1.png",
           "/images/projects/fielsekka-2.png",
         ],
+        links: [
+          {
+            type: "appStore",
+            href: "https://apps.apple.com/eg/app/fi-el-sekka/id6813012849",
+          },
+        ],
       },
       {
         id: "wanas-ai",
