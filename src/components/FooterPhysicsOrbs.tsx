@@ -18,11 +18,14 @@ interface OrbBody {
   radius: number;
   angle: number;
   omega: number;
+  restTiltX: number;
+  restTiltY: number;
   tiltX: number;
   tiltY: number;
   entered: boolean;
   spawned: boolean;
   mesh: THREE.Mesh;
+  shadowMesh: THREE.Mesh;
 }
 
 const DESKTOP_ORB_COUNT = 13;
@@ -31,32 +34,43 @@ const SUBSTEPS = 6;
 const GRAVITY = 1920; // px/s^2
 const RESTITUTION_ORB = 0.72;
 const RESTITUTION_WALL = 0.64;
+const FOV_DEG = 18;
+
+function clamp(val: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, val));
+}
 
 function createStudioEnvTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 256;
+  canvas.width = 1024;
+  canvas.height = 512;
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    ctx.fillStyle = "#08080a";
-    ctx.fillRect(0, 0, 512, 256);
+    ctx.fillStyle = "#0c0d11";
+    ctx.fillRect(0, 0, 1024, 512);
 
-    // Warm vermilion/amber bottom-left reflection band matching Footer glow
-    const warm = ctx.createRadialGradient(130, 195, 10, 130, 195, 185);
-    warm.addColorStop(0, "#ffb347");
-    warm.addColorStop(0.35, "#f34213");
-    warm.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = warm;
-    ctx.fillRect(0, 0, 512, 256);
+    // Primary upper-left studio softbox for crisp curved white highlight
+    const keySoftbox = ctx.createRadialGradient(340, 115, 8, 340, 115, 210);
+    keySoftbox.addColorStop(0, "#ffffff");
+    keySoftbox.addColorStop(0.4, "rgba(255, 255, 255, 0.45)");
+    keySoftbox.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = keySoftbox;
+    ctx.fillRect(0, 0, 1024, 512);
 
-    // Crisp silver-white top-right softbox strip
-    const cool = ctx.createLinearGradient(250, 12, 430, 130);
-    cool.addColorStop(0, "#ffffff");
-    cool.addColorStop(0.45, "#d4d4d8");
-    cool.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = cool;
-    ctx.fillRect(220, 12, 230, 110);
+    // Subtle upper-right neutral rim diffuser
+    const rimDiffuser = ctx.createRadialGradient(740, 140, 10, 740, 140, 190);
+    rimDiffuser.addColorStop(0, "rgba(230, 236, 246, 0.38)");
+    rimDiffuser.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = rimDiffuser;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Gentle bottom neutral studio floor bounce
+    const floorBounce = ctx.createLinearGradient(0, 390, 0, 512);
+    floorBounce.addColorStop(0, "rgba(0, 0, 0, 0)");
+    floorBounce.addColorStop(1, "rgba(228, 224, 218, 0.16)");
+    ctx.fillStyle = floorBounce;
+    ctx.fillRect(0, 390, 1024, 122);
   }
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -65,13 +79,11 @@ function createStudioEnvTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-function createMedallionFaceTexture(
+function createOrbFaceTexture(
   baseBg: string,
-  ringColor: string,
-  spokeColor: string,
-  rimHighlight: string
+  spokeColor: string
 ): THREE.CanvasTexture {
-  const size = 512;
+  const size = 1024;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -81,106 +93,131 @@ function createMedallionFaceTexture(
     const cx = size / 2;
     const cy = size / 2;
 
-    // Subtle radial metallic sheen across disc face
-    const bgGrad = ctx.createRadialGradient(
-      size * 0.34,
-      size * 0.28,
-      20,
-      cx,
-      cy,
-      size * 0.56
-    );
-    bgGrad.addColorStop(0, rimHighlight);
-    bgGrad.addColorStop(0.55, baseBg);
-    bgGrad.addColorStop(1, baseBg);
-    ctx.fillStyle = bgGrad;
+    // Pure solid stroke-free base color — all 3D form comes from real spherical PBR shading
+    ctx.fillStyle = baseBg;
     ctx.fillRect(0, 0, size, size);
 
-    // Crisp outer geometric ring
-    ctx.strokeStyle = ringColor;
-    ctx.lineWidth = 22;
-    ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.415, 0, Math.PI * 2);
-    ctx.stroke();
+    // Bold 8-spoke geometric asterisk centered on both front & back sphere poles
+    const armRadius = size * 0.255;
+    const lineWidth = size * 0.056;
 
-    // Inner subtle hairline track
-    ctx.strokeStyle = `${spokeColor}44`;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.36, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 8-spoke graphic wheel emblem
     ctx.save();
     ctx.translate(cx, cy);
     ctx.strokeStyle = spokeColor;
-    ctx.lineWidth = 42;
+    ctx.lineWidth = lineWidth;
     ctx.lineCap = "butt";
-    for (let i = 0; i < 8; i += 1) {
+    for (let i = 0; i < 4; i += 1) {
       const a = (i * Math.PI) / 4;
+      const dx = Math.cos(a) * armRadius;
+      const dy = Math.sin(a) * armRadius;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * 28, Math.sin(a) * 28);
-      ctx.lineTo(Math.cos(a) * 144, Math.sin(a) * 144);
+      ctx.moveTo(-dx, -dy);
+      ctx.lineTo(dx, dy);
       ctx.stroke();
     }
 
-    // Precision center hub
+    // Solid center union
     ctx.fillStyle = spokeColor;
     ctx.beginPath();
-    ctx.arc(0, 0, 38, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = baseBg;
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.arc(0, 0, size * 0.048, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function createEmblemBumpTexture(): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    const cx = size / 2;
+    const cy = size / 2;
+    const armRadius = size * 0.255;
+    const lineWidth = size * 0.056;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.filter = "blur(3.5px)";
+    ctx.strokeStyle = "#353535";
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "butt";
+    for (let i = 0; i < 4; i += 1) {
+      const a = (i * Math.PI) / 4;
+      const dx = Math.cos(a) * armRadius;
+      const dy = Math.sin(a) * armRadius;
+      ctx.beginPath();
+      ctx.moveTo(-dx, -dy);
+      ctx.lineTo(dx, dy);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#353535";
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.048, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.filter = "none";
+    ctx.restore();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
   tex.anisotropy = 4;
   return tex;
 }
 
-function createBeveledMedallionGeometry(): THREE.ExtrudeGeometry {
-  const capRadius = 0.88;
-  const bevelSize = 0.12;
-  const depth = 0.24;
+function createSoftShadowTexture(): THREE.CanvasTexture {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
 
-  const shape = new THREE.Shape();
-  shape.absarc(0, 0, capRadius, 0, Math.PI * 2, false);
+  if (ctx) {
+    const half = size / 2;
+    const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+    grad.addColorStop(0, "rgba(0, 0, 0, 0.52)");
+    grad.addColorStop(0.45, "rgba(0, 0, 0, 0.24)");
+    grad.addColorStop(0.8, "rgba(0, 0, 0, 0.05)");
+    grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+  }
 
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth,
-    bevelEnabled: true,
-    bevelThickness: 0.11,
-    bevelSize,
-    bevelSegments: 6,
-    curveSegments: 48,
-  });
+  return new THREE.CanvasTexture(canvas);
+}
 
-  // Center thickness pivot on z = 0
-  geo.translate(0, 0, -depth * 0.5);
-
-  // Remap front & back flat-cap UVs cleanly to [0..1] circular artboard
+function createSculptedSphereGeometry(): THREE.SphereGeometry {
+  const geo = new THREE.SphereGeometry(1, 64, 48);
   const posAttr = geo.attributes.position;
   const uvAttr = geo.attributes.uv;
+
+  // Conformal arc-length hemisphere projection so front & back emblems stay distortion-free
   if (posAttr && uvAttr) {
-    const invSpan = 1 / (capRadius * 2);
     for (let i = 0; i < posAttr.count; i += 1) {
       const x = posAttr.getX(i);
       const y = posAttr.getY(i);
-      uvAttr.setXY(i, x * invSpan + 0.5, y * invSpan + 0.5);
+      const z = posAttr.getZ(i);
+      const absZ = clamp(Math.abs(z), 0, 1);
+      const theta = Math.acos(absZ); // 0 at pole, pi/2 at equator
+      const rho = theta / (Math.PI * 0.5); // 0..1
+      const phi = Math.atan2(y, x);
+      const dirX = z >= 0 ? Math.cos(phi) : -Math.cos(phi);
+      uvAttr.setXY(i, 0.5 + 0.5 * rho * dirX, 0.5 + 0.5 * rho * Math.sin(phi));
     }
     uvAttr.needsUpdate = true;
   }
 
   return geo;
-}
-
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
 }
 
 export function FooterPhysicsOrbs() {
@@ -203,8 +240,8 @@ export function FooterPhysicsOrbs() {
 
     const activeRenderer = renderer;
     activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    activeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    activeRenderer.toneMappingExposure = 1.22;
+    activeRenderer.toneMapping = THREE.NeutralToneMapping;
+    activeRenderer.toneMappingExposure = 1.08;
     activeRenderer.domElement.className = "block h-full w-full cursor-pointer";
     activeRenderer.domElement.style.touchAction = "pan-y";
     container.appendChild(activeRenderer.domElement);
@@ -212,116 +249,106 @@ export function FooterPhysicsOrbs() {
     const scene = new THREE.Scene();
     let width = container.clientWidth || 1280;
     let height = container.clientHeight || 680;
-    const camera = new THREE.OrthographicCamera(0, width, 0, -height, 0.1, 800);
-    camera.position.set(0, 0, 300);
-    camera.lookAt(0, 0, 0);
+    const camera = new THREE.PerspectiveCamera(
+      FOV_DEG,
+      width / Math.max(1, height),
+      80,
+      5000
+    );
+
+    const syncCamera = () => {
+      const camZ = (height * 0.5) / Math.tan((FOV_DEG * Math.PI) / 360);
+      camera.aspect = width / Math.max(1, height);
+      camera.position.set(width * 0.5, -height * 0.5, camZ);
+      camera.lookAt(width * 0.5, -height * 0.5, 0);
+      camera.far = camZ + 1200;
+      camera.updateProjectionMatrix();
+    };
+    syncCamera();
 
     const pmrem = new THREE.PMREMGenerator(activeRenderer);
     const rawEnvTex = createStudioEnvTexture();
     const envTarget = pmrem.fromEquirectangular(rawEnvTex);
     scene.environment = envTarget.texture;
 
-    // 3 PBR clearcoat medallion material pairs: [front/back emblem face, pure specular bevel rim]
-    const obsTex = createMedallionFaceTexture(
-      "#0a0a0c",
-      "#f34213",
-      "#f34213",
-      "#1c1917"
-    );
-    const vermTex = createMedallionFaceTexture(
-      "#f34213",
-      "#0b0b0b",
-      "#0b0b0b",
-      "#ff6b3d"
-    );
-    const sandTex = createMedallionFaceTexture(
-      "#e7e1d7",
-      "#181715",
-      "#0b0b0b",
-      "#f8f5ef"
-    );
+    const obsTex = createOrbFaceTexture("#18181d", "#f34213");
+    const vermTex = createOrbFaceTexture("#f34213", "#0f0f12");
+    const sandTex = createOrbFaceTexture("#eee8de", "#121215");
+    const emblemBumpTex = createEmblemBumpTexture();
 
-    const materials: [THREE.MeshPhysicalMaterial, THREE.MeshPhysicalMaterial][] =
-      [
-        [
-          new THREE.MeshPhysicalMaterial({
-            map: obsTex,
-            metalness: 0.72,
-            roughness: 0.18,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.06,
-            reflectivity: 1.0,
-            envMapIntensity: 1.5,
-          }),
-          new THREE.MeshPhysicalMaterial({
-            color: 0x070709,
-            metalness: 0.9,
-            roughness: 0.13,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.06,
-            reflectivity: 1.0,
-            envMapIntensity: 1.65,
-          }),
-        ],
-        [
-          new THREE.MeshPhysicalMaterial({
-            map: vermTex,
-            metalness: 0.36,
-            roughness: 0.18,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.06,
-            reflectivity: 1.0,
-            envMapIntensity: 1.35,
-          }),
-          new THREE.MeshPhysicalMaterial({
-            color: 0xd9360c,
-            metalness: 0.65,
-            roughness: 0.14,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.06,
-            reflectivity: 1.0,
-            envMapIntensity: 1.55,
-          }),
-        ],
-        [
-          new THREE.MeshPhysicalMaterial({
-            map: sandTex,
-            metalness: 0.24,
-            roughness: 0.22,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.07,
-            reflectivity: 1.0,
-            envMapIntensity: 1.3,
-          }),
-          new THREE.MeshPhysicalMaterial({
-            color: 0x0b0b0d,
-            metalness: 0.88,
-            roughness: 0.14,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.06,
-            reflectivity: 1.0,
-            envMapIntensity: 1.6,
-          }),
-        ],
-      ];
+    const materials: THREE.MeshPhysicalMaterial[] = [
+      // Obsidian Onyx Sphere
+      new THREE.MeshPhysicalMaterial({
+        map: obsTex,
+        metalness: 0.08,
+        roughness: 0.26,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.07,
+        ior: 1.54,
+        reflectivity: 0.9,
+        sheen: 0.22,
+        sheenColor: new THREE.Color(0xd8dde8),
+        sheenRoughness: 0.38,
+        envMapIntensity: 1.25,
+        bumpMap: emblemBumpTex,
+        bumpScale: 1.0,
+      }),
+      // Vermilion Lacquer Sphere
+      new THREE.MeshPhysicalMaterial({
+        map: vermTex,
+        metalness: 0.05,
+        roughness: 0.22,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.06,
+        ior: 1.52,
+        reflectivity: 0.9,
+        sheen: 0.14,
+        sheenColor: new THREE.Color(0xffbfa8),
+        sheenRoughness: 0.35,
+        envMapIntensity: 1.15,
+        bumpMap: emblemBumpTex,
+        bumpScale: 1.0,
+      }),
+      // Glazed Ceramic Ivory Sphere
+      new THREE.MeshPhysicalMaterial({
+        map: sandTex,
+        metalness: 0.03,
+        roughness: 0.2,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.06,
+        ior: 1.52,
+        reflectivity: 0.88,
+        sheen: 0.12,
+        sheenColor: new THREE.Color(0xffffff),
+        sheenRoughness: 0.32,
+        envMapIntensity: 1.05,
+        bumpMap: emblemBumpTex,
+        bumpScale: 1.0,
+      }),
+    ];
 
-    // Studio lighting matching the glossy bevel sheen of the previous centerpiece
-    const ambient = new THREE.AmbientLight(0xffffff, 0.42);
-    const warmKey = new THREE.DirectionalLight(0xf34213, 4.2);
-    warmKey.position.set(-450, -350, 320);
+    // Neutral 3-point product studio lighting (prevents orange rim contamination)
+    const hemiLight = new THREE.HemisphereLight(0xfffdf9, 0x18191f, 0.95);
+    const keyLight = new THREE.DirectionalLight(0xfffcf8, 2.35);
+    keyLight.position.set(-420, 560, 680);
 
-    const amberPoint = new THREE.PointLight(0xff9e2c, 6.2, 2400, 0.4);
-    amberPoint.position.set(width * 0.24, -height * 0.9, 260);
+    const fillLight = new THREE.DirectionalLight(0xdbe2ee, 0.72);
+    fillLight.position.set(480, -200, 440);
 
-    const crispTop = new THREE.DirectionalLight(0xffffff, 2.5);
-    crispTop.position.set(320, 460, 380);
+    const crownLight = new THREE.DirectionalLight(0xffffff, 0.82);
+    crownLight.position.set(40, 620, 180);
 
-    const coolRim = new THREE.DirectionalLight(0xd4d4d8, 1.8);
-    coolRim.position.set(520, 120, 260);
+    scene.add(hemiLight, keyLight, fillLight, crownLight);
 
-    scene.add(ambient, warmKey, amberPoint, crispTop, coolRim);
-
-    const geometry = createBeveledMedallionGeometry();
+    const geometry = createSculptedSphereGeometry();
+    const shadowGeo = new THREE.PlaneGeometry(2.35, 2.35);
+    const shadowTex = createSoftShadowTexture();
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.6,
+    });
 
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -335,12 +362,7 @@ export function FooterPhysicsOrbs() {
       width = container.clientWidth || cRect.width || 1280;
       height = container.clientHeight || cRect.height || 680;
       activeRenderer.setSize(width, height, false);
-      camera.left = 0;
-      camera.right = width;
-      camera.top = 0;
-      camera.bottom = -height;
-      camera.updateProjectionMatrix();
-      amberPoint.position.set(width * 0.24, -height * 0.88, 260);
+      syncCamera();
 
       const footerRoot = container.closest("footer");
       const dividerEl = footerRoot?.querySelector<HTMLElement>(
@@ -391,33 +413,42 @@ export function FooterPhysicsOrbs() {
     const orbs: OrbBody[] = [];
 
     for (let i = 0; i < orbCount; i += 1) {
-      const matPair = materials[i % materials.length];
-      const mesh = new THREE.Mesh(geometry, matPair);
+      const mat = materials[i % materials.length];
+      const mesh = new THREE.Mesh(geometry, mat);
       mesh.visible = false;
-      scene.add(mesh);
+
+      const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+      shadowMesh.visible = false;
+
+      scene.add(shadowMesh, mesh);
 
       const radius = baseRadius * (i % 3 === 0 ? 1.03 : i % 3 === 1 ? 0.97 : 1);
       const slotNorm = (i + 0.5) / orbCount;
-      const jitter = ((i * 37) % 10 - 5) * 0.008;
+      const jitter = (((i * 37) % 10) - 5) * 0.008;
       const startX = clamp(
         width * (0.14 + (slotNorm + jitter) * 0.72),
         radius + 20,
         width - radius - 20
       );
+      const restTiltX = ((i % 5) - 2) * 0.07;
+      const restTiltY = (((i * 3) % 5) - 2) * 0.07;
 
       orbs.push({
         x: startX,
         y: -radius * 1.6,
-        vx: ((i % 2 === 0 ? 1 : -1) * (40 + (i % 4) * 28)),
+        vx: (i % 2 === 0 ? 1 : -1) * (40 + (i % 4) * 28),
         vy: 60 + (i % 3) * 35,
         radius,
         angle: (i * 0.7) % (Math.PI * 2),
         omega: (i % 2 === 0 ? 1 : -1) * 1.4,
-        tiltX: 0.14,
-        tiltY: -0.18,
+        restTiltX,
+        restTiltY,
+        tiltX: restTiltX,
+        tiltY: restTiltY,
         entered: false,
         spawned: false,
         mesh,
+        shadowMesh,
       });
     }
 
@@ -519,7 +550,7 @@ export function FooterPhysicsOrbs() {
           // Arena perimeter boundaries
           const leftWall = 12 + orb.radius;
           const rightWall = Math.max(leftWall + 40, width - 12 - orb.radius);
-          const floorLimit = floorY - orb.radius;
+          const floorLimit = floorY - orb.radius - 2;
 
           if (orb.x < leftWall) {
             orb.x = leftWall;
@@ -614,7 +645,7 @@ export function FooterPhysicsOrbs() {
 
               if (velAlongNormal < 0) {
                 const jImpulse =
-                  (-(1 + RESTITUTION_ORB) * velAlongNormal) * 0.5;
+                  -(1 + RESTITUTION_ORB) * velAlongNormal * 0.5;
                 const ix = jImpulse * nx;
                 const iy = jImpulse * ny;
 
@@ -635,11 +666,21 @@ export function FooterPhysicsOrbs() {
       }
     };
 
-    const bounceBurstAt = (clickX: number, clickY: number, hitIdx: number | null) => {
+    const bounceBurstAt = (
+      clickX: number,
+      clickY: number,
+      hitIdx: number | null
+    ) => {
       if (hitIdx !== null) {
         const direct = orbs[hitIdx];
         const sideSign =
-          clickX < direct.x ? 1 : clickX > direct.x ? -1 : hitIdx % 2 === 0 ? 1 : -1;
+          clickX < direct.x
+            ? 1
+            : clickX > direct.x
+            ? -1
+            : hitIdx % 2 === 0
+            ? 1
+            : -1;
         direct.vy = -860 - Math.random() * 200;
         direct.vx += sideSign * (280 + Math.random() * 200);
         direct.omega += sideSign * (5.5 + Math.random() * 4);
@@ -655,7 +696,8 @@ export function FooterPhysicsOrbs() {
         .filter((item) => item.orb.spawned && item.idx !== hitIdx)
         .sort((a, b) => a.dist - b.dist);
 
-      const affectCount = hitIdx !== null ? Math.min(5, ranked.length) : Math.min(7, ranked.length);
+      const affectCount =
+        hitIdx !== null ? Math.min(5, ranked.length) : Math.min(7, ranked.length);
       for (let k = 0; k < affectCount; k += 1) {
         const { orb, idx, dist } = ranked[k];
         if (hitIdx !== null && dist > orb.radius * 5.2 && k > 2) break;
@@ -763,14 +805,21 @@ export function FooterPhysicsOrbs() {
         const orb = orbs[i];
         if (!orb.spawned) continue;
 
-        const targetTiltX = 0.14 + clamp(orb.vy * 0.00028, -0.3, 0.3);
-        const targetTiltY = -0.18 + clamp(orb.vx * 0.00028, -0.3, 0.3);
+        const targetTiltX = orb.restTiltX + clamp(orb.vy * 0.00042, -0.42, 0.42);
+        const targetTiltY = orb.restTiltY + clamp(orb.vx * 0.00042, -0.42, 0.42);
         orb.tiltX += (targetTiltX - orb.tiltX) * 0.16;
         orb.tiltY += (targetTiltY - orb.tiltY) * 0.16;
 
         orb.mesh.position.set(orb.x, -orb.y, 0);
-        orb.mesh.scale.set(orb.radius, orb.radius, orb.radius);
+        orb.mesh.scale.set(orb.radius, orb.radius, orb.radius * 0.88);
         orb.mesh.rotation.set(orb.tiltX, orb.tiltY, -orb.angle);
+
+        orb.shadowMesh.position.set(
+          orb.x + orb.radius * 0.11,
+          -orb.y - orb.radius * 0.14,
+          -orb.radius * 0.96
+        );
+        orb.shadowMesh.scale.set(orb.radius, orb.radius, 1);
 
         totalSpeed += Math.hypot(orb.vx, orb.vy);
       }
@@ -790,6 +839,7 @@ export function FooterPhysicsOrbs() {
         orbs[i].vy = 0;
         orbs[i].omega = 0;
         orbs[i].mesh.visible = true;
+        orbs[i].shadowMesh.visible = true;
       }
       for (let step = 0; step < 30; step += 1) {
         stepPhysics(0.016);
@@ -803,6 +853,7 @@ export function FooterPhysicsOrbs() {
       const orb = orbs[spawnedCount];
       orb.spawned = true;
       orb.mesh.visible = true;
+      orb.shadowMesh.visible = true;
       spawnedCount += 1;
       container.setAttribute("data-orbs-spawned", String(spawnedCount));
 
@@ -897,13 +948,14 @@ export function FooterPhysicsOrbs() {
       window.removeEventListener("pointerup", onPointerUp);
       domEl.removeEventListener("pointerleave", onPointerLeave);
       geometry.dispose();
-      materials.forEach(([face, rim]) => {
-        face.dispose();
-        rim.dispose();
-      });
+      shadowGeo.dispose();
+      shadowMat.dispose();
+      shadowTex.dispose();
+      materials.forEach((mat) => mat.dispose());
       obsTex.dispose();
       vermTex.dispose();
       sandTex.dispose();
+      emblemBumpTex.dispose();
       rawEnvTex.dispose();
       envTarget.dispose();
       pmrem.dispose();
@@ -918,7 +970,7 @@ export function FooterPhysicsOrbs() {
     <div
       ref={containerRef}
       data-footer-orbs=""
-      aria-label="Interactive glossy 3D medallions — click or brush to bounce"
+      aria-label="Interactive glossy 3D studio spheres — click or brush to bounce"
       className="absolute inset-0 z-20"
     />
   );
