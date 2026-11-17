@@ -423,15 +423,16 @@ export function createProjectTexture(
       const iw = width * (SHOWCASE_INNER_UV.right - SHOWCASE_INNER_UV.left);
       const ih = height * (SHOWCASE_INNER_UV.top - SHOWCASE_INNER_UV.bottom);
 
+      const pad = 2;
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.34)";
       ctx.shadowBlur = Math.round(width * 0.015);
       ctx.shadowOffsetY = Math.round(height * 0.006);
       ctx.fillStyle = project.cardBg;
-      ctx.fillRect(ix, iy, iw, ih);
+      ctx.fillRect(ix + pad, iy + pad, iw - pad * 2, ih - pad * 2);
       ctx.restore();
 
-      ctx.drawImage(posterImg, ix, iy, iw, ih);
+      ctx.drawImage(posterImg, ix + pad, iy + pad, iw - pad * 2, ih - pad * 2);
       texture.needsUpdate = true;
     };
 

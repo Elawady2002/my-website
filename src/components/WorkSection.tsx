@@ -55,29 +55,34 @@ const FRAGMENT_SHADER = /* glsl */ `
     );
   }
 
-  vec3 sampleSlide(vec2 uv) {
-    if (
-      uHasVideo > 0.5 &&
-      uv.x >= uInnerRect.x && uv.x <= uInnerRect.z &&
-      uv.y >= uInnerRect.y && uv.y <= uInnerRect.w
-    ) {
-      vec2 vidUv = (uv - uInnerRect.xy) / (uInnerRect.zw - uInnerRect.xy);
-      vec3 vidCol = texture2D(uVideoMap, clamp(vidUv, vec2(0.001), vec2(0.999))).rgb;
-      return srgbToLinear(vidCol);
+  vec3 sampleSlide(vec2 uv, vec2 fw) {
+    vec3 baseCol = texture2D(uMap, uv).rgb;
+    if (uHasVideo > 0.5) {
+      vec2 lo = smoothstep(uInnerRect.xy - fw * 1.25, uInnerRect.xy + fw * 0.35, uv);
+      vec2 hi = 1.0 - smoothstep(uInnerRect.zw - fw * 0.35, uInnerRect.zw + fw * 1.25, uv);
+      float mask = lo.x * lo.y * hi.x * hi.y;
+      if (mask > 0.001) {
+        vec2 vidUv = (uv - uInnerRect.xy) / (uInnerRect.zw - uInnerRect.xy);
+        vec3 vidCol = srgbToLinear(
+          texture2D(uVideoMap, clamp(vidUv, vec2(0.001), vec2(0.999))).rgb
+        );
+        return mix(baseCol, vidCol, mask);
+      }
     }
-    return texture2D(uMap, uv).rgb;
+    return baseCol;
   }
 
   void main() {
+    vec2 fw = max(fwidth(vUv), vec2(0.0004));
     float restEdge = pow(max(abs(vNdcX) - 0.62, 0.0) / 0.38, 2.2) * 0.016;
     float edge = restEdge + clamp(abs(uVelocity) * 0.05, 0.0, 0.016);
     vec2 uvR = clamp(vUv + vec2(edge, 0.0), vec2(0.002), vec2(0.998));
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
 
-    float r = sampleSlide(uvR).r;
-    float g = sampleSlide(uvG).g;
-    float b = sampleSlide(uvB).b;
+    float r = sampleSlide(uvR, fw).r;
+    float g = sampleSlide(uvG, fw).g;
+    float b = sampleSlide(uvB, fw).b;
 
     vec3 col = vec3(r, g, b);
     float glassRim = smoothstep(0.0, 0.04, vUv.x) * smoothstep(1.0, 0.96, vUv.x)
