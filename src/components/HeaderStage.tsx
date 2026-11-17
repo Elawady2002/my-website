@@ -59,11 +59,9 @@ export function HeaderStage() {
       if (portraitCardRef.current) {
         const scale = 1 - eased * 0.14;
         const translateY = -eased * 18;
-        const bottomRadius = Math.round(eased * 16);
         portraitCardRef.current.style.transform = `translate3d(0, ${translateY.toFixed(
           1
         )}px, 0) scale(${scale.toFixed(4)})`;
-        portraitCardRef.current.style.borderRadius = `16px 16px ${bottomRadius}px ${bottomRadius}px`;
       }
 
       if (starScrollRef.current) {
@@ -99,7 +97,7 @@ export function HeaderStage() {
           2
         )}deg) translate3d(${(cur.x * 18).toFixed(1)}px, ${(cur.y * 12).toFixed(
           1
-        )}px, 0) scale(1.045)`;
+        )}px, 0) scale(1.075)`;
       }
 
       if (glowRef.current) {
@@ -144,9 +142,8 @@ export function HeaderStage() {
           ref={portraitCardRef}
           style={{
             transformOrigin: "center top",
-            borderRadius: "16px 16px 0px 0px",
           }}
-          className="absolute top-6 bottom-0 left-1/2 -translate-x-1/2 md:left-[25.5%] md:translate-x-0 w-[84vw] max-w-[460px] md:max-w-[66svh] md:w-[31.5vw] md:min-w-[390px] max-h-[calc(84vw*1.75)] md:max-h-[calc(31.5vw*1.82)] overflow-hidden will-change-transform"
+          className="portrait-mask-x absolute top-6 bottom-0 left-1/2 -translate-x-1/2 md:left-[25.5%] md:translate-x-0 w-[84vw] max-w-[460px] md:max-w-[66svh] md:w-[31.5vw] md:min-w-[390px] max-h-[calc(84vw*1.75)] md:max-h-[calc(31.5vw*1.82)] overflow-hidden will-change-transform"
         >
           <div
             data-intro-portrait=""
@@ -154,7 +151,7 @@ export function HeaderStage() {
               animation:
                 "portraitIntro 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
             }}
-            className="relative h-full w-full"
+            className="portrait-mask-y relative h-full w-full overflow-hidden"
           >
             <div
               ref={portraitInnerRef}
@@ -179,21 +176,14 @@ export function HeaderStage() {
               />
             </div>
 
-            {/* Locked #0b0b0b studio edge vignette (outside tilting inner layer so edges never show hard seams) */}
+            {/* Stationary elliptical studio spotlight vignette outside tilting inner layer */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"
               style={{
+                boxShadow: "inset 0 0 36px 20px #0b0b0b",
                 background:
-                  "linear-gradient(90deg, #0b0b0b 0%, rgba(11,11,11,0.72) 6%, rgba(11,11,11,0.18) 16%, transparent 30%, transparent 70%, rgba(11,11,11,0.18) 84%, rgba(11,11,11,0.72) 94%, #0b0b0b 100%)",
-              }}
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(180deg, #0b0b0b 0%, rgba(11,11,11,0.45) 9%, transparent 24%, transparent 72%, rgba(11,11,11,0.82) 90%, #0b0b0b 100%)",
+                  "radial-gradient(ellipse 52% 56% at 52% 42%, transparent 42%, rgba(11, 11, 11, 0.5) 70%, rgba(11, 11, 11, 0.94) 88%, #0b0b0b 96%)",
               }}
             />
           </div>
