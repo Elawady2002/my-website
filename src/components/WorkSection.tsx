@@ -3,9 +3,69 @@
 import React, { useEffect, useRef, useState } from "react";
 import { StylizedText } from "@/components/StylizedText";
 import type { WorkCarouselController } from "@/components/workCarouselScene";
-import { siteConfig } from "@/data/site";
+import { siteConfig, type WorkProjectLinkType } from "@/data/site";
 
 const CARD_STRIDE = 5.02;
+
+const LINK_LABELS: Record<WorkProjectLinkType, string> = {
+  appStore: "App Store",
+  googlePlay: "Google Play",
+  web: "Website",
+  figma: "Figma",
+};
+
+function ProjectLinkIcon({ type }: { type: WorkProjectLinkType }) {
+  if (type === "appStore") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        className="w-[15px] h-[15px] shrink-0"
+      >
+        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+      </svg>
+    );
+  }
+  if (type === "googlePlay") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        className="w-[15px] h-[15px] shrink-0"
+      >
+        <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
+      </svg>
+    );
+  }
+  if (type === "figma") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        className="w-[15px] h-[15px] shrink-0"
+      >
+        <path d="M15.852 8.981h-4.588V0h4.588c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.491-4.49 4.491zM12.735 7.51h3.117c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-3.117V7.51zm0 1.471H8.148c-2.476 0-4.49-2.014-4.49-4.49S5.672 0 8.148 0h4.588v8.981zm-4.587-7.51c-1.665 0-3.019 1.355-3.019 3.019s1.354 3.02 3.019 3.02h3.117V1.471H8.148zm4.587 15.019H8.148c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h4.588v8.98zM8.148 8.981c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h3.117V8.981H8.148zM8.172 24c-2.489 0-4.515-2.014-4.515-4.49s2.014-4.49 4.49-4.49h4.588v4.441c0 2.503-2.047 4.539-4.563 4.539zm-.024-7.51a3.023 3.023 0 0 0-3.019 3.019c0 1.665 1.365 3.019 3.044 3.019 1.705 0 3.093-1.376 3.093-3.068v-2.97H8.148zm7.704 0h-.098c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h.098c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.49-4.49 4.49zm-.097-7.509c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h.098c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-.098z" />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+      className="w-[15px] h-[15px] shrink-0"
+    >
+      <circle cx="12" cy="12" r="9.5" />
+      <ellipse cx="12" cy="12" rx="4.2" ry="9.5" />
+      <path d="M2.8 12h18.4M4.5 7.5h15M4.5 16.5h15" />
+    </svg>
+  );
+}
 
 export function WorkSection() {
   const projects = siteConfig.workSection.projects;
@@ -18,6 +78,9 @@ export function WorkSection() {
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [webglReady, setWebglReady] = useState(true);
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const [isDockHovered, setIsDockHovered] = useState(false);
+  const [isDraggingUI, setIsDraggingUI] = useState(false);
   const activeIdxRef = useRef(0);
 
   const targetTrackRef = useRef(0);
@@ -139,12 +202,16 @@ export function WorkSection() {
     sceneCtrlRef.current?.wake();
   };
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if ((e.target as HTMLElement | null)?.closest("[data-project-links]")) {
+      return;
+    }
     if (wheelSnapTimerRef.current !== null) {
       window.clearTimeout(wheelSnapTimerRef.current);
       wheelSnapTimerRef.current = null;
     }
     isDraggingRef.current = true;
+    setIsDraggingUI(true);
     startXRef.current = e.clientX;
     lastXRef.current = e.clientX;
     lastTimeRef.current = performance.now();
@@ -156,7 +223,18 @@ export function WorkSection() {
     sceneCtrlRef.current?.wake();
   };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "touch") {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const relX = (e.clientX - rect.left) / Math.max(rect.width, 1);
+      const relY = (e.clientY - rect.top) / Math.max(rect.height, 1);
+      const overCenterCard =
+        relX >= 0.17 && relX <= 0.83 && relY >= 0.2 && relY <= 0.92;
+      setIsCardHovered((prev) =>
+        prev === overCenterCard ? prev : overCenterCard
+      );
+    }
+
     if (!isDraggingRef.current) return;
     const now = performance.now();
     const dt = Math.max(now - lastTimeRef.current, 1);
@@ -173,9 +251,10 @@ export function WorkSection() {
     sceneCtrlRef.current?.wake();
   };
 
-  const finishDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+  const finishDrag = (e: React.PointerEvent<HTMLElement>) => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
+    setIsDraggingUI(false);
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
@@ -213,6 +292,9 @@ export function WorkSection() {
   };
 
   const activeProject = projects[activeIdx];
+  const projectLinks = activeProject.links ?? [];
+  const showLinksDock =
+    projectLinks.length > 0 && !isDraggingUI && (isCardHovered || isDockHovered);
   const counterLabel = `${String(activeIdx + 1).padStart(2, "0")}/${String(
     count
   ).padStart(2, "0")}`;
@@ -260,6 +342,10 @@ export function WorkSection() {
         onPointerMove={handlePointerMove}
         onPointerUp={finishDrag}
         onPointerCancel={finishDrag}
+        onPointerLeave={() => {
+          setIsCardHovered(false);
+          setIsDockHovered(false);
+        }}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") stepBy(1);
           if (e.key === "ArrowLeft") stepBy(-1);
@@ -306,6 +392,40 @@ export function WorkSection() {
             </p>
           </div>
         </div>
+
+        {/* Hover-Reveal Project Action Dock (Store, Website & Figma Links) */}
+        {projectLinks.length > 0 ? (
+          <div
+            data-project-links=""
+            data-visible={showLinksDock ? "true" : "false"}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onPointerEnter={() => setIsDockHovered(true)}
+            onPointerLeave={() => setIsDockHovered(false)}
+            className={`absolute bottom-[68px] sm:bottom-[82px] left-1/2 -translate-x-1/2 z-30 max-w-[92vw] transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              isDraggingUI
+                ? "opacity-0 translate-y-4 scale-[0.96] pointer-events-none"
+                : showLinksDock
+                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                : "opacity-100 translate-y-0 scale-100 pointer-events-auto md:opacity-0 md:translate-y-4 md:scale-[0.96] md:pointer-events-none"
+            }`}
+          >
+            <div className="voy-glass rounded-full p-1.5 flex flex-wrap items-center justify-center gap-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.55)]">
+              {projectLinks.map((link) => (
+                <a
+                  key={`${activeProject.id}-${link.type}`}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 h-[36px] sm:h-[38px] px-3.5 sm:px-4 rounded-full bg-white/[0.09] border border-white/[0.18] text-white text-[12px] sm:text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap transition-all duration-200 ease-out hover:bg-white hover:text-[#0b0b0b] hover:border-white hover:shadow-[0_6px_20px_rgba(255,255,255,0.28)] hover:-translate-y-[1px] active:scale-[0.97] cursor-pointer"
+                >
+                  <ProjectLinkIcon type={link.type} />
+                  <span>{link.label ?? LINK_LABELS[link.type]}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {/* Bottom-Center Clean Counter */}
         <div

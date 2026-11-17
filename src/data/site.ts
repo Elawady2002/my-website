@@ -3,6 +3,14 @@ export interface InfoRowItem {
   value: string;
 }
 
+export type WorkProjectLinkType = "appStore" | "googlePlay" | "web" | "figma";
+
+export interface WorkProjectLink {
+  type: WorkProjectLinkType;
+  href: string;
+  label?: string;
+}
+
 export interface WorkProjectItem {
   id: string;
   title: string;
@@ -19,6 +27,7 @@ export interface WorkProjectItem {
   posterSrc?: string;
   videoSrc?: string;
   mobileScreens?: readonly string[];
+  links?: readonly WorkProjectLink[];
 }
 
 export const siteConfig = {
@@ -102,6 +111,7 @@ export const siteConfig = {
         imageSrc: "/images/projects/yusr-academy-bg.webp",
         posterSrc: "/images/projects/yusr-academy-poster.webp",
         videoSrc: "/videos/projects/yusr-academy-tour.mp4",
+        links: [{ type: "web", href: "https://www.yusr-academy.com/" }],
       },
       {
         id: "active-platform",
@@ -119,6 +129,7 @@ export const siteConfig = {
         imageSrc: "/images/projects/active-bg.webp",
         posterSrc: "/images/projects/active-poster.webp",
         videoSrc: "/videos/projects/active-tour.mp4",
+        links: [{ type: "web", href: "https://activksa.com/brands/" }],
       },
       {
         id: "malahi",
@@ -136,6 +147,7 @@ export const siteConfig = {
         imageSrc: "/images/projects/malahi-bg.png",
         posterSrc: "/images/projects/malahi-poster.png",
         videoSrc: "/videos/projects/malahi-tour.mp4",
+        links: [{ type: "web", href: "https://malahi.com/ar" }],
       },
       {
         id: "quranic-radio",
@@ -219,12 +231,12 @@ export const siteConfig = {
       {
         id: "tride",
         title: "TRIDE",
-        category: "MOBILITY UX / FLUTTER",
+        category: "PRODUCT DESIGN / UI/UX",
         stageBg: "#182128",
         stageAccent: "#FFA81D",
         cardBg: "#122535",
         cardAccent: "#FFA81D",
-        badge: "SAFE SCHOOL TRANSPORT · FLUTTER",
+        badge: "SAFE SCHOOL TRANSPORT · UI/UX",
         headline: "SAFE RIDES\nFOR YOUR KIDS",
         subcopy:
           "Trusted school ride-booking app giving parents flexible car or seat plans, multi-child profiles, and verified school routes.",
@@ -234,6 +246,20 @@ export const siteConfig = {
           "/images/projects/tride-2.png",
           "/images/projects/tride-1.png",
           "/images/projects/tride-3.png",
+        ],
+        links: [
+          {
+            type: "appStore",
+            href: "https://apps.apple.com/eg/app/tride-egypt/id6749056619",
+          },
+          {
+            type: "googlePlay",
+            href: "https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share",
+          },
+          {
+            type: "figma",
+            href: "https://www.figma.com/design/slzrLqEDN0l10yDeJUofbK/Tride?node-id=723-37072",
+          },
         ],
       },
       {
