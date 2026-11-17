@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local raw reference uploads (already copied into public/images)
+/Cinematic Amber-Lit Pensive Portrait.png
+/Frame 1.png

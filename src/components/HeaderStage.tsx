@@ -1,0 +1,312 @@
+"use client";
+
+import React, { useEffect, useRef } from "react";
+import Image from "next/image";
+import { StylizedText } from "@/components/StylizedText";
+import { InfoSection } from "@/components/InfoSection";
+import { siteConfig } from "@/data/site";
+
+function MaskedChars({
+  text,
+  baseDelayMs = 220,
+  stepMs = 28,
+}: {
+  text: string;
+  baseDelayMs?: number;
+  stepMs?: number;
+}) {
+  return (
+    <>
+      {Array.from(text).map((char, idx) => {
+        const isO = char === "O" || char === "o";
+        return (
+          <span key={idx} className="inline-block overflow-hidden align-top">
+            <span
+              data-intro-char=""
+              style={{
+                animation: `heroCharReveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) ${
+                  baseDelayMs + idx * stepMs
+                }ms both`,
+              }}
+              className={`inline-block ${isO ? "playfair-o" : ""}`}
+            >
+              {char === " " ? "\u00A0" : char}
+            </span>
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+export function HeaderStage() {
+  const portraitCardRef = useRef<HTMLDivElement | null>(null);
+  const portraitInnerRef = useRef<HTMLDivElement | null>(null);
+  const glowRef = useRef<HTMLDivElement | null>(null);
+  const titleWrapRef = useRef<HTMLDivElement | null>(null);
+  const starScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const targetMouseRef = useRef({ x: 0, y: 0 });
+  const curMouseRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const updateOnScroll = () => {
+      const y = window.scrollY;
+      const vh = window.innerHeight || 900;
+      const progress = Math.min(1, Math.max(0, y / (vh * 0.85)));
+      const eased = 1 - Math.pow(1 - progress, 1.6);
+
+      if (portraitCardRef.current) {
+        const scale = 1 - eased * 0.14;
+        const translateY = -eased * 18;
+        const bottomRadius = Math.round(eased * 16);
+        portraitCardRef.current.style.transform = `translate3d(0, ${translateY.toFixed(
+          1
+        )}px, 0) scale(${scale.toFixed(4)})`;
+        portraitCardRef.current.style.borderRadius = `16px 16px ${bottomRadius}px ${bottomRadius}px`;
+      }
+
+      if (starScrollRef.current) {
+        starScrollRef.current.style.transform = `rotate(${(y * 0.28).toFixed(
+          1
+        )}deg)`;
+      }
+    };
+
+    updateOnScroll();
+    window.addEventListener("scroll", updateOnScroll, { passive: true });
+    window.addEventListener("resize", updateOnScroll);
+    return () => {
+      window.removeEventListener("scroll", updateOnScroll);
+      window.removeEventListener("resize", updateOnScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    let rafId = 0;
+
+    const tick = () => {
+      const target = targetMouseRef.current;
+      const cur = curMouseRef.current;
+
+      cur.x += (target.x - cur.x) * 0.085;
+      cur.y += (target.y - cur.y) * 0.085;
+
+      if (portraitInnerRef.current) {
+        portraitInnerRef.current.style.transform = `perspective(1100px) rotateY(${(
+          cur.x * 7.5
+        ).toFixed(2)}deg) rotateX(${(-cur.y * 5.5).toFixed(
+          2
+        )}deg) translate3d(${(cur.x * 18).toFixed(1)}px, ${(cur.y * 12).toFixed(
+          1
+        )}px, 0) scale(1.045)`;
+      }
+
+      if (glowRef.current) {
+        const px = (cur.x + 0.5) * 100;
+        const py = (cur.y + 0.5) * 100;
+        glowRef.current.style.setProperty("--mx", `${px.toFixed(1)}%`);
+        glowRef.current.style.setProperty("--my", `${py.toFixed(1)}%`);
+      }
+
+      if (titleWrapRef.current) {
+        titleWrapRef.current.style.transform = `translate3d(${(
+          -cur.x * 10
+        ).toFixed(1)}px, ${(-cur.y * 4).toFixed(1)}px, 0)`;
+      }
+
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    rafId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(rafId);
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    targetMouseRef.current.x = (e.clientX - rect.left) / rect.width - 0.5;
+    targetMouseRef.current.y = (e.clientY - rect.top) / rect.height - 0.5;
+  };
+
+  const handleMouseLeave = () => {
+    targetMouseRef.current.x = 0;
+    targetMouseRef.current.y = 0;
+  };
+
+  return (
+    <div
+      id="header"
+      className="relative w-full bg-[#0b0b0b] overflow-x-clip"
+    >
+      {/* Shared Sticky Pinned Portrait Backdrop (-mb-[100svh] overlays Hero & Info cleanly) */}
+      <div className="sticky top-0 h-svh w-full pointer-events-none z-0 -mb-[100svh] overflow-hidden">
+        <div
+          ref={portraitCardRef}
+          style={{
+            transformOrigin: "center top",
+            borderRadius: "16px 16px 0px 0px",
+          }}
+          className="absolute top-6 bottom-0 left-1/2 -translate-x-1/2 md:left-[25.5%] md:translate-x-0 w-[84vw] max-w-[460px] md:max-w-[66svh] md:w-[31.5vw] md:min-w-[390px] max-h-[calc(84vw*1.75)] md:max-h-[calc(31.5vw*1.82)] overflow-hidden will-change-transform"
+        >
+          <div
+            data-intro-portrait=""
+            style={{
+              animation:
+                "portraitIntro 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
+            }}
+            className="relative h-full w-full"
+          >
+            <div
+              ref={portraitInnerRef}
+              className="relative h-full w-full will-change-transform"
+            >
+              <Image
+                src={siteConfig.portraitSrc}
+                alt={siteConfig.portraitAlt}
+                fill
+                priority
+                sizes="(max-width: 768px) 85vw, 35vw"
+                className="object-cover object-[50%_14%]"
+              />
+              {/* Cursor-reactive vermilion rim-light glow */}
+              <div
+                ref={glowRef}
+                className="absolute inset-0 opacity-90"
+                style={{
+                  background:
+                    "radial-gradient(340px circle at var(--mx, 50%) var(--my, 40%), rgba(243, 66, 19, 0.24), transparent 70%)",
+                }}
+              />
+            </div>
+
+            {/* Locked #0b0b0b studio edge vignette (outside tilting inner layer so edges never show hard seams) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(90deg, #0b0b0b 0%, rgba(11,11,11,0.72) 6%, rgba(11,11,11,0.18) 16%, transparent 30%, transparent 70%, rgba(11,11,11,0.18) 84%, rgba(11,11,11,0.72) 94%, #0b0b0b 100%)",
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, #0b0b0b 0%, rgba(11,11,11,0.45) 9%, transparent 24%, transparent 72%, rgba(11,11,11,0.82) 90%, #0b0b0b 100%)",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 1: Hero Viewport */}
+      <section
+        data-hero-section=""
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="relative z-10 min-h-svh w-full px-4 sm:px-6 flex flex-col justify-between pb-28 sm:pb-28"
+      >
+        {/* Top Metadata Row */}
+        <div
+          style={{
+            animation:
+              "heroFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both",
+          }}
+          className="pt-6 flex items-center justify-between text-[12px] sm:text-[14px] font-normal uppercase tracking-[0.04em] text-[#e7e1d7]"
+        >
+          <span data-intro-fade="" className="inline-block">
+            <StylizedText text={siteConfig.domain} />
+          </span>
+          <span data-intro-fade="" className="inline-block">
+            <StylizedText text={siteConfig.edition} />
+          </span>
+        </div>
+
+        {/* Lower Hero Stack */}
+        <div className="mt-auto pt-36 sm:pt-44">
+          {/* Subheader 3-Zone Row */}
+          <div className="grid grid-cols-1 md:grid-cols-12 items-end gap-4 pb-5">
+            <div
+              data-intro-fade=""
+              style={{
+                animation:
+                  "heroFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both",
+              }}
+              className="md:col-span-5"
+            >
+              <span className="text-[13px] sm:text-[14px] uppercase tracking-[0.04em] text-[#e7e1d7]">
+                {siteConfig.greeting}
+              </span>
+            </div>
+
+            <div data-intro-fade="" className="md:col-span-3 flex items-center md:justify-center">
+              <div ref={starScrollRef} className="will-change-transform">
+                <svg
+                  width="42"
+                  height="48"
+                  viewBox="0 0 42 48"
+                  fill="none"
+                  aria-hidden="true"
+                  className="h-10 w-10 text-[#f34213] animate-[spin_24s_linear_infinite]"
+                >
+                  <path
+                    d="M21 0L22.1089 20.2315C22.1536 21.0354 23.0188 21.5299 23.7418 21.1641L42 11.999L24.8507 23.0654C24.1683 23.5036 24.1683 24.4924 24.8507 24.9346L42 36.001L23.7418 26.8359C23.0147 26.4701 22.1536 26.9646 22.1089 27.7685L21 48L19.8911 27.7685C19.8464 26.9646 18.9812 26.4701 18.2582 26.8359L0 35.997L17.1493 24.9306C17.8317 24.4924 17.8317 23.5036 17.1493 23.0614L0 11.999L18.2582 21.1641C18.9812 21.5299 19.8464 21.0354 19.8911 20.2315L21 0Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <div
+              data-intro-fade=""
+              style={{
+                animation:
+                  "heroFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both",
+              }}
+              className="md:col-span-4 md:justify-self-end max-w-[320px]"
+            >
+              <p className="text-[15px] sm:text-[16px] leading-[1.45] font-normal text-[#e7e1d7]">
+                {siteConfig.tagline}
+              </p>
+            </div>
+          </div>
+
+          {/* Full-Width Hairline Divider */}
+          <div
+            data-intro-line=""
+            style={{
+              animation:
+                "heroLineDraw 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both",
+            }}
+            className="h-px w-full origin-left bg-[#e7e1d7]/20"
+          />
+
+          {/* Giant 2-Line Character-Staggered Display Title with Counter-Parallax */}
+          <div
+            ref={titleWrapRef}
+            className="pt-4 sm:pt-5 select-none will-change-transform"
+          >
+            <h1 className="w-full text-[9.1vw] sm:text-[9.5vw] leading-[0.88] tracking-[-0.035em] font-normal uppercase text-[#e7e1d7] whitespace-nowrap">
+              <MaskedChars
+                text={siteConfig.heroLine1}
+                baseDelayMs={200}
+                stepMs={26}
+              />
+              <span className="block text-right text-[#f34213] mt-1 text-[11vw] sm:text-[10.4vw]">
+                <MaskedChars
+                  text={siteConfig.heroLine2}
+                  baseDelayMs={580}
+                  stepMs={40}
+                />
+              </span>
+            </h1>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 2: Info & Services (Shares the Sticky Portrait) */}
+      <InfoSection />
+    </div>
+  );
+}
