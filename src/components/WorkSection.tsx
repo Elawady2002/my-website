@@ -5,36 +5,68 @@ import * as THREE from "three";
 import { StylizedText } from "@/components/StylizedText";
 import {
   SHOWCASE_INNER_UV,
+  WORK_PLANE_HEIGHT,
+  WORK_PLANE_WIDTH,
   createProjectTexture,
 } from "@/components/workTextures";
 import { siteConfig } from "@/data/site";
 
+const CARD_STRIDE = 5.02;
+const PLANE_Y_OFFSET = -0.33;
+
 const VERTEX_SHADER = /* glsl */ `
-  uniform float uAngle;
-  uniform float uRadius;
+  uniform float uOffset;
+  uniform float uActivity;
   uniform float uVelocity;
+  uniform float uPlaneY;
   varying vec2 vUv;
-  varying float vNdcX;
+  varying float vCorner;
 
   void main() {
     vUv = uv;
-    float alpha = uAngle + (position.x / uRadius);
-    vec3 curved = vec3(
-      uRadius * sin(alpha),
-      position.y,
-      -uRadius * cos(alpha)
-    );
-    curved.z += sin(uv.y * 3.14159265) * clamp(abs(uVelocity) * 4.0, 0.0, 0.45);
-    vec4 mvPos = modelViewMatrix * vec4(curved, 1.0);
-    vec4 clipPos = projectionMatrix * mvPos;
-    vec2 ndc = clipPos.xy / max(abs(clipPos.w), 0.0001);
-    float edgeFactor = max(abs(ndc.x) - 0.52, 0.0);
-    float lensY = 1.0 + 0.34 * edgeFactor * edgeFactor;
-    float lensX = 1.0 + 0.06 * ndc.x * ndc.x * (1.0 - 0.28 * ndc.y * ndc.y);
-    clipPos.x *= lensX;
-    clipPos.y *= lensY;
-    vNdcX = clipPos.x / max(abs(clipPos.w), 0.0001);
-    gl_Position = clipPos;
+    float zPull = uActivity * 1.25;
+    float F = 1.56 * (1.0 - 0.14 * uActivity);
+    float R = 1.88;
+    float thetaMax = 1.24;
+
+    float s = uOffset + position.x;
+    float absS = abs(s);
+    float sgn = s >= 0.0 ? 1.0 : -1.0;
+    float conc = 0.05 * (s * s) / (2.5 + s * s);
+
+    float wx;
+    float wz;
+    float theta;
+
+    if (absS <= F) {
+      wx = s;
+      wz = conc - zPull;
+      theta = 0.0;
+    } else {
+      float u = absS - F;
+      float rawTh = u / R;
+      if (rawTh <= thetaMax) {
+        theta = rawTh;
+        wx = sgn * (F + R * sin(theta));
+        wz = conc + R * (1.0 - cos(theta)) - zPull;
+      } else {
+        theta = thetaMax;
+        float rem = u - thetaMax * R;
+        wx = sgn * (F + R * sin(thetaMax) + rem * cos(thetaMax));
+        wz = conc + R * (1.0 - cos(thetaMax)) + rem * sin(thetaMax) - zPull;
+      }
+    }
+
+    // Subtle liquid velocity shear & silk pillow during drag/glide
+    float velShear = clamp(uVelocity * 1.35, -0.14, 0.14);
+    wx += (uv.y - 0.5) * velShear;
+    wz += sin(uv.x * 3.14159265) * sin(uv.y * 3.14159265) * clamp(abs(uVelocity) * 2.2, 0.0, 0.22);
+
+    // Architectural corner upward lift matching tomdekoning.work mid-drag silhouette
+    float wy = uPlaneY + position.y + 0.20 * (1.0 - cos(theta)) * (0.25 + 0.75 * uActivity);
+
+    vCorner = clamp(theta / thetaMax, 0.0, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(wx, wy, wz, 1.0);
   }
 `;
 
@@ -45,11 +77,11 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec4 uInnerRect;
   uniform float uVelocity;
   varying vec2 vUv;
-  varying float vNdcX;
+  varying float vCorner;
 
   vec3 srgbToLinear(vec3 c) {
     return mix(
-      pow((c + 0.055) / 1.055, vec3(2.4)),
+      pow(max((c + 0.055) / 1.055, vec3(0.0)), vec3(2.4)),
       c / 12.92,
       vec3(lessThanEqual(c, vec3(0.04045)))
     );
@@ -74,8 +106,9 @@ const FRAGMENT_SHADER = /* glsl */ `
 
   void main() {
     vec2 fw = max(fwidth(vUv), vec2(0.0004));
-    float restEdge = pow(max(abs(vNdcX) - 0.62, 0.0) / 0.38, 2.2) * 0.016;
-    float edge = restEdge + clamp(abs(uVelocity) * 0.05, 0.0, 0.016);
+    float safeCorner = clamp(vCorner, 0.0, 1.0);
+    float restEdge = pow(safeCorner, 1.75) * 0.022;
+    float edge = restEdge + clamp(abs(uVelocity) * 0.075, 0.0, 0.015);
     vec2 uvR = clamp(vUv + vec2(edge, 0.0), vec2(0.002), vec2(0.998));
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
@@ -93,27 +126,38 @@ const FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
-const CYLINDER_RADIUS = 6.2;
+function wrapTrackOffset(rawPos: number, totalSpan: number): number {
+  return (
+    ((((rawPos + totalSpan * 0.5) % totalSpan) + totalSpan) % totalSpan) -
+    totalSpan * 0.5
+  );
+}
 
 export function WorkSection() {
   const projects = siteConfig.workSection.projects;
   const count = projects.length;
-  const stepAngle = (Math.PI * 2) / count;
+  const totalSpan = count * CARD_STRIDE;
 
   const introRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const captionRef = useRef<HTMLDivElement | null>(null);
+  const captionContentRef = useRef<HTMLDivElement | null>(null);
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [webglReady, setWebglReady] = useState(true);
   const activeIdxRef = useRef(0);
 
-  const targetRotRef = useRef(0);
-  const currentRotRef = useRef(0);
+  const targetTrackRef = useRef(0);
+  const currentTrackRef = useRef(0);
+  const smoothVelRef = useRef(0);
+  const activityRef = useRef(0);
   const isDraggingRef = useRef(false);
   const startXRef = useRef(0);
   const lastXRef = useRef(0);
-  const dragStartRotRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const pointerVxRef = useRef(0);
+  const dragStartTrackRef = useRef(0);
+  const wheelSnapTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const el = introRef.current;
@@ -157,11 +201,16 @@ export function WorkSection() {
     container.appendChild(activeRenderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(37.5, 16 / 9, 0.1, 50);
-    camera.position.set(0, 0, 1.45);
-    camera.lookAt(0, 0, -1);
+    const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 60);
+    camera.position.set(0, 0, 6.5);
+    camera.lookAt(0, 0, 0);
 
-    const geometry = new THREE.PlaneGeometry(5.38, 3.22, 72, 48);
+    const geometry = new THREE.PlaneGeometry(
+      WORK_PLANE_WIDTH,
+      WORK_PLANE_HEIGHT,
+      96,
+      56
+    );
     const textures = projects.map((p) =>
       createProjectTexture(THREE, activeRenderer, p)
     );
@@ -218,9 +267,10 @@ export function WorkSection() {
           uVideoMap: { value: videoEntry ? videoEntry.texture : textures[i] },
           uHasVideo: { value: 0 },
           uInnerRect: { value: innerRectVec },
-          uAngle: { value: i * stepAngle },
-          uRadius: { value: CYLINDER_RADIUS },
+          uOffset: { value: i * CARD_STRIDE },
+          uActivity: { value: 0 },
           uVelocity: { value: 0 },
+          uPlaneY: { value: PLANE_Y_OFFSET },
         },
         vertexShader: VERTEX_SHADER,
         fragmentShader: FRAGMENT_SHADER,
@@ -236,10 +286,18 @@ export function WorkSection() {
       if (!container) return;
       const w = container.clientWidth || 1280;
       const h = container.clientHeight || 720;
+      const aspect = w / Math.max(h, 1);
+      const camZ = 7.15 + Math.max(0, (1.42 - aspect) * 8.6);
+      const planeY = aspect >= 1.0 ? -0.33 : -0.18;
       activeRenderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.fov = w < 640 ? 58 : w < 1024 ? 46 : 37.5;
+      camera.aspect = aspect;
+      camera.fov = 38;
+      camera.position.set(0, 0, camZ);
+      camera.lookAt(0, 0, 0);
       camera.updateProjectionMatrix();
+      materials.forEach((m) => {
+        m.uniforms.uPlaneY.value = planeY;
+      });
     };
 
     handleResize();
@@ -250,6 +308,22 @@ export function WorkSection() {
       videoEntries.forEach((entry) => entry?.tryPlay());
     };
     container.addEventListener("pointerdown", kickAllVideos);
+
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.15 && Math.abs(e.deltaX) > 3) {
+        e.preventDefault();
+        targetTrackRef.current -= e.deltaX * 0.0065;
+        if (wheelSnapTimerRef.current !== null) {
+          window.clearTimeout(wheelSnapTimerRef.current);
+        }
+        wheelSnapTimerRef.current = window.setTimeout(() => {
+          targetTrackRef.current =
+            Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+          wheelSnapTimerRef.current = null;
+        }, 150);
+      }
+    };
+    container.addEventListener("wheel", handleWheel, { passive: false });
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -263,45 +337,65 @@ export function WorkSection() {
 
     let rafId = 0;
     const tick = () => {
-      const prevRot = currentRotRef.current;
-      currentRotRef.current +=
-        (targetRotRef.current - currentRotRef.current) * 0.09;
-      const velocity = currentRotRef.current - prevRot;
+      const prevTrack = currentTrackRef.current;
+      const lerpFactor = isDraggingRef.current ? 0.18 : 0.085;
+      currentTrackRef.current +=
+        (targetTrackRef.current - currentTrackRef.current) * lerpFactor;
+
+      const rawVel = currentTrackRef.current - prevTrack;
+      smoothVelRef.current += (rawVel - smoothVelRef.current) * 0.22;
+
+      const wantActivity = isDraggingRef.current
+        ? Math.min(1, 0.44 + Math.abs(smoothVelRef.current) * 6.5)
+        : Math.min(1, Math.abs(smoothVelRef.current) * 5.4);
+      const actRate = wantActivity > activityRef.current ? 0.14 : 0.075;
+      activityRef.current += (wantActivity - activityRef.current) * actRate;
 
       for (let i = 0; i < count; i += 1) {
-        const rawAngle = i * stepAngle + currentRotRef.current;
-        const wrapped = Math.atan2(Math.sin(rawAngle), Math.cos(rawAngle));
-        const visible = Math.abs(wrapped) < 1.85;
+        const rawPos = i * CARD_STRIDE + currentTrackRef.current;
+        const wrapped = wrapTrackOffset(rawPos, totalSpan);
+        const visible = Math.abs(wrapped) <= CARD_STRIDE * 2.1;
         meshes[i].visible = visible;
-        materials[i].uniforms.uAngle.value = wrapped;
-        materials[i].uniforms.uVelocity.value = velocity;
+        materials[i].uniforms.uOffset.value = wrapped;
+        materials[i].uniforms.uActivity.value = activityRef.current;
+        materials[i].uniforms.uVelocity.value = smoothVelRef.current;
 
         const videoEntry = videoEntries[i];
         if (videoEntry) {
           materials[i].uniforms.uHasVideo.value =
             videoEntry.video.readyState >= 2 ? 1.0 : 0.0;
-          if (visible && videoEntry.video.paused && videoEntry.video.readyState >= 2) {
+          if (
+            visible &&
+            videoEntry.video.paused &&
+            videoEntry.video.readyState >= 2
+          ) {
             videoEntry.tryPlay();
           }
         }
       }
 
-      const rawIdx = Math.round(-currentRotRef.current / stepAngle);
+      const rawIdx = Math.round(-currentTrackRef.current / CARD_STRIDE);
       const nextIdx = ((rawIdx % count) + count) % count;
       if (nextIdx !== activeIdxRef.current) {
         activeIdxRef.current = nextIdx;
         setActiveIdx(nextIdx);
       }
 
-      if (captionRef.current) {
-        const activeWrapped = Math.atan2(
-          Math.sin(nextIdx * stepAngle + currentRotRef.current),
-          Math.cos(nextIdx * stepAngle + currentRotRef.current)
+      if (captionContentRef.current) {
+        const activeWrapped = wrapTrackOffset(
+          nextIdx * CARD_STRIDE + currentTrackRef.current,
+          totalSpan
         );
-        const driftX = activeWrapped * 260;
-        captionRef.current.style.transform = `translate3d(calc(-50% + ${driftX.toFixed(
+        const distNorm = Math.min(
+          1,
+          Math.abs(activeWrapped) / (CARD_STRIDE * 0.48)
+        );
+        const opacity = Math.max(0.18, 1 - distNorm * 0.84);
+        const shiftY = distNorm * 16;
+        captionContentRef.current.style.opacity = opacity.toFixed(3);
+        captionContentRef.current.style.transform = `translate3d(0, ${shiftY.toFixed(
           1
-        )}px), 0, 0)`;
+        )}px, 0)`;
       }
 
       activeRenderer.render(scene, camera);
@@ -311,7 +405,12 @@ export function WorkSection() {
 
     return () => {
       window.cancelAnimationFrame(rafId);
+      if (wheelSnapTimerRef.current !== null) {
+        window.clearTimeout(wheelSnapTimerRef.current);
+        wheelSnapTimerRef.current = null;
+      }
       io.disconnect();
+      container.removeEventListener("wheel", handleWheel);
       container.removeEventListener("pointerdown", kickAllVideos);
       resizeObserver.disconnect();
       geometry.dispose();
@@ -330,26 +429,41 @@ export function WorkSection() {
         container.removeChild(activeRenderer.domElement);
       }
     };
-  }, [count, projects, stepAngle]);
+  }, [count, projects, totalSpan]);
 
   const stepBy = (delta: number) => {
-    const snapped = Math.round(targetRotRef.current / stepAngle) * stepAngle;
-    targetRotRef.current = snapped - delta * stepAngle;
+    const snapped = Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+    targetTrackRef.current = snapped - delta * CARD_STRIDE;
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (wheelSnapTimerRef.current !== null) {
+      window.clearTimeout(wheelSnapTimerRef.current);
+      wheelSnapTimerRef.current = null;
+    }
     isDraggingRef.current = true;
     startXRef.current = e.clientX;
     lastXRef.current = e.clientX;
-    dragStartRotRef.current = targetRotRef.current;
+    lastTimeRef.current = performance.now();
+    pointerVxRef.current = 0;
+    dragStartTrackRef.current = targetTrackRef.current;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
+    const now = performance.now();
+    const dt = Math.max(now - lastTimeRef.current, 1);
     const dx = e.clientX - lastXRef.current;
     lastXRef.current = e.clientX;
-    targetRotRef.current += dx * 0.0028;
+    lastTimeRef.current = now;
+    pointerVxRef.current = pointerVxRef.current * 0.55 + (dx / dt) * 0.45;
+
+    const containerWidth =
+      stageRef.current?.clientWidth || e.currentTarget.clientWidth || 1280;
+    const worldPerPx =
+      (containerWidth < 640 ? 9.5 : 7.2) / Math.max(containerWidth, 320);
+    targetTrackRef.current += dx * worldPerPx;
   };
 
   const finishDrag = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -359,26 +473,35 @@ export function WorkSection() {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
     const totalDx = e.clientX - startXRef.current;
-    if (Math.abs(totalDx) > 40) {
-      const snappedBase =
-        Math.round(dragStartRotRef.current / stepAngle) * stepAngle;
-      targetRotRef.current =
-        totalDx < 0 ? snappedBase - stepAngle : snappedBase + stepAngle;
+    const vx = pointerVxRef.current;
+    const dragStartSnapped =
+      Math.round(dragStartTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+
+    if (Math.abs(totalDx) > 36 || Math.abs(vx) > 0.38) {
+      if (Math.abs(targetTrackRef.current - dragStartSnapped) > CARD_STRIDE * 0.65) {
+        targetTrackRef.current =
+          Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+      } else {
+        const dir = Math.abs(totalDx) >= 12 ? totalDx : vx;
+        targetTrackRef.current =
+          dragStartSnapped + (dir < 0 ? -CARD_STRIDE : CARD_STRIDE);
+      }
     } else if (Math.abs(totalDx) < 8) {
       const rect = e.currentTarget.getBoundingClientRect();
       const relX = (e.clientX - rect.left) / Math.max(rect.width, 1);
-      if (relX < 0.14) {
+      if (relX < 0.2) {
         stepBy(-1);
-      } else if (relX > 0.86) {
+      } else if (relX > 0.8) {
         stepBy(1);
       } else {
-        targetRotRef.current =
-          Math.round(targetRotRef.current / stepAngle) * stepAngle;
+        targetTrackRef.current =
+          Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
       }
     } else {
-      targetRotRef.current =
-        Math.round(targetRotRef.current / stepAngle) * stepAngle;
+      targetTrackRef.current =
+        Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
     }
+    pointerVxRef.current = 0;
   };
 
   const activeProject = projects[activeIdx];
@@ -421,7 +544,7 @@ export function WorkSection() {
         </h2>
       </div>
 
-      {/* Part B: Interactive Three.js Concave 3D Glass Carousel */}
+      {/* Part B: Interactive Three.js Rounded-Box 3D Glass Carousel */}
       <section
         id="work"
         aria-label="Selected projects carousel"
@@ -434,7 +557,7 @@ export function WorkSection() {
           if (e.key === "ArrowLeft") stepBy(-1);
         }}
         tabIndex={0}
-        className="relative w-full h-[100svh] min-h-[700px] max-h-[960px] overflow-hidden select-none cursor-grab active:cursor-grabbing -mt-4 sm:-mt-8 focus:outline-none"
+        className="relative w-full h-[100svh] min-h-[820px] max-h-[1020px] overflow-hidden select-none cursor-grab active:cursor-grabbing focus:outline-none"
       >
         {/* WebGL Three.js Canvas Mount (rendered before caption in DOM for clean layer order) */}
         {webglReady ? (
@@ -464,21 +587,22 @@ export function WorkSection() {
         <div
           ref={captionRef}
           aria-live="polite"
-          style={{ transform: "translate3d(-50%, 0, 0)" }}
-          className="pointer-events-none absolute top-[9.5%] sm:top-[10.5%] left-1/2 z-20 text-center w-[90vw] max-w-[760px]"
+          className="pointer-events-none absolute top-[84px] sm:top-[102px] left-1/2 -translate-x-1/2 z-20 text-center w-[90vw] max-w-[760px]"
         >
-          <h3 className="text-[36px] sm:text-[56px] leading-[1.0] tracking-[-0.02em] font-normal uppercase text-[#e7e1d7]">
-            <StylizedText text={activeProject.title} />
-          </h3>
-          <p className="mt-2 text-[12px] sm:text-[14px] uppercase tracking-[0.04em] text-[#e7e1d7]/65">
-            <StylizedText text={activeProject.category} />
-          </p>
+          <div ref={captionContentRef} className="will-change-transform">
+            <h3 className="text-[28px] sm:text-[46px] leading-[1.0] tracking-[-0.02em] font-normal uppercase text-[#e7e1d7]">
+              <StylizedText text={activeProject.title} />
+            </h3>
+            <p className="mt-2 text-[11px] sm:text-[13px] leading-[1.3] uppercase tracking-[0.05em] text-[#e7e1d7]/65">
+              <StylizedText text={activeProject.category} />
+            </p>
+          </div>
         </div>
 
         {/* Bottom-Center Clean Counter */}
         <div
           data-work-counter=""
-          className="pointer-events-none absolute bottom-[7.5%] sm:bottom-[8%] left-1/2 -translate-x-1/2 z-20 text-[13px] sm:text-[14px] font-normal tabular-nums tracking-[0.04em] text-[#e7e1d7]"
+          className="pointer-events-none absolute bottom-[28px] sm:bottom-[34px] left-1/2 -translate-x-1/2 z-20 text-[13px] sm:text-[14px] font-normal tabular-nums tracking-[0.04em] text-[#e7e1d7]"
         >
           {counterLabel}
         </div>
