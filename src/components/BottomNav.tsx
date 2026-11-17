@@ -974,39 +974,32 @@ export function BottomNav() {
             aria-label={isOpen ? "Close menu" : "Open menu"}
             className="voy-glass group pointer-events-auto h-[44px] w-[44px] justify-center md:h-[54px] md:w-auto md:px-5 rounded-[12px] md:rounded-[14px] flex items-center gap-3 text-[13px] md:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7] transition-transform duration-200 ease-out cursor-pointer"
           >
-            <span className="relative h-4 w-4 shrink-0" aria-hidden="true">
+            <span
+              className="relative flex h-4 w-4 shrink-0 items-center justify-center"
+              aria-hidden="true"
+            >
               <span
-                className={`absolute left-1/2 top-1/2 h-1 w-1 rounded-full bg-[#f34213] transition-transform duration-300 ${
-                  isOpen
-                    ? "-translate-x-1/2 -translate-y-1/2 translate-x-[-5px] translate-y-[-5px]"
-                    : "-translate-x-1/2 -translate-y-1/2 translate-y-[-5px]"
-                }`}
+                style={{
+                  transform: isOpen
+                    ? "translateY(0px) rotate(45deg)"
+                    : "translateY(-4.5px) rotate(0deg)",
+                }}
+                className="absolute h-[1.75px] w-[15px] rounded-full bg-[#f34213] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
               />
               <span
-                className={`absolute left-1/2 top-1/2 h-1 w-1 rounded-full bg-[#f34213] transition-transform duration-300 ${
-                  isOpen
-                    ? "-translate-x-1/2 -translate-y-1/2 translate-x-[5px] translate-y-[-5px]"
-                    : "-translate-x-1/2 -translate-y-1/2 translate-x-[5px]"
-                }`}
+                style={{
+                  transform: isOpen ? "scaleX(0)" : "scaleX(1)",
+                  opacity: isOpen ? 0 : 1,
+                }}
+                className="absolute h-[1.75px] w-[15px] rounded-full bg-[#f34213] transition-[transform,opacity] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]"
               />
               <span
-                className={`absolute left-1/2 top-1/2 h-1 w-1 rounded-full bg-[#f34213] transition-transform duration-300 ${
-                  isOpen
-                    ? "-translate-x-1/2 -translate-y-1/2 translate-x-[5px] translate-y-[5px]"
-                    : "-translate-x-1/2 -translate-y-1/2 translate-y-[5px]"
-                }`}
-              />
-              <span
-                className={`absolute left-1/2 top-1/2 h-1 w-1 rounded-full bg-[#f34213] transition-transform duration-300 ${
-                  isOpen
-                    ? "-translate-x-1/2 -translate-y-1/2 translate-x-[-5px] translate-y-[5px]"
-                    : "-translate-x-1/2 -translate-y-1/2 translate-x-[-5px]"
-                }`}
-              />
-              <span
-                className={`absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f34213] transition-transform duration-300 ${
-                  isOpen ? "scale-100" : "scale-0"
-                }`}
+                style={{
+                  transform: isOpen
+                    ? "translateY(0px) rotate(-45deg)"
+                    : "translateY(4.5px) rotate(0deg)",
+                }}
+                className="absolute h-[1.75px] w-[15px] rounded-full bg-[#f34213] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
               />
             </span>
 
