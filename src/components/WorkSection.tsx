@@ -402,7 +402,7 @@ export function WorkSection() {
             onClick={(e) => e.stopPropagation()}
             onPointerEnter={() => setIsDockHovered(true)}
             onPointerLeave={() => setIsDockHovered(false)}
-            className={`absolute bottom-[68px] sm:bottom-[82px] left-1/2 -translate-x-1/2 z-30 max-w-[92vw] transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            className={`absolute bottom-[70px] sm:bottom-[84px] left-1/2 -translate-x-1/2 z-30 max-w-[92vw] transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
               isDraggingUI
                 ? "opacity-0 translate-y-4 scale-[0.96] pointer-events-none"
                 : showLinksDock
@@ -410,14 +410,17 @@ export function WorkSection() {
                 : "opacity-100 translate-y-0 scale-100 pointer-events-auto md:opacity-0 md:translate-y-4 md:scale-[0.96] md:pointer-events-none"
             }`}
           >
-            <div className="voy-glass rounded-full p-1.5 flex flex-wrap items-center justify-center gap-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.55)]">
-              {projectLinks.map((link) => (
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              {projectLinks.map((link, idx) => (
                 <a
                   key={`${activeProject.id}-${link.type}`}
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 h-[36px] sm:h-[38px] px-3.5 sm:px-4 rounded-full bg-white/[0.09] border border-white/[0.18] text-white text-[12px] sm:text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap transition-all duration-200 ease-out hover:bg-white hover:text-[#0b0b0b] hover:border-white hover:shadow-[0_6px_20px_rgba(255,255,255,0.28)] hover:-translate-y-[1px] active:scale-[0.97] cursor-pointer"
+                  style={{
+                    transitionDelay: showLinksDock ? `${idx * 45}ms` : "0ms",
+                  }}
+                  className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
                 >
                   <ProjectLinkIcon type={link.type} />
                   <span>{link.label ?? LINK_LABELS[link.type]}</span>
