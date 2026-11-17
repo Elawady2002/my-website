@@ -3,7 +3,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { StylizedText } from "@/components/StylizedText";
-import { createProjectTexture } from "@/components/workTextures";
+import {
+  SHOWCASE_INNER_UV,
+  createProjectTexture,
+} from "@/components/workTextures";
 import { siteConfig } from "@/data/site";
 
 const VERTEX_SHADER = /* glsl */ `
@@ -37,9 +40,24 @@ const VERTEX_SHADER = /* glsl */ `
 
 const FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D uMap;
+  uniform sampler2D uVideoMap;
+  uniform float uHasVideo;
+  uniform vec4 uInnerRect;
   uniform float uVelocity;
   varying vec2 vUv;
   varying float vNdcX;
+
+  vec3 sampleSlide(vec2 uv) {
+    if (
+      uHasVideo > 0.5 &&
+      uv.x >= uInnerRect.x && uv.x <= uInnerRect.z &&
+      uv.y >= uInnerRect.y && uv.y <= uInnerRect.w
+    ) {
+      vec2 vidUv = (uv - uInnerRect.xy) / (uInnerRect.zw - uInnerRect.xy);
+      return texture2D(uVideoMap, clamp(vidUv, vec2(0.001), vec2(0.999))).rgb;
+    }
+    return texture2D(uMap, uv).rgb;
+  }
 
   void main() {
     float edge = pow(clamp(abs(vNdcX), 0.0, 1.0), 3.0) * 0.020 + clamp(abs(uVelocity) * 0.06, 0.0, 0.018);
@@ -47,9 +65,9 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
 
-    float r = texture2D(uMap, uvR).r;
-    float g = texture2D(uMap, uvG).g;
-    float b = texture2D(uMap, uvB).b;
+    float r = sampleSlide(uvR).r;
+    float g = sampleSlide(uvG).g;
+    float b = sampleSlide(uvB).b;
 
     vec3 col = vec3(r, g, b);
     float glassRim = smoothstep(0.0, 0.04, vUv.x) * smoothstep(1.0, 0.96, vUv.x)
@@ -132,13 +150,59 @@ export function WorkSection() {
     const textures = projects.map((p) =>
       createProjectTexture(THREE, activeRenderer, p)
     );
+    const innerRectVec = new THREE.Vector4(
+      SHOWCASE_INNER_UV.left,
+      SHOWCASE_INNER_UV.bottom,
+      SHOWCASE_INNER_UV.right,
+      SHOWCASE_INNER_UV.top
+    );
+
+    const videoEntries: (
+      | {
+          video: HTMLVideoElement;
+          texture: THREE.VideoTexture;
+          tryPlay: () => void;
+        }
+      | null
+    )[] = projects.map((p) => {
+      if (!p.videoSrc) return null;
+      const video = document.createElement("video");
+      video.src = p.videoSrc;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      video.crossOrigin = "anonymous";
+
+      const videoTex = new THREE.VideoTexture(video);
+      videoTex.colorSpace = THREE.SRGBColorSpace;
+      videoTex.minFilter = THREE.LinearFilter;
+      videoTex.magFilter = THREE.LinearFilter;
+      videoTex.generateMipmaps = false;
+
+      const tryPlay = () => {
+        if (video.paused) {
+          video.play().catch(() => {});
+        }
+      };
+      video.addEventListener("canplay", tryPlay);
+      tryPlay();
+
+      return { video, texture: videoTex, tryPlay };
+    });
+
     const materials: THREE.ShaderMaterial[] = [];
     const meshes: THREE.Mesh[] = [];
 
     for (let i = 0; i < count; i += 1) {
+      const videoEntry = videoEntries[i];
       const mat = new THREE.ShaderMaterial({
         uniforms: {
           uMap: { value: textures[i] },
+          uVideoMap: { value: videoEntry ? videoEntry.texture : textures[i] },
+          uHasVideo: { value: 0 },
+          uInnerRect: { value: innerRectVec },
           uAngle: { value: i * stepAngle },
           uRadius: { value: CYLINDER_RADIUS },
           uVelocity: { value: 0 },
@@ -167,6 +231,21 @@ export function WorkSection() {
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
 
+    const kickAllVideos = () => {
+      videoEntries.forEach((entry) => entry?.tryPlay());
+    };
+    container.addEventListener("pointerdown", kickAllVideos);
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          kickAllVideos();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(container);
+
     let rafId = 0;
     const tick = () => {
       const prevRot = currentRotRef.current;
@@ -177,9 +256,19 @@ export function WorkSection() {
       for (let i = 0; i < count; i += 1) {
         const rawAngle = i * stepAngle + currentRotRef.current;
         const wrapped = Math.atan2(Math.sin(rawAngle), Math.cos(rawAngle));
-        meshes[i].visible = Math.abs(wrapped) < 1.85;
+        const visible = Math.abs(wrapped) < 1.85;
+        meshes[i].visible = visible;
         materials[i].uniforms.uAngle.value = wrapped;
         materials[i].uniforms.uVelocity.value = velocity;
+
+        const videoEntry = videoEntries[i];
+        if (videoEntry) {
+          materials[i].uniforms.uHasVideo.value =
+            videoEntry.video.readyState >= 2 ? 1.0 : 0.0;
+          if (visible && videoEntry.video.paused && videoEntry.video.readyState >= 2) {
+            videoEntry.tryPlay();
+          }
+        }
       }
 
       const rawIdx = Math.round(-currentRotRef.current / stepAngle);
@@ -207,10 +296,20 @@ export function WorkSection() {
 
     return () => {
       window.cancelAnimationFrame(rafId);
+      io.disconnect();
+      container.removeEventListener("pointerdown", kickAllVideos);
       resizeObserver.disconnect();
       geometry.dispose();
       materials.forEach((m) => m.dispose());
       textures.forEach((t) => t.dispose());
+      videoEntries.forEach((entry) => {
+        if (!entry) return;
+        entry.video.removeEventListener("canplay", entry.tryPlay);
+        entry.video.pause();
+        entry.video.removeAttribute("src");
+        entry.video.load();
+        entry.texture.dispose();
+      });
       activeRenderer.dispose();
       if (activeRenderer.domElement.parentNode === container) {
         container.removeChild(activeRenderer.domElement);

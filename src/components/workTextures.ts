@@ -1,6 +1,13 @@
 import type * as ThreeNamespace from "three";
 import type { WorkProjectItem } from "@/data/site";
 
+export const SHOWCASE_INNER_UV = {
+  left: 0.16975,
+  bottom: 0.1628,
+  right: 0.83025,
+  top: 0.8372,
+} as const;
+
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -384,6 +391,57 @@ export function createProjectTexture(
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+
+  if (project.imageSrc && project.posterSrc) {
+    ctx.fillStyle = project.stageBg;
+    ctx.fillRect(0, 0, width, height);
+    texture.needsUpdate = true;
+
+    const bgImg = new window.Image();
+    const posterImg = new window.Image();
+    bgImg.crossOrigin = "anonymous";
+    posterImg.crossOrigin = "anonymous";
+
+    let loaded = 0;
+    const renderComposite = () => {
+      loaded += 1;
+      if (loaded < 2) return;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.clearRect(0, 0, width, height);
+
+      // Cover-fit thematic atmospheric backdrop across full slide
+      const scale = Math.max(width / bgImg.width, height / bgImg.height);
+      const dw = bgImg.width * scale;
+      const dh = bgImg.height * scale;
+      ctx.drawImage(bgImg, (width - dw) / 2, (height - dh) / 2, dw, dh);
+
+      // Exact sharp-cornered inner showcase frame matching tomdekoning.work proportions
+      const ix = width * SHOWCASE_INNER_UV.left;
+      const iy = height * (1 - SHOWCASE_INNER_UV.top);
+      const iw = width * (SHOWCASE_INNER_UV.right - SHOWCASE_INNER_UV.left);
+      const ih = height * (SHOWCASE_INNER_UV.top - SHOWCASE_INNER_UV.bottom);
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.34)";
+      ctx.shadowBlur = Math.round(width * 0.015);
+      ctx.shadowOffsetY = Math.round(height * 0.006);
+      ctx.fillStyle = project.cardBg;
+      ctx.fillRect(ix, iy, iw, ih);
+      ctx.restore();
+
+      ctx.drawImage(posterImg, ix, iy, iw, ih);
+      texture.needsUpdate = true;
+    };
+
+    bgImg.onload = renderComposite;
+    posterImg.onload = renderComposite;
+    bgImg.src = project.imageSrc;
+    posterImg.src = project.posterSrc;
+
+    return texture;
+  }
 
   if (project.imageSrc) {
     // Solid stage fill while real project image finishes decoding (zero mockup flash)

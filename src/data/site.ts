@@ -16,6 +16,8 @@ export interface WorkProjectItem {
   subcopy: string;
   layout: "desktop" | "mobile" | "split";
   imageSrc?: string;
+  posterSrc?: string;
+  videoSrc?: string;
 }
 
 export const siteConfig = {
@@ -83,6 +85,23 @@ export const siteConfig = {
     eyebrow: "WHAT YOU’RE HERE FOR (I GUESS)",
     heading: "WORK",
     projects: [
+      {
+        id: "yusr-academy",
+        title: "YUSR ACADEMY",
+        category: "WEBSITE",
+        stageBg: "#060F0F",
+        stageAccent: "#52B285",
+        cardBg: "#0A1919",
+        cardAccent: "#A7F3B8",
+        badge: "ARABIC UX ACADEMY · LIVE WEBSITE",
+        headline: "MASTER HUMAN\nEXPERIENCE",
+        subcopy:
+          "Arabic-first UI/UX design academy and design studio uniting practical projects, career coaching, and Vibe Coding.",
+        layout: "desktop",
+        imageSrc: "/images/projects/yusr-academy-bg.png",
+        posterSrc: "/images/projects/yusr-academy-poster.png",
+        videoSrc: "/videos/projects/yusr-academy-tour.mp4",
+      },
       {
         id: "active-platform",
         title: "ACTIVE",
@@ -167,20 +186,6 @@ export const siteConfig = {
         subcopy:
           "Editorial commerce app combining minimal product storytelling, AR sizing previews, and Apple Pay one-tap checkout.",
         layout: "mobile",
-      },
-      {
-        id: "sonic-labs",
-        title: "SONIC LABS",
-        category: "AUDIO ENGINE / INTERFACE",
-        stageBg: "#1c382d",
-        stageAccent: "#34d399",
-        cardBg: "#111614",
-        cardAccent: "#34d399",
-        badge: "DSP INTERFACE · PRODUCT DESIGN",
-        headline: "TACTILE\nSOUND DESIGN",
-        subcopy:
-          "Low-latency synthesizer interface featuring real-time FFT spectral meters, rotary gestures, and dark-studio ergonomics.",
-        layout: "split",
       },
     ] as WorkProjectItem[],
   },
