@@ -47,6 +47,14 @@ const FRAGMENT_SHADER = /* glsl */ `
   varying vec2 vUv;
   varying float vNdcX;
 
+  vec3 srgbToLinear(vec3 c) {
+    return mix(
+      pow((c + 0.055) / 1.055, vec3(2.4)),
+      c / 12.92,
+      vec3(lessThanEqual(c, vec3(0.04045)))
+    );
+  }
+
   vec3 sampleSlide(vec2 uv) {
     if (
       uHasVideo > 0.5 &&
@@ -54,13 +62,15 @@ const FRAGMENT_SHADER = /* glsl */ `
       uv.y >= uInnerRect.y && uv.y <= uInnerRect.w
     ) {
       vec2 vidUv = (uv - uInnerRect.xy) / (uInnerRect.zw - uInnerRect.xy);
-      return texture2D(uVideoMap, clamp(vidUv, vec2(0.001), vec2(0.999))).rgb;
+      vec3 vidCol = texture2D(uVideoMap, clamp(vidUv, vec2(0.001), vec2(0.999))).rgb;
+      return srgbToLinear(vidCol);
     }
     return texture2D(uMap, uv).rgb;
   }
 
   void main() {
-    float edge = pow(clamp(abs(vNdcX), 0.0, 1.0), 3.0) * 0.020 + clamp(abs(uVelocity) * 0.06, 0.0, 0.018);
+    float restEdge = pow(max(abs(vNdcX) - 0.62, 0.0) / 0.38, 2.2) * 0.016;
+    float edge = restEdge + clamp(abs(uVelocity) * 0.05, 0.0, 0.016);
     vec2 uvR = clamp(vUv + vec2(edge, 0.0), vec2(0.002), vec2(0.998));
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
