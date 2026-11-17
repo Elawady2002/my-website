@@ -34,60 +34,165 @@ function roundRectPath(
   ctx.closePath();
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.replace("#", "").trim();
+  const full =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((ch) => ch + ch)
+          .join("")
+      : clean;
+  if (full.length !== 6) return { r: 255, g: 255, b: 255 };
+  const num = Number.parseInt(full, 16);
+  if (Number.isNaN(num)) return { r: 255, g: 255, b: 255 };
+  return {
+    r: (num >> 16) & 255,
+    g: (num >> 8) & 255,
+    b: num & 255,
+  };
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function isLightHex(hex: string): boolean {
+  const { r, g, b } = hexToRgb(hex);
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 150;
+}
+
 function drawStageBackdrop(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   project: WorkProjectItem
 ) {
+  const s = w / 1600;
+  const lightStage = isLightHex(project.stageBg);
+
   ctx.fillStyle = project.stageBg;
   ctx.fillRect(0, 0, w, h);
 
-  // Studio radial spotlight
+  // Studio radial spotlight tuned to screen accent
   const grad = ctx.createRadialGradient(
     w * 0.5,
-    h * 0.42,
-    40,
+    h * 0.48,
+    w * 0.03,
     w * 0.5,
-    h * 0.5,
-    w * 0.72
+    h * 0.48,
+    w * 0.68
   );
-  grad.addColorStop(0, `${project.stageAccent}44`);
-  grad.addColorStop(0.55, `${project.stageAccent}14`);
-  grad.addColorStop(1, "rgba(0,0,0,0.22)");
+  grad.addColorStop(0, hexToRgba(project.stageAccent, lightStage ? 0.08 : 0.14));
+  grad.addColorStop(
+    0.52,
+    hexToRgba(project.stageAccent, lightStage ? 0.03 : 0.05)
+  );
+  grad.addColorStop(
+    1,
+    lightStage ? "rgba(0, 0, 0, 0.08)" : "rgba(0, 0, 0, 0.26)"
+  );
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // Subtle architectural grid
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
-  ctx.lineWidth = 1.5;
-  const cols = 12;
-  for (let i = 1; i < cols; i += 1) {
-    const x = (w / cols) * i;
-    ctx.beginPath();
+  // Precision centered dual-weight architectural square grid
+  const cols = 28;
+  const cell = w / cols;
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+  const maxK = Math.ceil(cx / cell);
+  const maxM = Math.ceil(cy / cell);
+
+  ctx.strokeStyle = lightStage
+    ? "rgba(20, 20, 22, 0.042)"
+    : "rgba(244, 239, 232, 0.038)";
+  ctx.lineWidth = Math.max(1, 1.1 * s);
+  ctx.beginPath();
+  for (let k = -maxK; k <= maxK; k += 1) {
+    if (k % 4 === 0) continue;
+    const x = cx + k * cell;
+    if (x <= 0.5 || x >= w - 0.5) continue;
     ctx.moveTo(x, 0);
     ctx.lineTo(x, h);
-    ctx.stroke();
   }
-  const rows = 8;
-  for (let j = 1; j < rows; j += 1) {
-    const y = (h / rows) * j;
-    ctx.beginPath();
+  for (let m = -maxM; m <= maxM; m += 1) {
+    if (m % 4 === 0) continue;
+    const y = cy + m * cell;
+    if (y <= 0.5 || y >= h - 0.5) continue;
     ctx.moveTo(0, y);
     ctx.lineTo(w, y);
-    ctx.stroke();
   }
+  ctx.stroke();
 
-  // Soft ceiling slats / light beams
-  ctx.fillStyle = "rgba(255,255,255,0.03)";
-  for (let k = 0; k < 5; k += 1) {
-    ctx.fillRect(160 + k * 280, 0, 90, h);
+  ctx.strokeStyle = lightStage
+    ? "rgba(20, 20, 22, 0.082)"
+    : "rgba(244, 239, 232, 0.078)";
+  ctx.lineWidth = Math.max(1.25, 1.45 * s);
+  ctx.beginPath();
+  for (let k = -maxK; k <= maxK; k += 1) {
+    if (k % 4 !== 0) continue;
+    const x = cx + k * cell;
+    if (x <= 0.5 || x >= w - 0.5) continue;
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
   }
+  for (let m = -maxM; m <= maxM; m += 1) {
+    if (m % 4 !== 0) continue;
+    const y = cy + m * cell;
+    if (y <= 0.5 || y >= h - 0.5) continue;
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+  }
+  ctx.stroke();
 
-  // Subtle inner glass edge highlight so dark backdrops separate cleanly from #0b0b0b
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, w - 2, h - 2);
+  // Subtle architectural '+' micro-crosshairs at major intersections
+  const arm = 4.5 * s;
+  ctx.strokeStyle = lightStage
+    ? "rgba(20, 20, 22, 0.13)"
+    : hexToRgba(project.stageAccent, 0.16);
+  ctx.lineWidth = Math.max(1, 1.2 * s);
+  ctx.beginPath();
+  for (let k = -maxK; k <= maxK; k += 4) {
+    const x = cx + k * cell;
+    if (x < w * 0.06 || x > w * 0.94) continue;
+    for (let m = -maxM; m <= maxM; m += 4) {
+      const y = cy + m * cell;
+      if (y < h * 0.08 || y > h * 0.92) continue;
+      ctx.moveTo(x - arm, y);
+      ctx.lineTo(x + arm, y);
+      ctx.moveTo(x, y - arm);
+      ctx.lineTo(x, y + arm);
+    }
+  }
+  ctx.stroke();
+
+  // Gentle outer radial vignette so the grid softly recedes toward edges
+  const vignette = ctx.createRadialGradient(
+    w * 0.5,
+    h * 0.5,
+    w * 0.34,
+    w * 0.5,
+    h * 0.5,
+    w * 0.74
+  );
+  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
+  vignette.addColorStop(
+    1,
+    lightStage ? "rgba(0, 0, 0, 0.07)" : "rgba(0, 0, 0, 0.30)"
+  );
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle inner glass edge highlight
+  const edgeWidth = Math.max(1.5, 1.8 * s);
+  const inset = edgeWidth * 0.5;
+  ctx.strokeStyle = lightStage
+    ? "rgba(255, 255, 255, 0.22)"
+    : "rgba(255, 255, 255, 0.085)";
+  ctx.lineWidth = edgeWidth;
+  ctx.strokeRect(inset, inset, w - edgeWidth, h - edgeWidth);
 }
 
 function drawPhoneMockup(
@@ -383,6 +488,8 @@ export function createProjectTexture(
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const width = project.imageSrc
     ? Math.min(isMobile ? 1536 : 2048, maxTex)
+    : project.mobileScreens
+    ? Math.min(isMobile ? 1600 : 2400, maxTex)
     : 1600;
   const height = Math.round((width * WORK_PLANE_HEIGHT) / WORK_PLANE_WIDTH);
   const canvas = document.createElement("canvas");
@@ -477,6 +584,89 @@ export function createProjectTexture(
       onTextureUpdated?.();
     };
     img.src = project.imageSrc;
+
+    return texture;
+  }
+
+  if (project.mobileScreens) {
+    drawStageBackdrop(ctx, width, height, project);
+    texture.needsUpdate = true;
+
+    const screenSrcs = project.mobileScreens;
+    const loadedScreens: (HTMLImageElement | null)[] = [null, null];
+    let settled = 0;
+
+    const renderMobileScreens = () => {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.clearRect(0, 0, width, height);
+      drawStageBackdrop(ctx, width, height, project);
+
+      const s = width / 1600;
+      const ambientGlow = ctx.createRadialGradient(
+        width * 0.5,
+        height * 0.51,
+        width * 0.04,
+        width * 0.5,
+        height * 0.51,
+        width * 0.34
+      );
+      ambientGlow.addColorStop(0, "rgba(255, 252, 246, 0.055)");
+      ambientGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = ambientGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      const slots = [
+        { centerX: 577.5 * s, topY: 114 * s, height: 760 * s },
+        { centerX: 1022.5 * s, topY: 154 * s, height: 760 * s },
+      ];
+
+      loadedScreens.forEach((img, idx) => {
+        if (!img || img.naturalWidth === 0 || img.naturalHeight === 0) return;
+        const slot = slots[idx];
+        const dh = slot.height;
+        const dw = dh * (img.naturalWidth / img.naturalHeight);
+        const dx = slot.centerX - dw / 2;
+        const dy = slot.topY;
+
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.52)";
+        ctx.shadowBlur = 46 * s;
+        ctx.shadowOffsetY = 24 * s;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.26)";
+        ctx.shadowBlur = 12 * s;
+        ctx.shadowOffsetY = 5 * s;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+      });
+
+      texture.needsUpdate = true;
+      onTextureUpdated?.();
+    };
+
+    screenSrcs.forEach((src, idx) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.decoding = "async";
+      img.onload = () => {
+        loadedScreens[idx] = img;
+        settled += 1;
+        if (settled === screenSrcs.length) {
+          renderMobileScreens();
+        }
+      };
+      img.onerror = () => {
+        settled += 1;
+        if (settled === screenSrcs.length) {
+          renderMobileScreens();
+        }
+      };
+      img.src = src;
+    });
 
     return texture;
   }

@@ -18,6 +18,7 @@ export interface WorkProjectItem {
   imageSrc?: string;
   posterSrc?: string;
   videoSrc?: string;
+  mobileScreens?: readonly [string, string];
 }
 
 export const siteConfig = {
@@ -151,18 +152,22 @@ export const siteConfig = {
         layout: "split",
       },
       {
-        id: "nomad-ai",
-        title: "NOMAD AI",
+        id: "quranic-radio",
+        title: "QURANIC RADIO",
         category: "MOBILE UX / FLUTTER",
-        stageBg: "#1b3635",
-        stageAccent: "#5eead4",
-        cardBg: "#0f171a",
-        cardAccent: "#2dd4bf",
-        badge: "AI TRAVEL COMPANION · FLUTTER",
-        headline: "SMARTER\nCITY ROUTES",
+        stageBg: "#211F22",
+        stageAccent: "#DFD7C8",
+        cardBg: "#1E1E1E",
+        cardAccent: "#D4B363",
+        badge: "ISLAMIC AUDIO PLAYER · FLUTTER",
+        headline: "TACTILE VINYL\nQURAN STREAMING",
         subcopy:
-          "Context-aware itinerary assistant with real-time map clustering, offline caching, and tactile card gestures.",
+          "Minimalist Arabic Quran radio experience pairing tactile vinyl turntable motion with curated reciter sleeves.",
         layout: "mobile",
+        mobileScreens: [
+          "/images/projects/quranic-radio-1.png",
+          "/images/projects/quranic-radio-2.png",
+        ],
       },
       {
         id: "solaris-ev",
