@@ -46,8 +46,8 @@ interface OrbBody {
   shadowMesh: Mesh;
 }
 
-const DESKTOP_ORB_COUNT = 13;
-const MOBILE_ORB_COUNT = 9;
+const DESKTOP_ORB_COUNT = 16;
+const MOBILE_ORB_COUNT = 11;
 const SUBSTEPS = 6;
 const GRAVITY = 1920; // px/s^2
 const RESTITUTION_ORB = 0.72;
@@ -295,7 +295,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
   const getOrbRadius = (w: number): number => {
     const diameter =
-      w >= 768 ? clamp(w / 14.2, 76, 102) : clamp(w / 6.8, 54, 68);
+      w >= 768 ? clamp(w / 15.8, 68, 90) : clamp(w / 7.4, 50, 62);
     return diameter * 0.5;
   };
 
@@ -794,7 +794,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     wakeLoop();
 
     if (spawnedCount < orbs.length) {
-      spawnTimer = window.setTimeout(scheduleNextSpawn, 85);
+      spawnTimer = window.setTimeout(scheduleNextSpawn, 70);
     }
   };
 
