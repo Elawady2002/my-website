@@ -320,11 +320,11 @@ export const siteConfig = {
   },
   contactSection: {
     phoneLabel: "PHONE",
-    phoneValue: "+20 100 000 0000",
-    phoneHref: "tel:+201000000000",
+    phoneValue: "+20 103 319 0408",
+    phoneHref: "tel:+201033190408",
     mailLabel: "MAIL",
-    mailValue: "HELLO@ABDULLAHELAWADY.STUDIO",
-    mailHref: "mailto:hello@abdullahelawady.studio",
+    mailValue: "ABDULLAHELAWDY68@GMAIL.COM",
+    mailHref: "mailto:abdullahelawdy68@gmail.com",
     socials: [
       {
         label: "LINKEDIN",
