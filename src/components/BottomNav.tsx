@@ -22,14 +22,17 @@ const MENU_STROKES = [
 
 function formatCairoTime(): string {
   try {
-    return new Intl.DateTimeFormat("en-GB", {
+    return new Intl.DateTimeFormat("en-US", {
       timeZone: siteConfig.infoSection.timezoneIana,
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
-      hour12: false,
-    }).format(new Date());
+      hour12: true,
+    })
+      .format(new Date())
+      .replace(/\s+/g, " ")
+      .toUpperCase();
   } catch {
-    return "13:00";
+    return "1:00 PM";
   }
 }
 
@@ -954,8 +957,8 @@ export function BottomNav() {
             }`}
           >
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#f34213] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#f34213]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e] opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.65)]" />
             </span>
             <span>
               AVAILABLE F<span className="playfair-o">o</span>R Q4

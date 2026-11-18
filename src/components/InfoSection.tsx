@@ -31,12 +31,15 @@ export function InfoSection() {
   useEffect(() => {
     const formatClock = () => {
       if (!clockRef.current) return;
-      const formatted = new Intl.DateTimeFormat("en-GB", {
+      const formatted = new Intl.DateTimeFormat("en-US", {
         timeZone: siteConfig.infoSection.timezoneIana,
-        hour: "2-digit",
+        hour: "numeric",
         minute: "2-digit",
-        hour12: false,
-      }).format(new Date());
+        hour12: true,
+      })
+        .format(new Date())
+        .replace(/\s+/g, " ")
+        .toUpperCase();
       clockRef.current.textContent = `${siteConfig.infoSection.timezoneCity} ${formatted}`;
     };
 

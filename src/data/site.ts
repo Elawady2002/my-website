@@ -68,7 +68,7 @@ export const siteConfig = {
       },
       {
         label: "EXPERIENCE",
-        value: "5+ years",
+        value: "6+ years",
       },
       {
         label: "TIMEZONE",
