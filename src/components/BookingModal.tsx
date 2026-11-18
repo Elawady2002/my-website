@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -25,6 +25,14 @@ import {
   type BusyInterval,
   type TimeSlotItem,
 } from "@/lib/bookingSlots";
+
+export interface PopoverAnchorBox {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
+  openUpward: boolean;
+}
 
 type PopoverStep = "date" | "time" | "details" | "confirmed";
 type DurationOption = (typeof siteConfig.booking.durations)[number];
@@ -398,27 +406,27 @@ function BookingPopoverBody({
 
   if (step === "confirmed" && confirmed) {
     return (
-      <div key="confirmed" className="booking-step-in px-4 py-5 text-center">
-        <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.08] border border-white/[0.12] text-white">
+      <div key="confirmed" className="booking-step-in px-5 py-6 text-center">
+        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.1] border border-white/[0.16] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]">
           <Check className="h-4 w-4" />
         </div>
 
-        <p className="mt-2.5 text-[14px] font-medium tracking-[-0.02em] text-white">
+        <p className="mt-3 text-[14.5px] font-medium tracking-[-0.02em] text-white">
           Scheduled
         </p>
-        <p className="mt-0.5 text-[12px] tabular-nums text-[#e7e1d7]/65">
+        <p className="mt-0.5 text-[12.5px] tabular-nums text-white/60">
           {confirmed.dateLabel} · {confirmed.timeRangeLabel}
         </p>
-        <p className="mt-1 text-[11px] text-[#e7e1d7]/42 truncate">
+        <p className="mt-1 text-[11.5px] text-white/40 truncate">
           Invite sent to {confirmed.guestEmail}
         </p>
 
-        <div className="mt-3.5 flex items-center justify-center gap-2">
+        <div className="mt-4 flex items-center justify-center gap-2">
           {confirmed.meetLink ? (
             <button
               type="button"
               onClick={handleCopyMeetLink}
-              className="h-8 rounded-full bg-white/[0.07] hover:bg-white/[0.13] px-3.5 text-[11.5px] text-white transition-colors cursor-pointer"
+              className="h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] px-4 text-[12px] text-white transition-colors cursor-pointer"
             >
               {copiedLink ? "Copied" : "Copy link"}
             </button>
@@ -427,7 +435,7 @@ function BookingPopoverBody({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-full bg-[#e7e1d7] hover:bg-white px-4 text-[11.5px] font-medium text-[#0b0b0b] transition-colors cursor-pointer"
+            className="h-9 rounded-full bg-white hover:bg-white/90 px-4 text-[12px] font-medium text-[#0b0b0b] transition-colors cursor-pointer"
           >
             Done
           </button>
@@ -439,7 +447,7 @@ function BookingPopoverBody({
   if (step === "details" && selectedSlot) {
     return (
       <div key="details" className="booking-step-in">
-        <div className="flex items-center justify-between gap-2 px-3.5 pt-3 pb-2.5 border-b border-white/[0.07]">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-3 border-b border-white/[0.08]">
           <button
             type="button"
             onClick={() => {
@@ -447,7 +455,7 @@ function BookingPopoverBody({
               setSubmitError(null);
               setStep("time");
             }}
-            className="flex items-center gap-1.5 text-[13px] font-medium tracking-[-0.02em] text-white hover:text-[#e7e1d7]/75 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-[13.5px] font-medium tracking-[-0.02em] text-white hover:text-white/75 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>
@@ -460,12 +468,12 @@ function BookingPopoverBody({
             </span>
           </button>
 
-          <span className="text-[11.5px] text-[#e7e1d7]/45">
+          <span className="text-[12px] text-white/45">
             {duration === 60 ? "1 hr" : `${duration} min`}
           </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-3.5 space-y-2">
+        <form onSubmit={handleSubmit} className="p-4 space-y-2.5">
           <input
             type="text"
             required
@@ -475,7 +483,7 @@ function BookingPopoverBody({
             onChange={(e) => setName(e.target.value)}
             placeholder="Name"
             aria-label="Your name"
-            className="h-9 w-full rounded-[10px] bg-white/[0.045] border border-white/[0.08] px-3 text-[12.5px] text-white placeholder:text-[#e7e1d7]/32 focus:border-white/30 focus:outline-none transition-colors"
+            className="h-10 w-full rounded-[11px] bg-white/[0.045] border border-white/[0.085] px-3.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/28 focus:bg-white/[0.07] focus:outline-none transition-colors"
           />
 
           <input
@@ -486,7 +494,7 @@ function BookingPopoverBody({
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             aria-label="Your email"
-            className="h-9 w-full rounded-[10px] bg-white/[0.045] border border-white/[0.08] px-3 text-[12.5px] text-white placeholder:text-[#e7e1d7]/32 focus:border-white/30 focus:outline-none transition-colors"
+            className="h-10 w-full rounded-[11px] bg-white/[0.045] border border-white/[0.085] px-3.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/28 focus:bg-white/[0.07] focus:outline-none transition-colors"
           />
 
           <input
@@ -496,7 +504,7 @@ function BookingPopoverBody({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Note (optional)"
             aria-label="Optional note"
-            className="h-9 w-full rounded-[10px] bg-white/[0.045] border border-white/[0.08] px-3 text-[12.5px] text-white placeholder:text-[#e7e1d7]/32 focus:border-white/30 focus:outline-none transition-colors"
+            className="h-10 w-full rounded-[11px] bg-white/[0.045] border border-white/[0.085] px-3.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/28 focus:bg-white/[0.07] focus:outline-none transition-colors"
           />
 
           {submitError ? (
@@ -508,7 +516,7 @@ function BookingPopoverBody({
           <button
             type="submit"
             disabled={submitting}
-            className="h-9 w-full rounded-[10px] bg-[#e7e1d7] hover:bg-white text-[#0b0b0b] text-[12.5px] font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            className="h-10 w-full rounded-[11px] bg-white hover:bg-white/90 text-[#0b0b0b] text-[13px] font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             {submitting ? (
               <>
@@ -527,7 +535,7 @@ function BookingPopoverBody({
   if (step === "time") {
     return (
       <div key="time" className="booking-step-in">
-        <div className="flex items-center justify-between gap-2 px-3.5 pt-3 pb-2.5 border-b border-white/[0.07]">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-3 border-b border-white/[0.08]">
           <button
             type="button"
             onClick={() => {
@@ -535,7 +543,7 @@ function BookingPopoverBody({
               setSubmitError(null);
               setStep("date");
             }}
-            className="flex items-center gap-1.5 text-[13px] font-medium tracking-[-0.02em] text-white hover:text-[#e7e1d7]/75 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-[13.5px] font-medium tracking-[-0.02em] text-white hover:text-white/75 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>
@@ -547,7 +555,7 @@ function BookingPopoverBody({
             </span>
           </button>
 
-          <div className="flex items-center rounded-full bg-white/[0.05] p-0.5 text-[11px]">
+          <div className="h-[32px] rounded-full bg-white/[0.05] border border-white/[0.08] p-[3px] flex items-center gap-0.5 text-[11.5px]">
             {siteConfig.booking.durations.map((mins) => {
               const active = duration === mins;
               return (
@@ -555,10 +563,10 @@ function BookingPopoverBody({
                   key={mins}
                   type="button"
                   onClick={() => handleSelectDuration(mins)}
-                  className={`rounded-full px-2.5 py-0.5 transition-colors ${
+                  className={`h-full px-2.5 rounded-full flex items-center justify-center transition-all ${
                     active
-                      ? "bg-[#e7e1d7] text-[#0b0b0b] font-medium"
-                      : "text-[#e7e1d7]/55 hover:text-white cursor-pointer"
+                      ? "bg-white/[0.16] text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_1px_4px_rgba(0,0,0,0.3)]"
+                      : "text-white/50 hover:text-white/85 cursor-pointer"
                   }`}
                 >
                   {DURATION_LABELS[mins]}
@@ -568,38 +576,36 @@ function BookingPopoverBody({
           </div>
         </div>
 
-        <div className="p-3.5">
+        <div className="p-4">
           {submitError ? (
-            <p className="mb-2 text-[11.5px] text-[#ff9482]">{submitError}</p>
+            <p className="mb-2.5 text-[11.5px] text-[#ff9482]">{submitError}</p>
           ) : null}
 
           {loadingSlots ? (
-            <div className="flex items-center justify-center py-9">
-              <Loader2 className="h-4 w-4 animate-spin text-[#e7e1d7]/45" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-4 w-4 animate-spin text-white/45" />
             </div>
           ) : fetchError ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-7 text-center">
-              <p className="text-[12px] text-[#e7e1d7]/55">{fetchError}</p>
+            <div className="flex flex-col items-center justify-center gap-2.5 py-10 text-center">
+              <p className="text-[12.5px] text-white/55">{fetchError}</p>
               <button
                 type="button"
                 onClick={() => {
                   setLoadingSlots(true);
                   loadAvailability();
                 }}
-                className="h-8 rounded-full bg-white/[0.08] hover:bg-white/[0.14] px-3.5 text-[11.5px] text-white transition-colors cursor-pointer"
+                className="h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] px-4 text-[12px] text-white transition-colors cursor-pointer"
               >
                 Retry
               </button>
             </div>
           ) : visibleSlots.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2.5 py-7 text-center">
-              <p className="text-[12px] text-[#e7e1d7]/55">
-                No times left today
-              </p>
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <p className="text-[12.5px] text-white/55">No times left today</p>
               <button
                 type="button"
                 onClick={handleJumpTomorrow}
-                className="h-8 rounded-full bg-white/[0.08] hover:bg-white/[0.14] px-3.5 text-[12px] text-white transition-colors cursor-pointer"
+                className="h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] px-4 text-[12px] text-white transition-colors cursor-pointer"
               >
                 Tomorrow →
               </button>
@@ -608,7 +614,7 @@ function BookingPopoverBody({
             <div
               data-lenis-prevent=""
               onWheel={(e) => e.stopPropagation()}
-              className="booking-slots-scroll grid grid-cols-3 gap-1.5 max-h-[172px] overflow-y-auto pr-0.5"
+              className="booking-slots-scroll grid grid-cols-3 gap-2 max-h-[264px] overflow-y-auto pr-1"
             >
               {visibleSlots.map((slot) => {
                 const isBooked = slot.status === "booked";
@@ -627,10 +633,10 @@ function BookingPopoverBody({
                       setSubmitError(null);
                       setStep("details");
                     }}
-                    className={`h-8 rounded-[10px] border text-[11.5px] tabular-nums transition-all duration-150 ${
+                    className={`h-[38px] rounded-[11px] border text-[12px] tabular-nums transition-all duration-150 ${
                       isBooked
-                        ? "border-white/[0.03] text-[#e7e1d7]/20 cursor-not-allowed"
-                        : "bg-white/[0.04] hover:bg-[#e7e1d7] border-white/[0.07] hover:border-[#e7e1d7] text-[#e7e1d7]/90 hover:text-[#0b0b0b] hover:font-medium cursor-pointer"
+                        ? "border-white/[0.03] text-white/18 cursor-not-allowed"
+                        : "bg-white/[0.04] hover:bg-white/[0.14] border-white/[0.075] hover:border-white/[0.24] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] text-white/85 hover:text-white cursor-pointer"
                     }`}
                   >
                     {slot.label12h}
@@ -646,8 +652,8 @@ function BookingPopoverBody({
 
   return (
     <div key="date" className="booking-step-in">
-      <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-        <span className="text-[13.5px] font-medium tracking-[-0.02em] text-white">
+      <div className="flex items-center justify-between px-[18px] pt-4 pb-2.5">
+        <span className="text-[14px] font-medium tracking-[-0.02em] text-white">
           {formatCleanMonth(viewYear, viewMonth)}
         </span>
 
@@ -657,7 +663,7 @@ function BookingPopoverBody({
             disabled={!canGoPrevMonth}
             onClick={() => handleShiftMonth(-1)}
             aria-label="Previous month"
-            className="h-7 w-7 rounded-full flex items-center justify-center text-[#e7e1d7]/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+            className="h-7 w-7 rounded-full flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.08] disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
@@ -666,14 +672,14 @@ function BookingPopoverBody({
             disabled={!canGoNextMonth}
             onClick={() => handleShiftMonth(1)}
             aria-label="Next month"
-            className="h-7 w-7 rounded-full flex items-center justify-center text-[#e7e1d7]/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+            className="h-7 w-7 rounded-full flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.08] disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="px-3 pb-1 grid grid-cols-7 text-center text-[10.5px] text-[#e7e1d7]/38">
+      <div className="px-3.5 pb-1.5 grid grid-cols-7 text-center text-[11px] text-white/35">
         {WEEKDAYS.map((day) => (
           <span key={day} className="py-0.5">
             {day}
@@ -681,17 +687,17 @@ function BookingPopoverBody({
         ))}
       </div>
 
-      <div className="px-3 pb-3.5 grid grid-cols-7 gap-y-1 text-center">
+      <div className="px-3.5 pb-4 grid grid-cols-7 gap-y-1.5 text-center">
         {monthCells.map((cell) => {
           if (!cell.inCurrentMonth) {
-            return <span key={cell.dateKey} className="h-8 w-8 mx-auto" />;
+            return <span key={cell.dateKey} className="h-9 w-9 mx-auto" />;
           }
 
           if (cell.isPast || cell.isBeyondWindow) {
             return (
               <span
                 key={cell.dateKey}
-                className="h-8 w-8 mx-auto flex items-center justify-center text-[12.5px] tabular-nums text-[#e7e1d7]/18 select-none"
+                className="h-9 w-9 mx-auto flex items-center justify-center text-[13px] tabular-nums text-white/16 select-none"
               >
                 {cell.day}
               </span>
@@ -716,17 +722,17 @@ function BookingPopoverBody({
                 setSubmitError(null);
                 setStep("time");
               }}
-              className={`relative h-8 w-8 mx-auto rounded-full text-[12.5px] tabular-nums flex items-center justify-center transition-colors cursor-pointer ${
+              className={`relative h-9 w-9 mx-auto rounded-full text-[13px] tabular-nums flex items-center justify-center transition-all cursor-pointer ${
                 isSelected
-                  ? "bg-[#e7e1d7] text-[#0b0b0b] font-medium"
-                  : "text-[#e7e1d7]/88 hover:bg-white/[0.1] hover:text-white"
+                  ? "bg-white/[0.15] text-white font-medium border border-white/[0.24] shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"
+                  : "text-white/85 hover:bg-white/[0.09] hover:text-white"
               }`}
             >
               <span>{cell.day}</span>
               {cell.isToday && !isSelected ? (
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-1 h-1 w-1 rounded-full bg-white/45"
+                  className="absolute bottom-1 h-1 w-1 rounded-full bg-[#f34213]"
                 />
               ) : null}
             </button>
@@ -739,40 +745,90 @@ function BookingPopoverBody({
 
 export function BookingModal({
   open,
-  openUpward,
+  anchorRef,
+  initialBox,
   sessionKey,
   openedAtMs,
   onClose,
 }: {
   open: boolean;
-  openUpward: boolean;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+  initialBox: PopoverAnchorBox | null;
   sessionKey: number;
   openedAtMs: number;
   onClose: () => void;
 }) {
-  if (openedAtMs <= 0) return null;
+  const shellRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const syncPosition = () => {
+      const anchor = anchorRef.current;
+      const shell = shellRef.current;
+      if (!anchor || !shell) return;
+      const r = anchor.getBoundingClientRect();
+      const vw = window.innerWidth || 1280;
+      const vh = window.innerHeight || 900;
+      const isSmUp = vw >= 640;
+      const width = isSmUp ? r.width : Math.min(340, vw - 24);
+      const left = isSmUp ? r.left : (vw - width) * 0.5;
+      const upward = r.top > vh * 0.48;
+
+      shell.style.left = `${left.toFixed(1)}px`;
+      shell.style.width = `${width.toFixed(1)}px`;
+      if (upward) {
+        shell.style.bottom = `${(vh - r.top + 12).toFixed(1)}px`;
+        shell.style.top = "auto";
+        shell.style.transformOrigin = "50% 100%";
+      } else {
+        shell.style.top = `${(r.bottom + 12).toFixed(1)}px`;
+        shell.style.bottom = "auto";
+        shell.style.transformOrigin = "50% 0%";
+      }
+    };
+
+    syncPosition();
+    window.addEventListener("scroll", syncPosition, { passive: true });
+    window.addEventListener("resize", syncPosition);
+    return () => {
+      window.removeEventListener("scroll", syncPosition);
+      window.removeEventListener("resize", syncPosition);
+    };
+  }, [open, anchorRef]);
+
+  if (openedAtMs <= 0 || !initialBox) return null;
 
   return (
     <div
+      ref={shellRef}
+      data-booking-popover=""
       role="dialog"
       aria-modal="false"
       aria-label="Schedule a call"
       aria-hidden={!open}
       data-lenis-prevent=""
       onWheel={(e) => e.stopPropagation()}
-      className={`absolute z-30 w-[min(324px,calc(100vw-24px))] left-1/2 -translate-x-1/2 sm:w-auto sm:left-0 sm:right-0 sm:translate-x-0 ${
-        openUpward
-          ? "bottom-[calc(100%+12px)] origin-bottom"
-          : "top-[calc(100%+12px)] origin-top"
-      } transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      style={{
+        left: `${initialBox.left.toFixed(1)}px`,
+        width: `${initialBox.width.toFixed(1)}px`,
+        top:
+          initialBox.top !== undefined ? `${initialBox.top.toFixed(1)}px` : "auto",
+        bottom:
+          initialBox.bottom !== undefined
+            ? `${initialBox.bottom.toFixed(1)}px`
+            : "auto",
+        transformOrigin: initialBox.openUpward ? "50% 100%" : "50% 0%",
+      }}
+      className={`fixed z-[52] transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         open
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto visible"
           : `opacity-0 ${
-              openUpward ? "translate-y-2.5" : "-translate-y-2.5"
+              initialBox.openUpward ? "translate-y-2.5" : "-translate-y-2.5"
             } scale-[0.96] pointer-events-none invisible`
       }`}
     >
-      <div className="rounded-[22px] border border-white/[0.1] bg-[#121110]/88 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.18)] overflow-hidden text-[#e7e1d7]">
+      <div className="voy-popover-glass rounded-[24px] overflow-hidden text-white">
         <BookingPopoverBody
           key={sessionKey}
           isActive={open}

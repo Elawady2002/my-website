@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type Lenis from "lenis";
 import { StylizedText } from "@/components/StylizedText";
-import { BookingModal } from "@/components/BookingModal";
+import { BookingModal, type PopoverAnchorBox } from "@/components/BookingModal";
 import { siteConfig } from "@/data/site";
 import { playModalClose, playModalOpen } from "@/lib/bookingAudio";
 
@@ -52,7 +52,8 @@ export function BottomNav() {
   const [cairoTime, setCairoTime] = useState("--:--");
   const [phoneCopied, setPhoneCopied] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingOpenUpward, setBookingOpenUpward] = useState(true);
+  const [bookingAnchorBox, setBookingAnchorBox] =
+    useState<PopoverAnchorBox | null>(null);
   const [bookingSessionKey, setBookingSessionKey] = useState(0);
   const [bookingOpenedAtMs, setBookingOpenedAtMs] = useState(0);
 
@@ -89,13 +90,15 @@ export function BottomNav() {
   useEffect(() => {
     if (!isBookingOpen) return;
     const onPointerDown = (e: PointerEvent) => {
+      const targetEl = e.target as HTMLElement | null;
       if (
-        dockGroupRef.current &&
-        !dockGroupRef.current.contains(e.target as Node)
+        targetEl?.closest("[data-booking-popover]") ||
+        dockGroupRef.current?.contains(targetEl as Node)
       ) {
-        playModalClose();
-        setIsBookingOpen(false);
+        return;
       }
+      playModalClose();
+      setIsBookingOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -569,6 +572,22 @@ export function BottomNav() {
     window.setTimeout(() => setPhoneCopied(false), 1600);
   };
 
+  const computeAnchorBox = (): PopoverAnchorBox => {
+    const r = dockGroupRef.current?.getBoundingClientRect();
+    const vw = window.innerWidth || 1280;
+    const vh = window.innerHeight || 900;
+    if (!r) {
+      return { left: (vw - 340) * 0.5, width: 340, bottom: 96, openUpward: true };
+    }
+    const isSmUp = vw >= 640;
+    const width = isSmUp ? r.width : Math.min(340, vw - 24);
+    const left = isSmUp ? r.left : (vw - width) * 0.5;
+    const openUpward = r.top > vh * 0.48;
+    return openUpward
+      ? { left, width, bottom: vh - r.top + 12, openUpward: true }
+      : { left, width, top: r.bottom + 12, openUpward: false };
+  };
+
   return (
     <>
       {/* Architectural 14-Column Fullscreen Menu Overlay */}
@@ -919,17 +938,6 @@ export function BottomNav() {
             data-intro-fade=""
             className="relative flex items-center gap-1.5 sm:gap-2 md:gap-2.5"
           >
-            <BookingModal
-              open={isBookingOpen && !isOpen}
-              openUpward={bookingOpenUpward}
-              sessionKey={bookingSessionKey}
-              openedAtMs={bookingOpenedAtMs}
-              onClose={() => {
-                playModalClose();
-                setIsBookingOpen(false);
-              }}
-            />
-
             <nav
               ref={pillNavRef}
               data-glass-pill=""
@@ -981,9 +989,7 @@ export function BottomNav() {
                   playModalClose();
                   setIsBookingOpen(false);
                 } else {
-                  const rect = dockGroupRef.current?.getBoundingClientRect();
-                  const vh = window.innerHeight || 900;
-                  setBookingOpenUpward((rect?.top ?? vh) > vh * 0.48);
+                  setBookingAnchorBox(computeAnchorBox());
                   setBookingOpenedAtMs(Date.now());
                   setBookingSessionKey((k) => k + 1);
                   playModalOpen();
@@ -1012,61 +1018,40 @@ export function BottomNav() {
                 className="h-[18px] w-[18px] md:h-[20px] md:w-[20px] transition-transform duration-200 group-hover:scale-105"
               >
                 <rect
-                  x="3.5"
-                  y="4.5"
-                  width="17"
-                  height="16"
-                  rx="4.5"
+                  x="3.75"
+                  y="4.75"
+                  width="16.5"
+                  height="15.5"
+                  rx="4.25"
                   fill="#f34213"
-                  fillOpacity="0.14"
+                  fillOpacity="0.1"
                   stroke="#f34213"
-                  strokeWidth="1.5"
+                  strokeWidth="1.6"
                 />
                 <path
-                  d="M3.5 9C3.5 6.51472 5.51472 4.5 8 4.5H16C18.4853 4.5 20.5 6.51472 20.5 9V9.5H3.5V9Z"
-                  fill="#f34213"
-                />
-                <path
-                  d="M8.5 2.75V5.25M15.5 2.75V5.25"
+                  d="M8.25 3V5.75M15.75 3V5.75"
                   stroke="#f34213"
                   strokeWidth="1.65"
                   strokeLinecap="round"
                 />
-                <circle
-                  cx="8.25"
-                  cy="13.25"
-                  r="1.15"
-                  fill="#e7e1d7"
-                  fillOpacity="0.85"
+                <path
+                  d="M3.75 9.25H20.25"
+                  stroke="#f34213"
+                  strokeWidth="1.45"
+                  strokeOpacity="0.85"
                 />
-                <circle
-                  cx="12"
-                  cy="13.25"
-                  r="1.15"
-                  fill="#e7e1d7"
-                  fillOpacity="0.85"
+                <path
+                  d="M8 13.25H16"
+                  stroke="#f34213"
+                  strokeWidth="1.65"
+                  strokeLinecap="round"
                 />
-                <circle cx="15.75" cy="13.25" r="1.2" fill="#f34213" />
-                <circle
-                  cx="8.25"
-                  cy="16.75"
-                  r="1.15"
-                  fill="#e7e1d7"
-                  fillOpacity="0.55"
-                />
-                <circle
-                  cx="12"
-                  cy="16.75"
-                  r="1.15"
-                  fill="#e7e1d7"
-                  fillOpacity="0.55"
-                />
-                <circle
-                  cx="15.75"
-                  cy="16.75"
-                  r="1.15"
-                  fill="#e7e1d7"
-                  fillOpacity="0.55"
+                <path
+                  d="M8 16.5H12.75"
+                  stroke="#f34213"
+                  strokeWidth="1.65"
+                  strokeOpacity="0.65"
+                  strokeLinecap="round"
                 />
               </svg>
             </button>
@@ -1170,6 +1155,18 @@ export function BottomNav() {
           </button>
         </div>
       </div>
+
+      <BookingModal
+        open={isBookingOpen && !isOpen}
+        anchorRef={dockGroupRef}
+        initialBox={bookingAnchorBox}
+        sessionKey={bookingSessionKey}
+        openedAtMs={bookingOpenedAtMs}
+        onClose={() => {
+          playModalClose();
+          setIsBookingOpen(false);
+        }}
+      />
     </>
   );
 }

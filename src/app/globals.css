@@ -394,6 +394,21 @@ html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
     0 8px 24px rgba(0, 0, 0, 0.32);
 }
 
+.voy-popover-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(22, 22, 24, 0.78) 0%,
+    rgba(11, 11, 13, 0.88) 100%
+  );
+  backdrop-filter: blur(52px) saturate(180%);
+  -webkit-backdrop-filter: blur(52px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.045),
+    0 28px 68px rgba(0, 0, 0, 0.75);
+}
+
 #header:not([data-in-view="true"]) [data-hero-star] {
   animation-play-state: paused;
 }
@@ -417,13 +432,8 @@ html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
   animation: bookingStepIn 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.booking-slots-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(231, 225, 215, 0.16) transparent;
-}
-
 .booking-slots-scroll::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .booking-slots-scroll::-webkit-scrollbar-track {
@@ -431,6 +441,6 @@ html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
 }
 
 .booking-slots-scroll::-webkit-scrollbar-thumb {
-  background: rgba(231, 225, 215, 0.16);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
 }
