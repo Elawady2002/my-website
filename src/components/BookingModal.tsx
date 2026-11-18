@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Loader2,
   Mail,
   MessageSquare,
@@ -85,6 +86,134 @@ function formatCompactDate(year: number, month: number, day: number): string {
     month: "short",
     day: "numeric",
   }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+function InteractiveSuccessOrb() {
+  const tiltRef = useRef<HTMLDivElement | null>(null);
+  const coreRef = useRef<HTMLDivElement | null>(null);
+  const [pulseCount, setPulseCount] = useState(0);
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
+    const ny = ((e.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
+    if (tiltRef.current) {
+      tiltRef.current.style.transform = `rotateX(${(-ny * 18).toFixed(
+        1
+      )}deg) rotateY(${(nx * 18).toFixed(1)}deg) scale(1.06)`;
+    }
+    if (coreRef.current) {
+      coreRef.current.style.setProperty("--gx", `${(32 + nx * 18).toFixed(1)}%`);
+      coreRef.current.style.setProperty("--gy", `${(24 + ny * 16).toFixed(1)}%`);
+    }
+  };
+
+  const handlePointerLeave = () => {
+    if (tiltRef.current) {
+      tiltRef.current.style.transform = "rotateX(0deg) rotateY(0deg) scale(1)";
+    }
+    if (coreRef.current) {
+      coreRef.current.style.setProperty("--gx", "32%");
+      coreRef.current.style.setProperty("--gy", "24%");
+    }
+  };
+
+  const handleClick = () => {
+    playBookingSuccess();
+    setPulseCount((c) => c + 1);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      aria-label="Replay confirmation"
+      title="Tap to replay"
+      style={{ perspective: "520px" }}
+      className="relative mx-auto flex h-[62px] w-[62px] items-center justify-center cursor-pointer select-none focus:outline-none"
+    >
+      {/* Ambient emerald glow */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-full bg-[#22c55e]/30 blur-xl"
+      />
+
+      {/* Expanding ripple ring */}
+      <span
+        key={`ripple-${pulseCount}`}
+        aria-hidden="true"
+        style={{
+          animation: "orbRippleOut 0.85s cubic-bezier(0.16, 1, 0.3, 1) both",
+        }}
+        className="pointer-events-none absolute inset-0 rounded-full border border-[#4ade80]/55"
+      />
+
+      {/* Elastic entrance + 3D tilting outer bezel */}
+      <div
+        key={`pop-${pulseCount}`}
+        style={{
+          animation: "orbPopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+          transformStyle: "preserve-3d",
+        }}
+      >
+        <div
+          ref={tiltRef}
+          style={{
+            transformStyle: "preserve-3d",
+            background:
+              "linear-gradient(155deg, rgba(134,239,172,0.42) 0%, rgba(34,197,94,0.14) 48%, rgba(5,46,22,0.65) 100%)",
+            boxShadow:
+              "0 14px 28px rgba(16,185,129,0.34), 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.55)",
+          }}
+          className="h-[56px] w-[56px] rounded-full p-[3.5px] transition-transform duration-200 ease-out will-change-transform"
+        >
+          {/* Glossy 3D emerald sphere core */}
+          <div
+            ref={coreRef}
+            style={{
+              transformStyle: "preserve-3d",
+              background:
+                "radial-gradient(circle at var(--gx, 32%) var(--gy, 24%), rgba(255,255,255,0.82) 0%, rgba(134,239,172,0.72) 16%, rgba(34,197,94,0.95) 46%, rgba(15,118,62,0.98) 76%, rgba(5,46,22,1) 100%)",
+              boxShadow:
+                "inset 0 -6px 12px rgba(3,32,16,0.75), inset 0 2px 4px rgba(255,255,255,0.65)",
+            }}
+            className="relative flex h-full w-full items-center justify-center rounded-full"
+          >
+            {/* Top specular glass lens crescent */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-[7px] top-[3px] h-[16px] rounded-full bg-gradient-to-b from-white/50 to-transparent blur-[0.4px]"
+            />
+
+            {/* Floating 3D extruded checkmark */}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+              style={{ transform: "translateZ(10px)" }}
+              className="relative h-[22px] w-[22px]"
+            >
+              <path
+                d="M6.5 12.5L10.2 16.2L17.8 8.2"
+                stroke="#ffffff"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="28"
+                style={{
+                  animation:
+                    "checkStrokeDraw 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both",
+                  filter: "drop-shadow(0 2px 3px rgba(5, 46, 22, 0.65))",
+                }}
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
 }
 
 function getInitialBookingSnapshot(nowMs: number): {
@@ -415,9 +544,7 @@ function BookingPopoverBody({
   if (step === "confirmed" && confirmed) {
     return (
       <div key="confirmed" className="booking-step-in px-5 py-6 text-center">
-        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.1] border border-white/[0.16] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]">
-          <Check className="h-4 w-4" />
-        </div>
+        <InteractiveSuccessOrb />
 
         <p className="mt-3 text-[14.5px] font-medium tracking-[-0.02em] text-white">
           Scheduled
@@ -434,9 +561,19 @@ function BookingPopoverBody({
             <button
               type="button"
               onClick={handleCopyMeetLink}
-              className="h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] px-4 text-[12px] text-white transition-colors cursor-pointer"
+              className="h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] px-4 text-[12px] text-white transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              {copiedLink ? "Copied" : "Copy link"}
+              {copiedLink ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-[#4ade80]" />
+                  <span className="text-[#4ade80]">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5 text-white/75" />
+                  <span>Copy link</span>
+                </>
+              )}
             </button>
           ) : null}
 
