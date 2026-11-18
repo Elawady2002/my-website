@@ -515,38 +515,3 @@ html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
   background: rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
 }
-
-@keyframes orbPopIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.55) translateY(8px);
-  }
-  65% {
-    opacity: 1;
-    transform: scale(1.06) translateY(-1px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes checkStrokeDraw {
-  from {
-    stroke-dashoffset: 28;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes orbRippleOut {
-  0% {
-    transform: scale(0.92);
-    opacity: 0.65;
-  }
-  100% {
-    transform: scale(1.65);
-    opacity: 0;
-  }
-}

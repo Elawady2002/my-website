@@ -29,6 +29,7 @@ import {
   type BusyInterval,
   type TimeSlotItem,
 } from "@/lib/bookingSlots";
+import type { SuccessOrbController } from "@/components/successOrbScene";
 
 export interface PopoverAnchorBox {
   left: number;
@@ -88,131 +89,59 @@ function formatCompactDate(year: number, month: number, day: number): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
-function InteractiveSuccessOrb() {
-  const tiltRef = useRef<HTMLDivElement | null>(null);
-  const coreRef = useRef<HTMLDivElement | null>(null);
-  const [pulseCount, setPulseCount] = useState(0);
+function InteractiveSuccessOrb({
+  orbCtrlRef,
+}: {
+  orbCtrlRef: React.MutableRefObject<SuccessOrbController | null>;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [webglFailed, setWebglFailed] = useState(false);
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
-    const ny = ((e.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
-    if (tiltRef.current) {
-      tiltRef.current.style.transform = `rotateX(${(-ny * 18).toFixed(
-        1
-      )}deg) rotateY(${(nx * 18).toFixed(1)}deg) scale(1.06)`;
-    }
-    if (coreRef.current) {
-      coreRef.current.style.setProperty("--gx", `${(32 + nx * 18).toFixed(1)}%`);
-      coreRef.current.style.setProperty("--gy", `${(24 + ny * 16).toFixed(1)}%`);
-    }
-  };
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-  const handlePointerLeave = () => {
-    if (tiltRef.current) {
-      tiltRef.current.style.transform = "rotateX(0deg) rotateY(0deg) scale(1)";
-    }
-    if (coreRef.current) {
-      coreRef.current.style.setProperty("--gx", "32%");
-      coreRef.current.style.setProperty("--gy", "24%");
-    }
-  };
+    let disposed = false;
+    let ctrl: SuccessOrbController | null = null;
 
-  const handleClick = () => {
-    playBookingSuccess();
-    setPulseCount((c) => c + 1);
-  };
+    import("./successOrbScene").then(({ mountSuccessOrbScene }) => {
+      if (disposed || !containerRef.current) return;
+      ctrl = mountSuccessOrbScene(containerRef.current, {
+        onTriggerChime: () => playBookingSuccess(),
+      });
+      if (!ctrl) {
+        setWebglFailed(true);
+      } else {
+        orbCtrlRef.current = ctrl;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      ctrl?.dispose();
+      orbCtrlRef.current = null;
+    };
+  }, [orbCtrlRef]);
+
+  if (webglFailed) {
+    return (
+      <button
+        type="button"
+        onClick={() => playBookingSuccess()}
+        aria-label="Confirmed"
+        className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#119e49] text-white shadow-lg cursor-pointer"
+      >
+        <Check className="h-7 w-7 stroke-[2.6]" />
+      </button>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
-      aria-label="Replay confirmation"
-      title="Tap to replay"
-      style={{ perspective: "520px" }}
-      className="relative mx-auto flex h-[62px] w-[62px] items-center justify-center cursor-pointer select-none focus:outline-none"
-    >
-      {/* Ambient emerald glow */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-full bg-[#22c55e]/30 blur-xl"
-      />
-
-      {/* Expanding ripple ring */}
-      <span
-        key={`ripple-${pulseCount}`}
-        aria-hidden="true"
-        style={{
-          animation: "orbRippleOut 0.85s cubic-bezier(0.16, 1, 0.3, 1) both",
-        }}
-        className="pointer-events-none absolute inset-0 rounded-full border border-[#4ade80]/55"
-      />
-
-      {/* Elastic entrance + 3D tilting outer bezel */}
-      <div
-        key={`pop-${pulseCount}`}
-        style={{
-          animation: "orbPopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
-          transformStyle: "preserve-3d",
-        }}
-      >
-        <div
-          ref={tiltRef}
-          style={{
-            transformStyle: "preserve-3d",
-            background:
-              "linear-gradient(155deg, rgba(134,239,172,0.42) 0%, rgba(34,197,94,0.14) 48%, rgba(5,46,22,0.65) 100%)",
-            boxShadow:
-              "0 14px 28px rgba(16,185,129,0.34), 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.55)",
-          }}
-          className="h-[56px] w-[56px] rounded-full p-[3.5px] transition-transform duration-200 ease-out will-change-transform"
-        >
-          {/* Glossy 3D emerald sphere core */}
-          <div
-            ref={coreRef}
-            style={{
-              transformStyle: "preserve-3d",
-              background:
-                "radial-gradient(circle at var(--gx, 32%) var(--gy, 24%), rgba(255,255,255,0.82) 0%, rgba(134,239,172,0.72) 16%, rgba(34,197,94,0.95) 46%, rgba(15,118,62,0.98) 76%, rgba(5,46,22,1) 100%)",
-              boxShadow:
-                "inset 0 -6px 12px rgba(3,32,16,0.75), inset 0 2px 4px rgba(255,255,255,0.65)",
-            }}
-            className="relative flex h-full w-full items-center justify-center rounded-full"
-          >
-            {/* Top specular glass lens crescent */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-[7px] top-[3px] h-[16px] rounded-full bg-gradient-to-b from-white/50 to-transparent blur-[0.4px]"
-            />
-
-            {/* Floating 3D extruded checkmark */}
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden="true"
-              style={{ transform: "translateZ(10px)" }}
-              className="relative h-[22px] w-[22px]"
-            >
-              <path
-                d="M6.5 12.5L10.2 16.2L17.8 8.2"
-                stroke="#ffffff"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray="28"
-                style={{
-                  animation:
-                    "checkStrokeDraw 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both",
-                  filter: "drop-shadow(0 2px 3px rgba(5, 46, 22, 0.65))",
-                }}
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
-    </button>
+    <div
+      ref={containerRef}
+      title="Drag or tap"
+      className="relative mx-auto h-[84px] w-[84px] select-none"
+    />
   );
 }
 
@@ -287,6 +216,7 @@ function BookingPopoverBody({
 
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const orbCtrlRef = useRef<SuccessOrbController | null>(null);
 
   const loadAvailability = (signal?: AbortSignal) => {
     const reqNowMs = Date.now();
@@ -543,10 +473,22 @@ function BookingPopoverBody({
 
   if (step === "confirmed" && confirmed) {
     return (
-      <div key="confirmed" className="booking-step-in px-5 py-6 text-center">
-        <InteractiveSuccessOrb />
+      <div
+        key="confirmed"
+        onPointerMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const nx = ((e.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
+          const ny = ((e.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
+          orbCtrlRef.current?.setHoverTilt(nx, ny);
+        }}
+        onPointerLeave={() => {
+          orbCtrlRef.current?.setHoverTilt(0, 0);
+        }}
+        className="booking-step-in px-5 pt-4 pb-6 text-center"
+      >
+        <InteractiveSuccessOrb orbCtrlRef={orbCtrlRef} />
 
-        <p className="mt-3 text-[14.5px] font-medium tracking-[-0.02em] text-white">
+        <p className="mt-1.5 text-[14.5px] font-medium tracking-[-0.02em] text-white">
           Scheduled
         </p>
         <p className="mt-0.5 text-[12.5px] tabular-nums text-white/60">
