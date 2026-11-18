@@ -114,6 +114,7 @@ export function PreloaderIntro() {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.removeAttribute("data-intro-done");
     root.setAttribute("data-intro-ready", "true");
 
     const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
@@ -141,6 +142,7 @@ export function PreloaderIntro() {
         chromeRef.current.style.opacity = "0";
       }
       window.setTimeout(() => {
+        root.setAttribute("data-intro-done", "true");
         root.removeAttribute("data-intro-ready");
         allIntroEls.forEach((el) => el.removeAttribute("data-uncovered"));
         setUnmounted(true);
