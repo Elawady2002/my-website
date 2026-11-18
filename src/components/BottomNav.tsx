@@ -2,8 +2,11 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type Lenis from "lenis";
+import { Calendar } from "lucide-react";
 import { StylizedText } from "@/components/StylizedText";
+import { BookingModal } from "@/components/BookingModal";
 import { siteConfig } from "@/data/site";
+import { playModalClose, playModalOpen } from "@/lib/bookingAudio";
 
 type MenuPhase = "closed" | "opening" | "open" | "closing";
 
@@ -49,6 +52,7 @@ export function BottomNav() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [cairoTime, setCairoTime] = useState("--:--");
   const [phoneCopied, setPhoneCopied] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   const navBarRef = useRef<HTMLDivElement | null>(null);
   const pillNavRef = useRef<HTMLElement | null>(null);
@@ -830,7 +834,7 @@ export function BottomNav() {
         id="nav"
         ref={navBarRef}
         style={{ transform: "translate3d(0, calc(100svh - 102px), 0)" }}
-        className={`fixed inset-x-0 top-0 z-50 p-4 md:p-6 flex items-center justify-between pointer-events-none will-change-transform ${
+        className={`fixed inset-x-0 top-0 z-50 px-3 py-4 md:p-6 flex items-center justify-between pointer-events-none will-change-transform ${
           showMenuLayer || isNavDocked
             ? "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
             : ""
@@ -878,15 +882,18 @@ export function BottomNav() {
           </button>
         </div>
 
-        {/* Center Floating Translucent Glass Pill Navbar (Visible when Menu is Closed) */}
+        {/* Center Floating Translucent Glass Pill Navbar + Standalone Calendar Circle (Visible when Menu is Closed) */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div data-intro-fade="">
+          <div
+            data-intro-fade=""
+            className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5"
+          >
             <nav
               ref={pillNavRef}
               data-glass-pill=""
               aria-label="Quick section navigation"
               aria-hidden={isOpen}
-              className={`voy-glass relative flex items-center justify-center h-[44px] md:h-[50px] px-1 rounded-full transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              className={`voy-glass relative flex items-center justify-center h-[42px] sm:h-[44px] md:h-[50px] px-1 rounded-full transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                 isOpen
                   ? "opacity-0 scale-95 pointer-events-none"
                   : "opacity-100 scale-100 pointer-events-auto"
@@ -903,7 +910,7 @@ export function BottomNav() {
                     href={item.href}
                     onClick={(e) => handlePillClick(e, item)}
                     aria-current={isActive ? "location" : undefined}
-                    className={`relative flex items-center justify-center shrink-0 h-[34px] md:h-[36px] px-2.5 md:px-4 rounded-full text-[12.5px] md:text-[14.5px] font-normal tracking-[-0.02em] whitespace-nowrap transition-colors duration-200 focus:outline-none ${
+                    className={`relative flex items-center justify-center shrink-0 h-[34px] md:h-[36px] px-1.5 sm:px-2.5 md:px-4 rounded-full text-[11.5px] sm:text-[12.5px] md:text-[14.5px] font-normal tracking-[-0.02em] whitespace-nowrap transition-colors duration-200 focus:outline-none ${
                       isActive
                         ? "text-white"
                         : "text-[#e7e1d7]/70 hover:bg-white/[0.08] hover:text-white"
@@ -923,6 +930,32 @@ export function BottomNav() {
                 className="pointer-events-none absolute left-0 bottom-[4px] md:bottom-[5px] h-[5px] w-[5px] rounded-full bg-[#f34213] shadow-[0_0_8px_rgba(243,66,19,0.65)] transition-[transform,opacity] duration-[550ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
               />
             </nav>
+
+            {/* Standalone Red Calendar Booking Circle Outside Navbar */}
+            <button
+              type="button"
+              onClick={() => {
+                playModalOpen();
+                setIsBookingOpen(true);
+              }}
+              onMouseMove={handleMagneticMove}
+              onMouseLeave={handleMagneticLeave}
+              aria-hidden={isOpen}
+              tabIndex={isOpen ? -1 : 0}
+              aria-label="Book a Google Meet call"
+              title="Book a Google Meet call"
+              className={`voy-glass group relative flex items-center justify-center shrink-0 h-[40px] w-[40px] sm:h-[44px] sm:w-[44px] md:h-[50px] md:w-[50px] rounded-full border !border-[#f34213]/40 hover:!border-[#f34213]/85 hover:!bg-[#f34213]/[0.14] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] cursor-pointer ${
+                isOpen
+                  ? "opacity-0 scale-95 pointer-events-none"
+                  : "opacity-100 scale-100 pointer-events-auto"
+              }`}
+            >
+              <Calendar
+                aria-hidden="true"
+                strokeWidth={1.9}
+                className="h-[17px] w-[17px] md:h-[20px] md:w-[20px] text-[#f34213] drop-shadow-[0_0_8px_rgba(243,66,19,0.5)] transition-transform duration-200 group-hover:scale-110"
+              />
+            </button>
           </div>
         </div>
 
@@ -1023,6 +1056,14 @@ export function BottomNav() {
           </button>
         </div>
       </div>
+
+      <BookingModal
+        open={isBookingOpen}
+        onClose={() => {
+          playModalClose();
+          setIsBookingOpen(false);
+        }}
+      />
     </>
   );
 }

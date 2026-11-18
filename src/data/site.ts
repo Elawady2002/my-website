@@ -86,6 +86,22 @@ export const siteConfig = {
     ctaLabel: "VIEW WORK",
     ctaHref: "#work",
   },
+  booking: {
+    hostName: "Abdullah Elawady",
+    hostEmail: "abdalla.awadi@gmail.com",
+    timezoneIana: "Africa/Cairo",
+    timezoneLabel: "CAI",
+    durations: [30, 45, 60] as readonly (30 | 45 | 60)[],
+    defaultDuration: 30 as 30 | 45 | 60,
+    startHour: 10, // 10:00 AM Cairo
+    endHour: 22, // 10:00 PM Cairo
+    slotStepMinutes: 30,
+    minLeadMinutes: 30,
+    maxAdvanceDays: 45,
+    // Paste deployed Google Apps Script Web App URL here (or set GOOGLE_APPS_SCRIPT_URL in Vercel env):
+    appsScriptUrl:
+      "https://script.google.com/macros/s/AKfycbwfxxQuDBzjSIjOQnKbMHuLrcXwgCCsBunTuax0pmOGUqosXXdXxMtJlCvBOCDeDUR0/exec",
+  },
   aboutSection: {
     waveHeading:
       "I BUILD PRODUCTS THAT TURN HEADS — MOBILE, WEB AND BEYOND",
