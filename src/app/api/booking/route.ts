@@ -1,26 +1,103 @@
 import type { NextRequest } from "next/server";
 import { siteConfig } from "@/data/site";
+import { getAppsScriptUrl, getWebhookSecret } from "@/lib/bookingServerConfig";
 import { getTimeZoneWallParts } from "@/lib/bookingSlots";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TZ_RE = /^[A-Za-z0-9_+-]+(\/[A-Za-z0-9_+-]+)*$/;
 const ALLOWED_DURATIONS = new Set<number>(siteConfig.booking.durations);
+const SEC_HEADERS = {
+  "Cache-Control": "no-store",
+  "X-Content-Type-Options": "nosniff",
+} as const;
 
-function getAppsScriptUrl(): string {
-  return (
-    process.env.GOOGLE_APPS_SCRIPT_URL ||
-    siteConfig.booking.appsScriptUrl ||
-    ""
-  ).trim();
+const RATE_BUCKETS = new Map<string, number[]>();
+const MAX_RATE_KEYS = 2000;
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return Response.json(body, { status, headers: SEC_HEADERS });
 }
 
-function getWebhookSecret(): string {
-  return (process.env.BOOKING_WEBHOOK_SECRET || "").trim();
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function consumeRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+  nowMs: number
+): boolean {
+  const cutoff = nowMs - windowMs;
+  if (RATE_BUCKETS.size > MAX_RATE_KEYS) {
+    for (const [k, stamps] of RATE_BUCKETS) {
+      if (stamps.length === 0 || stamps[stamps.length - 1] <= cutoff) {
+        RATE_BUCKETS.delete(k);
+      }
+    }
+  }
+
+  const prev = RATE_BUCKETS.get(key) || [];
+  const active = prev.filter((ts) => ts > cutoff);
+  if (active.length >= limit) {
+    RATE_BUCKETS.set(key, active);
+    return false;
+  }
+  active.push(nowMs);
+  RATE_BUCKETS.set(key, active);
+  return true;
+}
+
+function isSameOriginPost(request: NextRequest): boolean {
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite && secFetchSite.toLowerCase() === "cross-site") {
+    return false;
+  }
+
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+
+  const expectedHost = (
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host") ||
+    request.nextUrl.host
+  )
+    .split(",")[0]
+    ?.trim()
+    .toLowerCase();
+
+  try {
+    return new URL(origin).host.toLowerCase() === expectedHost;
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>]/g, "")
+    .trim();
 }
 
 export async function GET(request: NextRequest) {
   // Read searchParams immediately so Next.js treats this GET route as request-time dynamic under cacheComponents.
   const searchParams = request.nextUrl.searchParams;
   const nowMs = Date.now();
+  const clientIp = getClientIp(request);
+
+  if (!consumeRateLimit(`get:${clientIp}`, 30, 60_000, nowMs)) {
+    return jsonResponse(
+      { ok: false, error: "Too many availability checks. Please slow down." },
+      429
+    );
+  }
+
   const defaultFromIso = new Date(nowMs - 3_600_000).toISOString();
   const defaultToIso = new Date(
     nowMs + (siteConfig.booking.maxAdvanceDays + 2) * 86_400_000
@@ -33,9 +110,9 @@ export async function GET(request: NextRequest) {
   const toMs = rawTo ? Date.parse(rawTo) : Date.parse(defaultToIso);
 
   if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) {
-    return Response.json(
+    return jsonResponse(
       { ok: false, error: "Invalid availability time range." },
-      { status: 400, headers: { "Cache-Control": "no-store" } }
+      400
     );
   }
 
@@ -45,10 +122,7 @@ export async function GET(request: NextRequest) {
 
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) {
-    return Response.json(
-      { ok: true, configured: false, busy: [] },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    return jsonResponse({ ok: true, configured: false, busy: [] });
   }
 
   try {
@@ -65,12 +139,17 @@ export async function GET(request: NextRequest) {
       method: "GET",
       cache: "no-store",
       redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
     });
 
     if (!upstream.ok) {
-      return Response.json(
-        { ok: false, configured: true, error: "Failed to read calendar availability." },
-        { status: 502, headers: { "Cache-Control": "no-store" } }
+      return jsonResponse(
+        {
+          ok: false,
+          configured: true,
+          error: "Failed to read calendar availability.",
+        },
+        502
       );
     }
 
@@ -81,13 +160,13 @@ export async function GET(request: NextRequest) {
     };
 
     if (data.ok === false) {
-      return Response.json(
+      return jsonResponse(
         {
           ok: false,
           configured: true,
           error: data.error || "Calendar bridge returned an error.",
         },
-        { status: 502, headers: { "Cache-Control": "no-store" } }
+        502
       );
     }
 
@@ -98,23 +177,41 @@ export async function GET(request: NextRequest) {
         )
       : [];
 
-    return Response.json(
-      { ok: true, configured: true, busy },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    return jsonResponse({ ok: true, configured: true, busy });
   } catch {
-    return Response.json(
+    return jsonResponse(
       { ok: false, configured: true, error: "Unable to reach Google Calendar." },
-      { status: 502, headers: { "Cache-Control": "no-store" } }
+      502
     );
   }
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginPost(request)) {
+    return jsonResponse(
+      { ok: false, code: "FORBIDDEN", error: "Invalid request origin." },
+      403
+    );
+  }
+
+  const nowMs = Date.now();
+  const clientIp = getClientIp(request);
+  if (!consumeRateLimit(`post-ip:${clientIp}`, 5, 900_000, nowMs)) {
+    return jsonResponse(
+      {
+        ok: false,
+        code: "RATE_LIMITED",
+        error: "Too many booking attempts. Please wait a few minutes.",
+      },
+      429
+    );
+  }
+
   let body: {
     name?: unknown;
     email?: unknown;
     notes?: unknown;
+    website?: unknown;
     startIso?: unknown;
     endIso?: unknown;
     durationMinutes?: unknown;
@@ -124,80 +221,99 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return Response.json(
+    return jsonResponse(
       { ok: false, code: "INVALID_JSON", error: "Invalid request payload." },
-      { status: 400 }
+      400
     );
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const email = typeof body.email === "string" ? body.email.trim() : "";
-  const notes = typeof body.notes === "string" ? body.notes.trim() : "";
+  if (typeof body.website === "string" && body.website.trim().length > 0) {
+    return jsonResponse(
+      { ok: false, code: "INVALID_REQUEST", error: "Unable to process request." },
+      400
+    );
+  }
+
+  const name = sanitizeText(body.name);
+  const email = sanitizeText(body.email);
+  const notes = sanitizeText(body.notes);
   const startIso = typeof body.startIso === "string" ? body.startIso.trim() : "";
   const endIso = typeof body.endIso === "string" ? body.endIso.trim() : "";
   const durationMinutes =
     typeof body.durationMinutes === "number" ? body.durationMinutes : NaN;
-  const visitorTimeZone =
-    typeof body.visitorTimeZone === "string" && body.visitorTimeZone.trim()
+  const rawTz =
+    typeof body.visitorTimeZone === "string"
       ? body.visitorTimeZone.trim().slice(0, 64)
-      : siteConfig.booking.timezoneIana;
+      : "";
+  const visitorTimeZone =
+    rawTz && TZ_RE.test(rawTz) ? rawTz : siteConfig.booking.timezoneIana;
 
   if (name.length < 2 || name.length > 80) {
-    return Response.json(
+    return jsonResponse(
       { ok: false, code: "INVALID_NAME", error: "Please enter your full name." },
-      { status: 400 }
+      400
     );
   }
 
   if (!EMAIL_RE.test(email) || email.length > 120) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "INVALID_EMAIL",
         error: "Please enter a valid email address.",
       },
-      { status: 400 }
+      400
+    );
+  }
+
+  if (!consumeRateLimit(`post-email:${email.toLowerCase()}`, 3, 3_600_000, nowMs)) {
+    return jsonResponse(
+      {
+        ok: false,
+        code: "RATE_LIMITED",
+        error: "Booking limit reached for this email. Try again later.",
+      },
+      429
     );
   }
 
   if (notes.length > 600) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "INVALID_NOTES",
         error: "Project notes must be 600 characters or fewer.",
       },
-      { status: 400 }
+      400
     );
   }
 
   if (!ALLOWED_DURATIONS.has(durationMinutes)) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "INVALID_DURATION",
         error: "Duration must be 30, 45, or 60 minutes.",
       },
-      { status: 400 }
+      400
     );
   }
 
   const startMs = Date.parse(startIso);
   const endMs = Date.parse(endIso);
-  const nowMs = Date.now();
 
   if (
     !Number.isFinite(startMs) ||
     !Number.isFinite(endMs) ||
     endMs - startMs !== durationMinutes * 60_000
   ) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "INVALID_SLOT",
         error: "Selected meeting time is invalid.",
       },
-      { status: 400 }
+      400
     );
   }
 
@@ -205,13 +321,13 @@ export async function POST(request: NextRequest) {
     startMs < nowMs + 10 * 60_000 ||
     startMs > nowMs + (siteConfig.booking.maxAdvanceDays + 2) * 86_400_000
   ) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "OUT_OF_WINDOW",
         error: "Please choose an upcoming date within the booking window.",
       },
-      { status: 400 }
+      400
     );
   }
 
@@ -233,26 +349,27 @@ export async function POST(request: NextRequest) {
     startMinutes + durationMinutes > siteConfig.booking.endHour * 60 ||
     startMinutes % siteConfig.booking.slotStepMinutes !== 0
   ) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "OUTSIDE_HOURS",
-        error: "Selected slot is outside Cairo booking hours (10:00 AM – 10:00 PM).",
+        error:
+          "Selected slot is outside Cairo booking hours (10:00 AM – 10:00 PM).",
       },
-      { status: 400 }
+      400
     );
   }
 
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "NOT_CONFIGURED",
         error:
           "Google Meet calendar bridge is not connected yet. Add GOOGLE_APPS_SCRIPT_URL to activate live bookings.",
       },
-      { status: 503 }
+      503
     );
   }
 
@@ -262,6 +379,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       cache: "no-store",
       redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
       body: JSON.stringify({
         action: "book",
         secret: getWebhookSecret(),
@@ -285,19 +403,19 @@ export async function POST(request: NextRequest) {
     };
 
     if (data.code === "SLOT_TAKEN") {
-      return Response.json(
+      return jsonResponse(
         {
           ok: false,
           code: "SLOT_TAKEN",
           error:
             "This time slot was just booked. Please pick another available time.",
         },
-        { status: 409 }
+        409
       );
     }
 
     if (!upstream.ok || !data.ok) {
-      return Response.json(
+      return jsonResponse(
         {
           ok: false,
           code: data.code || "UPSTREAM_ERROR",
@@ -305,11 +423,11 @@ export async function POST(request: NextRequest) {
             data.error ||
             "Could not schedule the Google Meet right now. Please try again.",
         },
-        { status: 502 }
+        502
       );
     }
 
-    return Response.json({
+    return jsonResponse({
       ok: true,
       meetLink: data.meetLink || "",
       htmlLink: data.htmlLink || "",
@@ -318,13 +436,13 @@ export async function POST(request: NextRequest) {
       endIso: new Date(endMs).toISOString(),
     });
   } catch {
-    return Response.json(
+    return jsonResponse(
       {
         ok: false,
         code: "NETWORK_ERROR",
         error: "Unable to reach Google Calendar right now. Please try again.",
       },
-      { status: 502 }
+      502
     );
   }
 }

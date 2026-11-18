@@ -1,9 +1,5 @@
 import {
-  CanvasTexture,
   Color,
-  DirectionalLight,
-  EquirectangularReflectionMapping,
-  HemisphereLight,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
@@ -12,14 +8,20 @@ import {
   PlaneGeometry,
   PMREMGenerator,
   Scene,
-  SphereGeometry,
-  SRGBColorSpace,
   WebGLRenderer,
 } from "three";
 import {
   FOOTER_ORB_BRANDS,
   createBrandOrbTextures,
 } from "./footerOrbBrands";
+import { getDevicePerfTier } from "@/lib/deviceTier";
+import {
+  addStudioThreePointLights,
+  clamp,
+  createConformalSphereGeometry,
+  createRadialShadowTexture,
+  createStudioEnvTexture,
+} from "@/lib/threeOrbShared";
 
 interface ObstacleBox {
   left: number;
@@ -54,95 +56,8 @@ const RESTITUTION_ORB = 0.72;
 const RESTITUTION_WALL = 0.64;
 const FOV_DEG = 18;
 
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
-}
-
-function createStudioEnvTexture(): CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d");
-
-  if (ctx) {
-    ctx.fillStyle = "#0c0d11";
-    ctx.fillRect(0, 0, 1024, 512);
-
-    // Primary upper-left studio softbox for crisp curved white highlight
-    const keySoftbox = ctx.createRadialGradient(340, 115, 8, 340, 115, 210);
-    keySoftbox.addColorStop(0, "#ffffff");
-    keySoftbox.addColorStop(0.4, "rgba(255, 255, 255, 0.45)");
-    keySoftbox.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = keySoftbox;
-    ctx.fillRect(0, 0, 1024, 512);
-
-    // Subtle upper-right neutral rim diffuser
-    const rimDiffuser = ctx.createRadialGradient(740, 140, 10, 740, 140, 190);
-    rimDiffuser.addColorStop(0, "rgba(230, 236, 246, 0.38)");
-    rimDiffuser.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = rimDiffuser;
-    ctx.fillRect(0, 0, 1024, 512);
-
-    // Gentle bottom neutral studio floor bounce
-    const floorBounce = ctx.createLinearGradient(0, 390, 0, 512);
-    floorBounce.addColorStop(0, "rgba(0, 0, 0, 0)");
-    floorBounce.addColorStop(1, "rgba(228, 224, 218, 0.16)");
-    ctx.fillStyle = floorBounce;
-    ctx.fillRect(0, 390, 1024, 122);
-  }
-
-  const tex = new CanvasTexture(canvas);
-  tex.mapping = EquirectangularReflectionMapping;
-  tex.colorSpace = SRGBColorSpace;
-  return tex;
-}
-
-function createSoftShadowTexture(): CanvasTexture {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-
-  if (ctx) {
-    const half = size / 2;
-    const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
-    grad.addColorStop(0, "rgba(0, 0, 0, 0.52)");
-    grad.addColorStop(0.45, "rgba(0, 0, 0, 0.24)");
-    grad.addColorStop(0.8, "rgba(0, 0, 0, 0.05)");
-    grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
-  }
-
-  return new CanvasTexture(canvas);
-}
-
-function createSculptedSphereGeometry(): SphereGeometry {
-  const geo = new SphereGeometry(1, 64, 48);
-  const posAttr = geo.attributes.position;
-  const uvAttr = geo.attributes.uv;
-
-  // Conformal arc-length hemisphere projection so front & back emblems stay distortion-free
-  if (posAttr && uvAttr) {
-    for (let i = 0; i < posAttr.count; i += 1) {
-      const x = posAttr.getX(i);
-      const y = posAttr.getY(i);
-      const z = posAttr.getZ(i);
-      const absZ = clamp(Math.abs(z), 0, 1);
-      const theta = Math.acos(absZ); // 0 at pole, pi/2 at equator
-      const rho = theta / (Math.PI * 0.5); // 0..1
-      const phi = Math.atan2(y, x);
-      const dirX = z >= 0 ? Math.cos(phi) : -Math.cos(phi);
-      uvAttr.setXY(i, 0.5 + 0.5 * rho * dirX, 0.5 + 0.5 * rho * Math.sin(phi));
-    }
-    uvAttr.needsUpdate = true;
-  }
-
-  return geo;
-}
-
 export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
+  const perf = getDevicePerfTier();
   let renderer: WebGLRenderer | null = null;
   try {
     renderer = new WebGLRenderer({
@@ -155,7 +70,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   }
 
   const activeRenderer = renderer;
-  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
   activeRenderer.toneMapping = NeutralToneMapping;
   activeRenderer.toneMappingExposure = 1.08;
   activeRenderer.domElement.className = "block h-full w-full cursor-pointer";
@@ -163,8 +78,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   container.appendChild(activeRenderer.domElement);
 
   const scene = new Scene();
-  let width = container.clientWidth || 1280;
-  let height = container.clientHeight || 680;
+  let width = container.clientWidth || container.getBoundingClientRect().width || 1280;
+  let height = container.clientHeight || container.getBoundingClientRect().height || 680;
   const camera = new PerspectiveCamera(
     FOV_DEG,
     width / Math.max(1, height),
@@ -190,14 +105,22 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   let disposed = false;
   let notifyTextureReady = () => {};
 
+  const orbCount = width >= 768 ? DESKTOP_ORB_COUNT : MOBILE_ORB_COUNT;
+  const activeBrands = FOOTER_ORB_BRANDS.slice(0, orbCount);
   const maxAniso = activeRenderer.capabilities.getMaxAnisotropy();
-  const brandTexturePairs = FOOTER_ORB_BRANDS.map((spec) =>
-    createBrandOrbTextures(spec, maxAniso, () => {
-      if (!disposed) notifyTextureReady();
-    })
+  const brandTexturePairs = activeBrands.map((spec) =>
+    createBrandOrbTextures(
+      spec,
+      maxAniso,
+      () => {
+        if (!disposed) notifyTextureReady();
+      },
+      perf.orbColorSize,
+      perf.orbBumpSize
+    )
   );
 
-  const materials: MeshPhysicalMaterial[] = FOOTER_ORB_BRANDS.map((spec, idx) => {
+  const materials: MeshPhysicalMaterial[] = activeBrands.map((spec, idx) => {
     const { colorTex, bumpTex } = brandTexturePairs[idx];
     return new MeshPhysicalMaterial({
       map: colorTex,
@@ -216,22 +139,11 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     });
   });
 
-  // Neutral 3-point product studio lighting (prevents orange rim contamination)
-  const hemiLight = new HemisphereLight(0xfffdf9, 0x18191f, 0.95);
-  const keyLight = new DirectionalLight(0xfffcf8, 2.35);
-  keyLight.position.set(-420, 560, 680);
+  addStudioThreePointLights(scene, 100, 0x18191f);
 
-  const fillLight = new DirectionalLight(0xdbe2ee, 0.72);
-  fillLight.position.set(480, -200, 440);
-
-  const crownLight = new DirectionalLight(0xffffff, 0.82);
-  crownLight.position.set(40, 620, 180);
-
-  scene.add(hemiLight, keyLight, fillLight, crownLight);
-
-  const geometry = createSculptedSphereGeometry();
+  const geometry = createConformalSphereGeometry(perf.orbSegs[0], perf.orbSegs[1]);
   const shadowGeo = new PlaneGeometry(2.35, 2.35);
-  const shadowTex = createSoftShadowTexture();
+  const shadowTex = createRadialShadowTexture(0.52, 0.24);
   const shadowMat = new MeshBasicMaterial({
     map: shadowTex,
     transparent: true,
@@ -301,7 +213,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
   measureArena();
 
-  const orbCount = width >= 768 ? DESKTOP_ORB_COUNT : MOBILE_ORB_COUNT;
   const baseRadius = getOrbRadius(width);
   const orbs: OrbBody[] = [];
 
@@ -717,7 +628,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   }
 
   const tick = (now: number) => {
-    if (disposed) {
+    if (disposed || document.hidden) {
       rafId = 0;
       return;
     }
@@ -754,7 +665,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       calmFrames = 0;
     }
 
-    if (isInView && calmFrames < 24) {
+    if (isInView && !document.hidden && calmFrames < 24) {
       rafId = window.requestAnimationFrame(tick);
     } else {
       rafId = 0;
@@ -762,7 +673,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   };
 
   const startLoop = () => {
-    if (disposed || reducedMotion) return;
+    if (disposed || reducedMotion || document.hidden) return;
     if (!rafId && isInView) {
       lastTime = performance.now();
       rafId = window.requestAnimationFrame(tick);
@@ -877,6 +788,18 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   window.addEventListener("scroll", markRectDirty, { passive: true });
   window.addEventListener("resize", markRectDirty, { passive: true });
 
+  const handleVisibility = () => {
+    if (document.hidden) {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    } else if (isInView) {
+      wakeLoop();
+    }
+  };
+  document.addEventListener("visibilitychange", handleVisibility);
+
   const footerSection = container.closest("footer") || container;
   const io = new IntersectionObserver(
     (entries) => {
@@ -925,6 +848,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     disposed = true;
     io.disconnect();
     resizeObserver.disconnect();
+    document.removeEventListener("visibilitychange", handleVisibility);
     if (spawnTimer !== null) window.clearTimeout(spawnTimer);
     if (rafId) window.cancelAnimationFrame(rafId);
     domEl.removeEventListener("pointerdown", onPointerDown);

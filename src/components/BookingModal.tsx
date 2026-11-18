@@ -207,6 +207,7 @@ function BookingPopoverBody({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedBookingState | null>(
@@ -397,6 +398,7 @@ function BookingPopoverBody({
           name: cleanName,
           email: cleanEmail,
           notes: notes.trim(),
+          website: honeypot,
           startIso: selectedSlot.startIso,
           endIso: selectedSlot.endIso,
           durationMinutes: duration,
@@ -611,20 +613,32 @@ function BookingPopoverBody({
             </p>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="voy-glass-cta h-[42px] w-full rounded-[12px] text-[13px] font-medium tracking-[-0.01em] text-white disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Scheduling...</span>
-              </>
-            ) : (
-              <span>Confirm</span>
-            )}
-          </button>
+          <div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="voy-glass-cta h-[42px] w-full rounded-[12px] text-[13px] font-medium tracking-[-0.01em] text-white disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Scheduling...</span>
+                </>
+              ) : (
+                <span>Confirm</span>
+              )}
+            </button>
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              className="pointer-events-none fixed -left-[9999px] top-0 h-0 w-0 opacity-0 p-0 border-0"
+            />
+          </div>
         </form>
       </div>
     );

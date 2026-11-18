@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import type Lenis from "lenis";
 import { StylizedText } from "@/components/StylizedText";
 import { siteConfig } from "@/data/site";
+import { formatCairoClock12h } from "@/lib/bookingSlots";
 
 export function InfoSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -31,16 +32,7 @@ export function InfoSection() {
   useEffect(() => {
     const formatClock = () => {
       if (!clockRef.current) return;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        timeZone: siteConfig.infoSection.timezoneIana,
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
-        .format(new Date())
-        .replace(/\s+/g, " ")
-        .toUpperCase();
-      clockRef.current.textContent = `${siteConfig.infoSection.timezoneCity} ${formatted}`;
+      clockRef.current.textContent = `${siteConfig.infoSection.timezoneCity} ${formatCairoClock12h()}`;
     };
 
     formatClock();

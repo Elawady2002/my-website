@@ -35,7 +35,9 @@ export function AboutSection() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     let vh = window.innerHeight || 900;
+    let headingPageTop = 0;
     let lastProgress = -1;
     // 0 = uninitialized, 1 = dim, 2 = active wave, 3 = fully lit
     const charState = new Uint8Array(totalChars);
@@ -44,11 +46,8 @@ export function AboutSection() {
       if (!isNearRef.current && (lastProgress === 0 || lastProgress === 1)) {
         return;
       }
-      const headingEl = headingRef.current;
-      if (!headingEl) return;
-
-      const rect = headingEl.getBoundingClientRect();
-      const rawProgress = (vh * 0.86 - rect.top) / (vh * 0.58);
+      const rectTop = headingPageTop - window.scrollY;
+      const rawProgress = (vh * 0.86 - rectTop) / (vh * 0.58);
       const progress = Math.min(1, Math.max(0, rawProgress));
       if (progress === lastProgress) return;
       lastProgress = progress;
@@ -100,8 +99,11 @@ export function AboutSection() {
       }
     };
 
-    const handleResize = () => {
+    const measureHeading = () => {
+      const headingEl = headingRef.current;
+      if (!headingEl) return;
       vh = window.innerHeight || 900;
+      headingPageTop = headingEl.getBoundingClientRect().top + window.scrollY;
       lastProgress = -1;
       updateWave();
     };
@@ -114,7 +116,7 @@ export function AboutSection() {
           const near = entries.some((entry) => entry.isIntersecting);
           isNearRef.current = near;
           if (near) {
-            updateWave();
+            measureHeading();
           }
         },
         { rootMargin: "250px 0px", threshold: 0 }
@@ -122,13 +124,21 @@ export function AboutSection() {
       nearObserver.observe(sectionEl);
     }
 
-    updateWave();
+    const resizeObserver = new ResizeObserver(measureHeading);
+    resizeObserver.observe(document.documentElement);
+    document.fonts?.ready.then(() => {
+      if (!cancelled) measureHeading();
+    });
+
+    measureHeading();
     window.addEventListener("scroll", updateWave, { passive: true });
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", measureHeading);
     return () => {
+      cancelled = true;
       nearObserver?.disconnect();
+      resizeObserver.disconnect();
       window.removeEventListener("scroll", updateWave);
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", measureHeading);
     };
   }, [totalChars]);
 

@@ -177,9 +177,10 @@ export const FOOTER_ORB_BRANDS: readonly OrbBrandSpec[] = [
 export function createBrandOrbTextures(
   spec: OrbBrandSpec,
   maxAnisotropy: number,
-  onLoaded: () => void
+  onLoaded: () => void,
+  colorSize = 1024,
+  bumpSize = 512
 ): { colorTex: CanvasTexture; bumpTex: CanvasTexture } {
-  const colorSize = 1024;
   const colorCanvas = document.createElement("canvas");
   colorCanvas.width = colorSize;
   colorCanvas.height = colorSize;
@@ -189,7 +190,6 @@ export function createBrandOrbTextures(
     colorCtx.fillRect(0, 0, colorSize, colorSize);
   }
 
-  const bumpSize = 512;
   const bumpCanvas = document.createElement("canvas");
   bumpCanvas.width = bumpSize;
   bumpCanvas.height = bumpSize;
@@ -208,6 +208,7 @@ export function createBrandOrbTextures(
 
   const img = new window.Image();
   img.onload = () => {
+    img.onload = null;
     if (colorCtx) {
       const drawSize = Math.round(colorSize * spec.iconScale);
       const offset = (colorSize - drawSize) / 2;
@@ -243,7 +244,7 @@ export function createBrandOrbTextures(
         bumpCtx.fillStyle = "#ffffff";
         bumpCtx.fillRect(0, 0, bumpSize, bumpSize);
         bumpCtx.save();
-        bumpCtx.filter = "blur(3.2px)";
+        bumpCtx.filter = `blur(${(3.2 * (bumpSize / 512)).toFixed(2)}px)`;
         bumpCtx.drawImage(maskCanvas, 0, 0);
         bumpCtx.filter = "none";
         bumpCtx.restore();

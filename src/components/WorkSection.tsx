@@ -95,6 +95,13 @@ export function WorkSection() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const captionRef = useRef<HTMLDivElement | null>(null);
   const captionContentRef = useRef<HTMLDivElement | null>(null);
+  const stageRectRef = useRef<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const stageRectDirtyRef = useRef(true);
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [webglReady, setWebglReady] = useState(true);
@@ -137,27 +144,29 @@ export function WorkSection() {
   }, []);
 
   useEffect(() => {
+    const invalidateRect = () => {
+      stageRectDirtyRef.current = true;
+    };
+    window.addEventListener("scroll", invalidateRect, { passive: true });
+    window.addEventListener("resize", invalidateRect, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", invalidateRect);
+      window.removeEventListener("resize", invalidateRect);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!webglReady) return;
     const container = stageRef.current;
     if (!container) return;
 
     let disposed = false;
     let started = false;
-    let idleTimer: number | null = null;
-    let idleCallbackId: number | null = null;
 
     const startMount = () => {
       if (started || disposed) return;
       started = true;
       io.disconnect();
-      if (idleTimer !== null) {
-        window.clearTimeout(idleTimer);
-        idleTimer = null;
-      }
-      if (idleCallbackId !== null && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleCallbackId);
-        idleCallbackId = null;
-      }
 
       import("./workCarouselScene").then(({ mountWorkCarouselScene }) => {
         if (disposed || !stageRef.current) return;
@@ -186,30 +195,14 @@ export function WorkSection() {
           startMount();
         }
       },
-      { rootMargin: "1200px 0px", threshold: 0 }
+      { rootMargin: "800px 0px", threshold: 0 }
     );
     io.observe(container);
-
-    idleTimer = window.setTimeout(() => {
-      if ("requestIdleCallback" in window) {
-        idleCallbackId = window.requestIdleCallback(startMount, {
-          timeout: 1500,
-        });
-      } else {
-        startMount();
-      }
-    }, 900);
 
     return () => {
       disposed = true;
       ensureSceneMountRef.current = null;
       io.disconnect();
-      if (idleTimer !== null) {
-        window.clearTimeout(idleTimer);
-      }
-      if (idleCallbackId !== null && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleCallbackId);
-      }
       sceneCtrlRef.current?.dispose();
       sceneCtrlRef.current = null;
     };
@@ -243,9 +236,28 @@ export function WorkSection() {
     sceneCtrlRef.current?.wake();
   };
 
+  const getCachedStageRect = (el: HTMLElement) => {
+    if (!stageRectRef.current || stageRectDirtyRef.current) {
+      const r = el.getBoundingClientRect();
+      stageRectRef.current = {
+        left: r.left,
+        top: r.top,
+        width: r.width,
+        height: r.height,
+      };
+      stageRectDirtyRef.current = false;
+    }
+    return stageRectRef.current;
+  };
+
+  const handlePointerEnterStage = (e: React.PointerEvent<HTMLElement>) => {
+    stageRectDirtyRef.current = true;
+    getCachedStageRect(e.currentTarget);
+  };
+
   const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (e.pointerType !== "touch") {
-      const rect = e.currentTarget.getBoundingClientRect();
+      const rect = getCachedStageRect(e.currentTarget);
       const relX = (e.clientX - rect.left) / Math.max(rect.width, 1);
       const relY = (e.clientY - rect.top) / Math.max(rect.height, 1);
       const overCenterCard =
@@ -293,7 +305,7 @@ export function WorkSection() {
           dragStartSnapped + (dir < 0 ? -CARD_STRIDE : CARD_STRIDE);
       }
     } else if (Math.abs(totalDx) < 8) {
-      const rect = e.currentTarget.getBoundingClientRect();
+      const rect = getCachedStageRect(e.currentTarget);
       const relX = (e.clientX - rect.left) / Math.max(rect.width, 1);
       if (relX < 0.2) {
         stepBy(-1);
@@ -358,6 +370,7 @@ export function WorkSection() {
       <section
         id="work"
         aria-label="Selected projects carousel"
+        onPointerEnter={handlePointerEnterStage}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishDrag}

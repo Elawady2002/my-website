@@ -184,6 +184,14 @@ export function formatTime12h(
     .toUpperCase();
 }
 
+export function formatCairoClock12h(nowMs: number = Date.now()): string {
+  try {
+    return formatTime12h(nowMs, siteConfig.infoSection.timezoneIana);
+  } catch {
+    return "1:00 PM";
+  }
+}
+
 export function formatMonthHeading(year: number, month: number): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "UTC",

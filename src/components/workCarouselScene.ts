@@ -18,6 +18,7 @@ import {
   createProjectTexture,
 } from "@/components/workTextures";
 import type { WorkProjectItem } from "@/data/site";
+import { getDevicePerfTier } from "@/lib/deviceTier";
 
 export const CARD_STRIDE = 5.02;
 const PLANE_Y_OFFSET = -0.33;
@@ -207,7 +208,8 @@ export function mountWorkCarouselScene({
   }
 
   const activeRenderer = renderer;
-  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const perf = getDevicePerfTier();
+  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
   activeRenderer.domElement.className = "block h-full w-full";
   activeRenderer.domElement.style.touchAction = "pan-y pinch-zoom";
   container.appendChild(activeRenderer.domElement);
@@ -220,18 +222,17 @@ export function mountWorkCarouselScene({
   const geometry = new PlaneGeometry(
     WORK_PLANE_WIDTH,
     WORK_PLANE_HEIGHT,
-    96,
-    56
+    perf.planeSegs[0],
+    perf.planeSegs[1]
   );
 
   let rafId = 0;
   let isInView = false;
   let disposed = false;
-  let videosLoadStarted = false;
-  const videoLoadTimers: number[] = [];
+  let videoPreloadArmed = false;
 
   const scheduleLoop = () => {
-    if (disposed || !isInView || rafId !== 0) return;
+    if (disposed || !isInView || document.hidden || rafId !== 0) return;
     rafId = window.requestAnimationFrame(tick);
   };
 
@@ -339,26 +340,28 @@ export function mountWorkCarouselScene({
     meshes.push(mesh);
   }
 
-  const startVideoLoading = () => {
-    if (videosLoadStarted || disposed) return;
-    videosLoadStarted = true;
-    let videoStep = 0;
-    videoEntries.forEach((entry) => {
-      if (!entry) return;
-      if (videoStep === 0) {
+  const videoLoadRadius = perf.isLowTier
+    ? CARD_STRIDE * 0.65
+    : CARD_STRIDE * 1.35;
+
+  const syncNearbyVideos = () => {
+    if (!videoPreloadArmed || disposed) return;
+    for (let i = 0; i < count; i += 1) {
+      const entry = videoEntries[i];
+      if (!entry) continue;
+      const wrapped = wrapTrackOffset(
+        i * CARD_STRIDE + currentTrackRef.current,
+        totalSpan
+      );
+      if (Math.abs(wrapped) <= videoLoadRadius) {
         entry.startLoad();
-      } else {
-        const timer = window.setTimeout(() => {
-          if (!disposed) entry.startLoad();
-        }, videoStep * 500);
-        videoLoadTimers.push(timer);
       }
-      videoStep += 1;
-    });
+    }
   };
 
   const kickAllVideos = () => {
-    startVideoLoading();
+    videoPreloadArmed = true;
+    syncNearbyVideos();
     videoEntries.forEach((entry) => entry?.tryPlay());
     wake();
   };
@@ -409,9 +412,12 @@ export function mountWorkCarouselScene({
       const videoEntry = videoEntries[i];
       if (videoEntry) {
         videoEntry.isVisible = visible;
+        if (videoPreloadArmed && isInView && Math.abs(wrapped) <= videoLoadRadius) {
+          videoEntry.startLoad();
+        }
         const hasReadyVideo = videoEntry.video.readyState >= 2;
         materials[i].uniforms.uHasVideo.value = hasReadyVideo ? 1.0 : 0.0;
-        if (isInView && visible) {
+        if (isInView && !document.hidden && visible) {
           if (videoEntry.video.paused && hasReadyVideo) {
             videoEntry.tryPlay();
           }
@@ -459,7 +465,7 @@ export function mountWorkCarouselScene({
 
   function tick() {
     rafId = 0;
-    if (disposed || !isInView) return;
+    if (disposed || !isInView || document.hidden) return;
     const isSettled = renderFrame();
     if (!isSettled) {
       rafId = window.requestAnimationFrame(tick);
@@ -513,25 +519,44 @@ export function mountWorkCarouselScene({
   };
   container.addEventListener("wheel", handleWheel, { passive: false });
 
+  const handleVisibility = () => {
+    if (document.hidden) {
+      if (rafId !== 0) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      videoEntries.forEach((entry) => {
+        if (entry && !entry.video.paused) {
+          entry.video.pause();
+        }
+      });
+    } else if (isInView) {
+      syncNearbyVideos();
+      videoEntries.forEach((entry) => entry?.tryPlay());
+      scheduleLoop();
+    }
+  };
+  document.addEventListener("visibilitychange", handleVisibility);
+
   const preloadIo = new IntersectionObserver(
     (entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
-        startVideoLoading();
+        videoPreloadArmed = true;
+        syncNearbyVideos();
         preloadIo.disconnect();
       }
     },
-    { rootMargin: "900px 0px", threshold: 0 }
+    { rootMargin: "650px 0px", threshold: 0 }
   );
   preloadIo.observe(container);
-
-  const deferVideoTimer = window.setTimeout(startVideoLoading, 800);
 
   const viewIo = new IntersectionObserver(
     (entries) => {
       const nextInView = entries.some((entry) => entry.isIntersecting);
       isInView = nextInView;
-      if (nextInView) {
-        startVideoLoading();
+      if (nextInView && !document.hidden) {
+        videoPreloadArmed = true;
+        syncNearbyVideos();
         videoEntries.forEach((entry) => entry?.tryPlay());
         scheduleLoop();
       } else {
@@ -555,8 +580,7 @@ export function mountWorkCarouselScene({
     kickAllVideos,
     dispose: () => {
       disposed = true;
-      window.clearTimeout(deferVideoTimer);
-      videoLoadTimers.forEach((t) => window.clearTimeout(t));
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (rafId !== 0) {
         window.cancelAnimationFrame(rafId);
         rafId = 0;

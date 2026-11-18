@@ -19,14 +19,58 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     (window as unknown as { __lenis?: Lenis }).__lenis = lenis;
 
     let rafId = 0;
+    let calmFrames = 0;
+    let disposed = false;
+
     const raf = (time: number) => {
+      rafId = 0;
+      if (disposed || document.hidden) return;
       lenis.raf(time);
+
+      if (lenis.isScrolling === "smooth" || lenis.isScrolling === true) {
+        calmFrames = 0;
+      } else {
+        calmFrames += 1;
+      }
+
+      if (calmFrames < 2) {
+        rafId = window.requestAnimationFrame(raf);
+      }
+    };
+
+    const wakeLenis = (forceWake = false) => {
+      if (disposed || document.hidden || (lenis.isStopped && !forceWake)) return;
+      calmFrames = 0;
+      if (rafId !== 0) return;
+      // Reset internal clock before resuming so idle time never creates a large delta spike
+      lenis.time = performance.now();
       rafId = window.requestAnimationFrame(raf);
     };
-    rafId = window.requestAnimationFrame(raf);
+
+    const origScrollTo = lenis.scrollTo.bind(lenis);
+    lenis.scrollTo = (target, options) => {
+      origScrollTo(target, options);
+      wakeLenis(Boolean(options?.force));
+    };
+
+    const unsubVirtual = lenis.on("virtual-scroll", () => wakeLenis(false));
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (rafId !== 0) {
+          window.cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+      } else if (lenis.isScrolling === "smooth") {
+        wakeLenis(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      window.cancelAnimationFrame(rafId);
+      disposed = true;
+      unsubVirtual();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (rafId !== 0) window.cancelAnimationFrame(rafId);
       delete (window as unknown as { __lenis?: Lenis }).__lenis;
       lenis.destroy();
     };

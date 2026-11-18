@@ -43,7 +43,7 @@ export const siteConfig = {
     "I craft digital products and mobile apps, sharper, faster, unforgettable.",
   heroLine1: "ABDULLAHELAWADY",
   heroLine2: ".STUDIO",
-  portraitSrc: "/images/abdullah-portrait.png",
+  portraitSrc: "/images/abdullah-portrait.webp",
   portraitAlt: "Abdullah Elawady — Studio portrait",
   navLinks: [
     { label: "INFO", href: "#info" },
@@ -98,9 +98,6 @@ export const siteConfig = {
     slotStepMinutes: 30,
     minLeadMinutes: 30,
     maxAdvanceDays: 45,
-    // Paste deployed Google Apps Script Web App URL here (or set GOOGLE_APPS_SCRIPT_URL in Vercel env):
-    appsScriptUrl:
-      "https://script.google.com/macros/s/AKfycbwfxxQuDBzjSIjOQnKbMHuLrcXwgCCsBunTuax0pmOGUqosXXdXxMtJlCvBOCDeDUR0/exec",
   },
   aboutSection: {
     waveHeading:
@@ -165,8 +162,8 @@ export const siteConfig = {
         subcopy:
           "Interactive multi-brand entertainment and ticketing web experience uniting Wanoos, Doos Karting, Garage, and Remote.",
         layout: "desktop",
-        imageSrc: "/images/projects/malahi-bg.png",
-        posterSrc: "/images/projects/malahi-poster.png",
+        imageSrc: "/images/projects/malahi-bg.webp",
+        posterSrc: "/images/projects/malahi-poster.webp",
         videoSrc: "/videos/projects/malahi-tour.mp4",
         links: [{ type: "web", href: "https://malahi.com/ar" }],
       },
@@ -185,8 +182,8 @@ export const siteConfig = {
         layout: "mobile",
         imageSrc: "/images/projects/quranic-radio-bg.webp",
         mobileScreens: [
-          "/images/projects/quranic-radio-1.png",
-          "/images/projects/quranic-radio-2.png",
+          "/images/projects/quranic-radio-1.webp",
+          "/images/projects/quranic-radio-2.webp",
         ],
         links: [
           {
@@ -214,9 +211,9 @@ export const siteConfig = {
         layout: "mobile",
         imageSrc: "/images/projects/fielsekka-bg.webp",
         mobileScreens: [
-          "/images/projects/fielsekka-3.png",
-          "/images/projects/fielsekka-1.png",
-          "/images/projects/fielsekka-2.png",
+          "/images/projects/fielsekka-3.webp",
+          "/images/projects/fielsekka-1.webp",
+          "/images/projects/fielsekka-2.webp",
         ],
         links: [
           {
@@ -261,9 +258,9 @@ export const siteConfig = {
         layout: "mobile",
         imageSrc: "/images/projects/foxus-bg.webp",
         mobileScreens: [
-          "/images/projects/foxus-2.png",
-          "/images/projects/foxus-1.png",
-          "/images/projects/foxus-3.png",
+          "/images/projects/foxus-2.webp",
+          "/images/projects/foxus-1.webp",
+          "/images/projects/foxus-3.webp",
         ],
         links: [
           {
@@ -287,9 +284,9 @@ export const siteConfig = {
         layout: "mobile",
         imageSrc: "/images/projects/tride-bg.webp",
         mobileScreens: [
-          "/images/projects/tride-2.png",
-          "/images/projects/tride-1.png",
-          "/images/projects/tride-3.png",
+          "/images/projects/tride-2.webp",
+          "/images/projects/tride-1.webp",
+          "/images/projects/tride-3.webp",
         ],
         links: [
           {
@@ -321,9 +318,9 @@ export const siteConfig = {
         layout: "mobile",
         imageSrc: "/images/projects/nursy-bg.webp",
         mobileScreens: [
-          "/images/projects/nursy-1.png",
-          "/images/projects/nursy-3.png",
-          "/images/projects/nursy-2.png",
+          "/images/projects/nursy-1.webp",
+          "/images/projects/nursy-3.webp",
+          "/images/projects/nursy-2.webp",
         ],
         links: [
           {
