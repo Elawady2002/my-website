@@ -2,105 +2,135 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type Lenis from "lenis";
+import type { PreloaderFootballController } from "./preloaderFootballScene";
 
 interface SimFrame {
   x: number;
   y: number;
   rot: number;
+  vy: number;
+}
+
+interface BounceEvent {
+  time: number;
+  impactRatio: number;
 }
 
 interface TrajectoryResult {
   frames: SimFrame[];
-  bounceTimes: number[];
+  bounces: BounceEvent[];
   duration: number;
 }
 
 const TOTAL_COLS = 14;
 const SIM_HZ = 240;
 const SIM_DT = 1 / SIM_HZ;
+const BALL_BOX_SCALE = 1.28;
+
+function clamp(val: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, val));
+}
 
 function simulateTrajectory(
   vw: number,
   vh: number,
-  radius: number
+  radius: number,
+  floorY: number
 ): TrajectoryResult {
-  const floorY = Math.max(radius + 40, vh - radius);
-  const gravity = 4.9 * Math.max(vh, 480);
-  const vxFactors = [0.54, 0.5, 0.58, 0.46, 0.62, 0.42, 0.68];
-  const restitutions = [0.6, 0.56, 0.64, 0.52];
-  const vy0Factors = [0, -0.14];
+  const gravity = 5.45 * Math.max(vh, 520);
+  const x0 = Math.max(radius * 0.92, vw * 0.058);
+  const y0 = -radius * 1.22;
+  const vy0 = 0.18 * vh;
+
+  const vxScales = [0.88, 0.94, 1.0, 1.06, 1.12, 0.82, 1.18];
+  const restitutions = [0.71, 0.68, 0.73];
 
   let best: TrajectoryResult | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
 
-  for (const vxF of vxFactors) {
+  for (const vxScale of vxScales) {
     for (const e of restitutions) {
-      for (const vy0F of vy0Factors) {
-        let x = radius * 0.25;
-        let y = -radius * 0.35;
-        const vx = vxF * vw;
-        let vy = vy0F * vh;
-        let rot = 0;
-        const angularVel = vx / Math.max(radius, 24);
+      let x = x0;
+      let y = y0;
+      let vx = vxScale * 0.23 * vw;
+      let vy = vy0;
+      let rot = 0;
+      let omega = (vxScale * 0.78 * vw) / Math.max(radius, 28);
 
-        const frames: SimFrame[] = [];
-        const bounceTimes: number[] = [];
+      const frames: SimFrame[] = [];
+      const bounces: BounceEvent[] = [];
+      let firstBounceX = 0;
 
-        for (let step = 0; step < SIM_HZ * 3.4; step += 1) {
-          const t = step * SIM_DT;
-          vy += gravity * SIM_DT;
-          x += vx * SIM_DT;
-          y += vy * SIM_DT;
-          rot += angularVel * SIM_DT;
+      for (let step = 0; step < SIM_HZ * 4.0; step += 1) {
+        const t = step * SIM_DT;
+        vy += gravity * SIM_DT;
+        vx *= 1 - 0.075 * SIM_DT;
+        vy *= 1 - 0.035 * SIM_DT;
+        x += vx * SIM_DT;
+        y += vy * SIM_DT;
+        rot += omega * SIM_DT;
 
-          if (y >= floorY) {
-            y = floorY;
-            if (vy > 60) {
-              bounceTimes.push(t);
-            }
-            vy = -Math.abs(vy) * e;
+        if (y >= floorY) {
+          y = floorY;
+          if (vy > 55) {
+            if (bounces.length === 0) firstBounceX = x;
+            bounces.push({
+              time: t,
+              impactRatio: clamp(Math.abs(vy) / (3.35 * vh), 0.18, 1),
+            });
           }
-
-          frames.push({ x, y, rot });
-
-          if (x - radius > vw + 12) {
-            break;
-          }
+          const eEff = e - 0.02 * clamp(Math.abs(vy) / (3.5 * vh), 0, 1);
+          vy = -Math.abs(vy) * eEff;
+          const vSlip = vx - omega * radius;
+          vx -= 0.44 * vSlip;
+          omega = 0.72 * (vx / Math.max(radius, 24)) + 0.28 * omega;
+          vx *= 0.97;
         }
 
-        const duration = frames.length * SIM_DT;
-        if (x - radius <= vw) continue;
+        frames.push({ x, y, rot, vy });
 
-        const firstBounceRatio =
-          frames[Math.round((bounceTimes[0] ?? 0.5) * SIM_HZ)]?.x / vw;
-        let score = Math.abs(duration - 2.15) * 4;
-        if (bounceTimes.length < 4) score += (4 - bounceTimes.length) * 3;
-        if (firstBounceRatio < 0.14 || firstBounceRatio > 0.48) score += 2.5;
-
-        if (score < bestScore) {
-          bestScore = score;
-          best = { frames, bounceTimes, duration };
+        if (x - radius > vw + 16) {
+          break;
         }
+      }
+
+      if (x - radius <= vw + 16 || bounces.length === 0) continue;
+
+      const duration = frames.length * SIM_DT;
+      const firstBounceRatio = firstBounceX / vw;
+      let score =
+        Math.abs(duration - 2.35) * 3.5 + Math.abs(bounces.length - 4) * 3.2;
+      if (firstBounceRatio < 0.13 || firstBounceRatio > 0.24) score += 2.5;
+
+      if (score < bestScore) {
+        bestScore = score;
+        best = { frames, bounces, duration };
       }
     }
   }
 
   if (best) return best;
 
-  // Deterministic straight-bounce fallback for extreme viewports
+  // Deterministic drop-and-bounce fallback for extreme viewports
   const fallbackFrames: SimFrame[] = [];
-  const duration = 2.0;
+  const duration = 2.35;
   const totalSteps = Math.round(duration * SIM_HZ);
+  const startY = -radius * 1.2;
+  const fallSpan = floorY - startY;
   for (let i = 0; i <= totalSteps; i += 1) {
     const p = i / totalSteps;
-    const x = -radius + p * (vw + radius * 2.4);
-    const arc = Math.abs(Math.sin(p * Math.PI * 3.2)) * Math.pow(1 - p, 0.7);
-    const y = floorY - arc * (vh * 0.55);
-    fallbackFrames.push({ x, y, rot: p * Math.PI * 6 });
+    const x = x0 + p * (vw + radius * 2.2 - x0);
+    const bouncePhase = p < 0.24 ? (p / 0.24) * (p / 0.24) : 1 - Math.abs(Math.sin(((p - 0.24) / 0.76) * Math.PI * 3.0)) * Math.pow(1 - (p - 0.24) / 0.76, 1.35) * 0.56;
+    const y = startY + bouncePhase * fallSpan;
+    fallbackFrames.push({ x, y, rot: p * Math.PI * 8.5, vy: 0 });
   }
   return {
     frames: fallbackFrames,
-    bounceTimes: [0.62, 1.24, 1.72],
+    bounces: [
+      { time: 0.56, impactRatio: 0.95 },
+      { time: 1.16, impactRatio: 0.62 },
+      { time: 1.75, impactRatio: 0.36 },
+    ],
     duration,
   };
 }
@@ -110,6 +140,7 @@ export function PreloaderIntro() {
   const chromeRef = useRef<HTMLDivElement | null>(null);
   const shadowRef = useRef<HTMLDivElement | null>(null);
   const ballRef = useRef<HTMLDivElement | null>(null);
+  const fallbackWrapRef = useRef<HTMLDivElement | null>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -136,6 +167,9 @@ export function PreloaderIntro() {
       allIntroEls.forEach((el) => el.setAttribute("data-uncovered", "true"));
     };
 
+    let footballCtrl: PreloaderFootballController | null = null;
+    let finishTimer = 0;
+
     const finishIntro = () => {
       uncoverAll();
       const activeLenis = (window as unknown as { __lenis?: Lenis }).__lenis;
@@ -143,7 +177,9 @@ export function PreloaderIntro() {
       if (chromeRef.current) {
         chromeRef.current.style.opacity = "0";
       }
-      window.setTimeout(() => {
+      finishTimer = window.setTimeout(() => {
+        footballCtrl?.dispose();
+        footballCtrl = null;
         root.setAttribute("data-intro-done", "true");
         root.removeAttribute("data-intro-ready");
         allIntroEls.forEach((el) => el.removeAttribute("data-uncovered"));
@@ -164,6 +200,7 @@ export function PreloaderIntro() {
       const timer = window.setTimeout(finishIntro, 520);
       return () => {
         window.clearTimeout(timer);
+        window.clearTimeout(finishTimer);
         root.removeAttribute("data-intro-ready");
         (window as unknown as { __lenis?: Lenis }).__lenis?.start();
       };
@@ -175,14 +212,19 @@ export function PreloaderIntro() {
 
     if (activeCols.length === 0) {
       const t = window.setTimeout(finishIntro, 80);
-      return () => window.clearTimeout(t);
+      return () => {
+        window.clearTimeout(t);
+        window.clearTimeout(finishTimer);
+      };
     }
 
     const vw = window.innerWidth || 1440;
     const vh = window.innerHeight || 900;
-    const diameter = Math.max(68, Math.min(118, vw / 12.5));
+    const diameter = Math.max(76, Math.min(124, vw / 11.6));
     const radius = diameter / 2;
-    const floorY = Math.max(radius + 40, vh - radius);
+    const floorPad = Math.max(8, Math.round(vh * 0.014));
+    const floorY = Math.max(radius + 40, vh - radius - floorPad);
+    const boxSize = Math.ceil(diameter * BALL_BOX_SCALE);
 
     const colBounds = activeCols.map((col) => {
       const r = col.getBoundingClientRect();
@@ -203,17 +245,23 @@ export function PreloaderIntro() {
     });
 
     if (ballRef.current) {
-      ballRef.current.style.width = `${diameter.toFixed(1)}px`;
-      ballRef.current.style.height = `${diameter.toFixed(1)}px`;
+      ballRef.current.style.width = `${boxSize}px`;
+      ballRef.current.style.height = `${boxSize}px`;
+    }
+    if (fallbackWrapRef.current) {
+      fallbackWrapRef.current.style.width = `${diameter.toFixed(1)}px`;
+      fallbackWrapRef.current.style.height = `${diameter.toFixed(1)}px`;
     }
     if (shadowRef.current) {
-      shadowRef.current.style.width = `${(diameter * 1.1).toFixed(1)}px`;
-      shadowRef.current.style.height = `${(diameter * 0.2).toFixed(1)}px`;
+      shadowRef.current.style.width = `${(diameter * 1.15).toFixed(1)}px`;
+      shadowRef.current.style.height = `${(diameter * 0.22).toFixed(1)}px`;
     }
 
-    const sim = simulateTrajectory(vw, vh, radius);
+    const sim = simulateTrajectory(vw, vh, radius, floorY);
     const triggerTimes = colBounds.map((b, idx) => {
-      const hitIdx = sim.frames.findIndex((f) => f.x >= b.mid);
+      const hitIdx = sim.frames.findIndex(
+        (f) => f.y >= radius * 0.45 && f.x >= b.mid
+      );
       if (hitIdx >= 0) {
         return Math.max(0.06, hitIdx * SIM_DT);
       }
@@ -262,9 +310,22 @@ export function PreloaderIntro() {
         ])
       : Promise.resolve();
 
+    const sceneReadyPromise = Promise.race([
+      import("./preloaderFootballScene")
+        .then(({ mountPreloaderFootballScene }) => {
+          if (cancelled || !ballRef.current) return;
+          footballCtrl = mountPreloaderFootballScene(ballRef.current, boxSize);
+          if (footballCtrl && fallbackWrapRef.current) {
+            fallbackWrapRef.current.style.display = "none";
+          }
+        })
+        .catch(() => {}),
+      new Promise<void>((resolve) => window.setTimeout(resolve, 480)),
+    ]);
+
     let beatTimer = 0;
 
-    fontGate.then(() => {
+    Promise.all([fontGate, sceneReadyPromise]).then(() => {
       if (cancelled) return;
       (window as unknown as { __lenis?: Lenis }).__lenis?.stop();
       beatTimer = window.setTimeout(() => {
@@ -287,34 +348,72 @@ export function PreloaderIntro() {
             const f = sim.frames[fIdx];
 
             if (f && ballRef.current && shadowRef.current) {
-              // Analytical squash-and-stretch spring at bounce moments
-              let scaleX = 1;
-              let scaleY = 1;
-              for (let b = sim.bounceTimes.length - 1; b >= 0; b -= 1) {
-                const dtB = elapsed - sim.bounceTimes[b];
-                if (dtB >= 0 && dtB < 0.34) {
-                  const s =
-                    Math.exp(-8.5 * dtB) * Math.sin(dtB * 27) * 0.28;
-                  scaleX = 1 + s * 0.85;
-                  scaleY = 1 - s;
+              let squashX = 1;
+              let squashY = 1;
+              let inImpactWindow = false;
+
+              for (let b = sim.bounces.length - 1; b >= 0; b -= 1) {
+                const bounce = sim.bounces[b];
+                const dtB = elapsed - bounce.time;
+                if (dtB >= 0 && dtB < 0.068) {
+                  const p = Math.sin((dtB / 0.068) * Math.PI);
+                  squashY = 1 - 0.145 * bounce.impactRatio * p;
+                  squashX = 1 / Math.sqrt(squashY);
+                  inImpactWindow = true;
+                  break;
+                }
+                if (dtB >= 0.068 && dtB < 0.135) {
+                  const u = (dtB - 0.068) / 0.067;
+                  const snap =
+                    Math.sin(u * Math.PI) *
+                    (1 - u) *
+                    0.026 *
+                    bounce.impactRatio;
+                  squashY = 1 + snap;
+                  squashX = 1 / Math.sqrt(squashY);
+                  inImpactWindow = true;
                   break;
                 }
               }
 
-              const tx = f.x - radius;
-              const ty = f.y - radius;
+              if (!inImpactWindow && f.vy > 0) {
+                const clearance = clamp(
+                  (floorY - f.y) / Math.max(radius * 0.35, 1),
+                  0,
+                  1
+                );
+                const speedFactor = clamp((f.vy - 0.8 * vh) / (2.2 * vh), 0, 1);
+                const fallStretch = clearance * speedFactor;
+                if (fallStretch > 0.001) {
+                  squashY = 1 + 0.022 * fallStretch;
+                  squashX = 1 / Math.sqrt(squashY);
+                }
+              }
+
+              const tx = f.x - boxSize * 0.5;
+              const ty = f.y - boxSize * 0.5;
               ballRef.current.style.transform = `translate3d(${tx.toFixed(
                 1
-              )}px, ${ty.toFixed(1)}px, 0) scale(${scaleX.toFixed(
-                3
-              )}, ${scaleY.toFixed(3)}) rotate(${f.rot.toFixed(3)}rad)`;
+              )}px, ${ty.toFixed(1)}px, 0)`;
 
-              const heightRatio = Math.max(0, Math.min(1, f.y / floorY));
-              const shadowOp = Math.pow(heightRatio, 2.1) * 0.85;
-              const shadowScaleX = 0.35 + heightRatio * 0.65;
-              const shadowScaleY = 0.6 + heightRatio * 0.4;
-              const sx = f.x - diameter * 0.55;
-              const sy = vh - diameter * 0.14;
+              if (footballCtrl) {
+                footballCtrl.renderFrame(f.rot, squashX, squashY);
+              } else if (fallbackWrapRef.current) {
+                fallbackWrapRef.current.style.transform = `scale(${squashX.toFixed(
+                  3
+                )}, ${squashY.toFixed(3)}) rotate(${f.rot.toFixed(3)}rad)`;
+              }
+
+              const alt = clamp(
+                (floorY - f.y) / Math.max(vh * 0.85, 1),
+                0,
+                1
+              );
+              const shadowOp = Math.exp(-4.2 * alt) * 0.74;
+              const shadowScaleX = (0.78 + alt * 0.55) * squashX;
+              const shadowScaleY = 0.72 + alt * 0.35;
+              const sx = f.x - diameter * 0.575;
+              const sy = floorY + radius - diameter * 0.11;
               shadowRef.current.style.opacity = shadowOp.toFixed(3);
               shadowRef.current.style.transform = `translate3d(${sx.toFixed(
                 1
@@ -355,7 +454,10 @@ export function PreloaderIntro() {
     return () => {
       cancelled = true;
       window.clearTimeout(beatTimer);
+      window.clearTimeout(finishTimer);
       window.cancelAnimationFrame(rafId);
+      footballCtrl?.dispose();
+      footballCtrl = null;
       window.removeEventListener("pointerdown", handleSkip);
       window.removeEventListener("wheel", handleSkip);
       window.removeEventListener("touchstart", handleSkip);
@@ -401,39 +503,52 @@ export function PreloaderIntro() {
         style={{
           opacity: 0,
           background:
-            "radial-gradient(closest-side, rgba(11,11,11,0.44), rgba(11,11,11,0))",
+            "radial-gradient(closest-side, rgba(11,11,11,0.52), rgba(11,11,11,0))",
         }}
       />
 
-      {/* 8-Spoke Obsidian Wheel */}
+      {/* 3D Classic Football Container (+ WebGL-disabled SVG fallback) */}
       <div
         ref={ballRef}
-        className="pointer-events-none absolute left-0 top-0 origin-[50%_100%] will-change-transform"
+        className="pointer-events-none absolute left-0 top-0 flex items-center justify-center will-change-transform"
         style={{ opacity: 0 }}
       >
-        <svg viewBox="0 0 120 120" fill="none" className="h-full w-full">
-          <circle
-            cx="60"
-            cy="60"
-            r="53"
-            stroke="#0b0b0b"
-            strokeWidth="5.5"
-          />
-          <circle cx="60" cy="60" r="11" fill="#0b0b0b" />
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-            <line
-              key={deg}
-              x1="60"
-              y1="60"
-              x2="60"
-              y2="13"
+        <div
+          ref={fallbackWrapRef}
+          className="origin-[50%_100%] will-change-transform"
+        >
+          <svg viewBox="0 0 120 120" fill="none" className="h-full w-full">
+            <circle
+              cx="60"
+              cy="60"
+              r="55"
+              fill="#ebe7de"
               stroke="#0b0b0b"
-              strokeWidth="6.5"
-              strokeLinecap="round"
-              transform={`rotate(${deg} 60 60)`}
+              strokeWidth="3.2"
             />
-          ))}
-        </svg>
+            <g
+              stroke="#0b0b0b"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="60" y1="39" x2="60" y2="17" />
+              <line x1="80" y1="54" x2="98" y2="43" />
+              <line x1="72" y1="77" x2="86" y2="96" />
+              <line x1="48" y1="77" x2="34" y2="96" />
+              <line x1="40" y1="54" x2="22" y2="43" />
+            </g>
+            <polygon
+              points="60,38 80,52.5 72.4,76 47.6,76 40,52.5"
+              fill="#141416"
+            />
+            <polygon points="48,10 72,10 60,21" fill="#141416" />
+            <polygon points="103,33 111,55 96,45" fill="#141416" />
+            <polygon points="94,95 74,108 85,93" fill="#141416" />
+            <polygon points="26,95 46,108 35,93" fill="#141416" />
+            <polygon points="17,33 9,55 24,45" fill="#141416" />
+          </svg>
+        </div>
       </div>
     </div>
   );
