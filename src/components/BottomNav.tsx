@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type Lenis from "lenis";
-import { Calendar } from "lucide-react";
 import { StylizedText } from "@/components/StylizedText";
 import { BookingModal } from "@/components/BookingModal";
 import { siteConfig } from "@/data/site";
@@ -53,8 +52,12 @@ export function BottomNav() {
   const [cairoTime, setCairoTime] = useState("--:--");
   const [phoneCopied, setPhoneCopied] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingOpenUpward, setBookingOpenUpward] = useState(true);
+  const [bookingSessionKey, setBookingSessionKey] = useState(0);
+  const [bookingOpenedAtMs, setBookingOpenedAtMs] = useState(0);
 
   const navBarRef = useRef<HTMLDivElement | null>(null);
+  const dockGroupRef = useRef<HTMLDivElement | null>(null);
   const pillNavRef = useRef<HTMLElement | null>(null);
   const pillLinkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const navDotRef = useRef<HTMLSpanElement | null>(null);
@@ -82,6 +85,31 @@ export function BottomNav() {
   useEffect(() => {
     menuPhaseRef.current = menuPhase;
   }, [menuPhase]);
+
+  useEffect(() => {
+    if (!isBookingOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (
+        dockGroupRef.current &&
+        !dockGroupRef.current.contains(e.target as Node)
+      ) {
+        playModalClose();
+        setIsBookingOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        playModalClose();
+        setIsBookingOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isBookingOpen]);
 
   useEffect(() => {
     const syncClock = () => setCairoTime(formatCairoTime());
@@ -280,6 +308,7 @@ export function BottomNav() {
 
   const openMenu = () => {
     stopMenuRaf();
+    setIsBookingOpen(false);
     setHoveredIdx(null);
     setContentRevealed(false);
     setIsNavDocked(true);
@@ -529,6 +558,7 @@ export function BottomNav() {
     item: (typeof siteConfig.pillNavLinks)[number]
   ) => {
     e.preventDefault();
+    setIsBookingOpen(false);
     lockScrollSpy(item.id);
     scrollToTarget(item.id === "home" ? null : item.href);
   };
@@ -885,9 +915,21 @@ export function BottomNav() {
         {/* Center Floating Translucent Glass Pill Navbar + Standalone Calendar Circle (Visible when Menu is Closed) */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <div
+            ref={dockGroupRef}
             data-intro-fade=""
-            className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5"
+            className="relative flex items-center gap-1.5 sm:gap-2 md:gap-2.5"
           >
+            <BookingModal
+              open={isBookingOpen && !isOpen}
+              openUpward={bookingOpenUpward}
+              sessionKey={bookingSessionKey}
+              openedAtMs={bookingOpenedAtMs}
+              onClose={() => {
+                playModalClose();
+                setIsBookingOpen(false);
+              }}
+            />
+
             <nav
               ref={pillNavRef}
               data-glass-pill=""
@@ -935,26 +977,98 @@ export function BottomNav() {
             <button
               type="button"
               onClick={() => {
-                playModalOpen();
-                setIsBookingOpen(true);
+                if (isBookingOpen) {
+                  playModalClose();
+                  setIsBookingOpen(false);
+                } else {
+                  const rect = dockGroupRef.current?.getBoundingClientRect();
+                  const vh = window.innerHeight || 900;
+                  setBookingOpenUpward((rect?.top ?? vh) > vh * 0.48);
+                  setBookingOpenedAtMs(Date.now());
+                  setBookingSessionKey((k) => k + 1);
+                  playModalOpen();
+                  setIsBookingOpen(true);
+                }
               }}
               onMouseMove={handleMagneticMove}
               onMouseLeave={handleMagneticLeave}
               aria-hidden={isOpen}
+              aria-expanded={isBookingOpen && !isOpen}
               tabIndex={isOpen ? -1 : 0}
-              aria-label="Book a Google Meet call"
-              title="Book a Google Meet call"
-              className={`voy-glass group relative flex items-center justify-center shrink-0 h-[40px] w-[40px] sm:h-[44px] sm:w-[44px] md:h-[50px] md:w-[50px] rounded-full border !border-[#f34213]/40 hover:!border-[#f34213]/85 hover:!bg-[#f34213]/[0.14] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] cursor-pointer ${
+              aria-label="Schedule a call"
+              title="Schedule a call"
+              className={`voy-glass group relative flex items-center justify-center shrink-0 h-[40px] w-[40px] sm:h-[44px] sm:w-[44px] md:h-[50px] md:w-[50px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] cursor-pointer ${
                 isOpen
                   ? "opacity-0 scale-95 pointer-events-none"
-                  : "opacity-100 scale-100 pointer-events-auto"
+                  : isBookingOpen
+                  ? "opacity-100 scale-100 pointer-events-auto !bg-white/[0.1] !border-white/25"
+                  : "opacity-100 scale-100 pointer-events-auto hover:!bg-white/[0.08] hover:!border-white/20"
               }`}
             >
-              <Calendar
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
                 aria-hidden="true"
-                strokeWidth={1.9}
-                className="h-[17px] w-[17px] md:h-[20px] md:w-[20px] text-[#f34213] drop-shadow-[0_0_8px_rgba(243,66,19,0.5)] transition-transform duration-200 group-hover:scale-110"
-              />
+                className="h-[18px] w-[18px] md:h-[20px] md:w-[20px] transition-transform duration-200 group-hover:scale-105"
+              >
+                <rect
+                  x="3.5"
+                  y="4.5"
+                  width="17"
+                  height="16"
+                  rx="4.5"
+                  fill="#f34213"
+                  fillOpacity="0.14"
+                  stroke="#f34213"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M3.5 9C3.5 6.51472 5.51472 4.5 8 4.5H16C18.4853 4.5 20.5 6.51472 20.5 9V9.5H3.5V9Z"
+                  fill="#f34213"
+                />
+                <path
+                  d="M8.5 2.75V5.25M15.5 2.75V5.25"
+                  stroke="#f34213"
+                  strokeWidth="1.65"
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx="8.25"
+                  cy="13.25"
+                  r="1.15"
+                  fill="#e7e1d7"
+                  fillOpacity="0.85"
+                />
+                <circle
+                  cx="12"
+                  cy="13.25"
+                  r="1.15"
+                  fill="#e7e1d7"
+                  fillOpacity="0.85"
+                />
+                <circle cx="15.75" cy="13.25" r="1.2" fill="#f34213" />
+                <circle
+                  cx="8.25"
+                  cy="16.75"
+                  r="1.15"
+                  fill="#e7e1d7"
+                  fillOpacity="0.55"
+                />
+                <circle
+                  cx="12"
+                  cy="16.75"
+                  r="1.15"
+                  fill="#e7e1d7"
+                  fillOpacity="0.55"
+                />
+                <circle
+                  cx="15.75"
+                  cy="16.75"
+                  r="1.15"
+                  fill="#e7e1d7"
+                  fillOpacity="0.55"
+                />
+              </svg>
             </button>
           </div>
         </div>
@@ -1056,14 +1170,6 @@ export function BottomNav() {
           </button>
         </div>
       </div>
-
-      <BookingModal
-        open={isBookingOpen}
-        onClose={() => {
-          playModalClose();
-          setIsBookingOpen(false);
-        }}
-      />
     </>
   );
 }

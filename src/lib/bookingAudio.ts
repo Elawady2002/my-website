@@ -1,9 +1,8 @@
 let sharedAudioCtx: AudioContext | null = null;
-let audioMuted = false;
 let lastHoverTickMs = 0;
 
 function getAudioContext(): AudioContext | null {
-  if (typeof window === "undefined" || audioMuted) return null;
+  if (typeof window === "undefined") return null;
   if (
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -63,32 +62,24 @@ function scheduleTone(
   osc.stop(opts.startTime + opts.durationSec + 0.015);
 }
 
-export function isBookingAudioMuted(): boolean {
-  return audioMuted;
-}
-
-export function setBookingAudioMuted(muted: boolean): void {
-  audioMuted = muted;
-}
-
 export function playModalOpen(): void {
   const ctx = getAudioContext();
   if (!ctx) return;
   const t = ctx.currentTime;
   scheduleTone(ctx, {
     startTime: t,
-    durationSec: 0.14,
-    startFreq: 220,
-    endFreq: 440,
-    peakGain: 0.055,
+    durationSec: 0.13,
+    startFreq: 240,
+    endFreq: 460,
+    peakGain: 0.04,
     type: "sine",
   });
   scheduleTone(ctx, {
-    startTime: t + 0.045,
-    durationSec: 0.14,
+    startTime: t + 0.04,
+    durationSec: 0.12,
     startFreq: 554.37,
     endFreq: 659.25,
-    peakGain: 0.032,
+    peakGain: 0.025,
     type: "triangle",
   });
 }
@@ -96,13 +87,12 @@ export function playModalOpen(): void {
 export function playModalClose(): void {
   const ctx = getAudioContext();
   if (!ctx) return;
-  const t = ctx.currentTime;
   scheduleTone(ctx, {
-    startTime: t,
-    durationSec: 0.11,
-    startFreq: 360,
+    startTime: ctx.currentTime,
+    durationSec: 0.1,
+    startFreq: 340,
     endFreq: 190,
-    peakGain: 0.04,
+    peakGain: 0.03,
     type: "sine",
   });
 }
@@ -116,10 +106,10 @@ export function playHoverTick(): void {
   if (!ctx) return;
   scheduleTone(ctx, {
     startTime: ctx.currentTime,
-    durationSec: 0.018,
-    startFreq: 1350,
-    endFreq: 980,
-    peakGain: 0.015,
+    durationSec: 0.016,
+    startFreq: 1320,
+    endFreq: 960,
+    peakGain: 0.011,
     type: "sine",
   });
 }
@@ -129,10 +119,10 @@ export function playSelectDate(): void {
   if (!ctx) return;
   scheduleTone(ctx, {
     startTime: ctx.currentTime,
-    durationSec: 0.075,
+    durationSec: 0.07,
     startFreq: 520,
-    endFreq: 780,
-    peakGain: 0.055,
+    endFreq: 760,
+    peakGain: 0.042,
     type: "sine",
   });
 }
@@ -143,18 +133,18 @@ export function playSelectSlot(): void {
   const t = ctx.currentTime;
   scheduleTone(ctx, {
     startTime: t,
-    durationSec: 0.085,
+    durationSec: 0.08,
     startFreq: 660,
     endFreq: 740,
-    peakGain: 0.055,
+    peakGain: 0.045,
     type: "sine",
   });
   scheduleTone(ctx, {
-    startTime: t + 0.035,
-    durationSec: 0.09,
+    startTime: t + 0.032,
+    durationSec: 0.085,
     startFreq: 990,
     endFreq: 1046.5,
-    peakGain: 0.04,
+    peakGain: 0.032,
     type: "triangle",
   });
 }
@@ -166,10 +156,10 @@ export function playBookingSuccess(): void {
   const base = ctx.currentTime;
   notes.forEach((freq, idx) => {
     scheduleTone(ctx, {
-      startTime: base + idx * 0.065,
-      durationSec: 0.45,
+      startTime: base + idx * 0.06,
+      durationSec: 0.42,
       startFreq: freq,
-      peakGain: 0.068 - idx * 0.008,
+      peakGain: 0.052 - idx * 0.006,
       type: idx === notes.length - 1 ? "triangle" : "sine",
     });
   });
@@ -181,18 +171,18 @@ export function playBookingError(): void {
   const base = ctx.currentTime;
   scheduleTone(ctx, {
     startTime: base,
-    durationSec: 0.11,
+    durationSec: 0.1,
     startFreq: 240,
     endFreq: 185,
-    peakGain: 0.05,
+    peakGain: 0.04,
     type: "triangle",
   });
   scheduleTone(ctx, {
-    startTime: base + 0.12,
-    durationSec: 0.13,
+    startTime: base + 0.11,
+    durationSec: 0.12,
     startFreq: 210,
     endFreq: 160,
-    peakGain: 0.045,
+    peakGain: 0.035,
     type: "triangle",
   });
 }
