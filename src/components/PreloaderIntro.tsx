@@ -117,7 +117,9 @@ export function PreloaderIntro() {
     root.removeAttribute("data-intro-done");
     root.setAttribute("data-intro-ready", "true");
 
+    window.scrollTo(0, 0);
     const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
+    lenis?.scrollTo(0, { immediate: true, force: true });
     lenis?.stop();
 
     const reducedMotion = window.matchMedia(

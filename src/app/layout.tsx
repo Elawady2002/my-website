@@ -30,6 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen bg-[#0b0b0b] text-[#e7e1d7] antialiased">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if("scrollRestoration"in history)history.scrollRestoration="manual";if(location.hash)history.replaceState(null,"",location.pathname+location.search);window.scrollTo(0,0);}catch(e){}`,
+          }}
+        />
         {children}
       </body>
     </html>

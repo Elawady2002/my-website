@@ -594,45 +594,28 @@ export function BottomNav() {
             : ""
         }`}
       >
-        {/* Left 3D Monogram Button (Unified Translucent Glass) */}
+        {/* Left AE.S Studio Logo Button (Unified Translucent Glass) */}
         <div data-intro-fade="">
           <button
             type="button"
             onClick={handleTopClick}
             onMouseMove={handleMagneticMove}
             onMouseLeave={handleMagneticLeave}
-            aria-label="Scroll to top"
-            className="voy-glass pointer-events-auto h-[44px] w-[44px] md:h-[54px] md:w-[54px] rounded-[12px] md:rounded-[14px] flex items-center justify-center transition-transform duration-200 ease-out cursor-pointer"
+            aria-label="Abdullah Elawady Studio — Scroll to top"
+            className="voy-glass group pointer-events-auto h-[44px] w-[44px] md:h-[54px] md:w-auto md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center text-[11.5px] md:text-[14.5px] font-medium uppercase tracking-[-0.02em] md:tracking-[0.04em] transition-transform duration-200 ease-out cursor-pointer select-none"
           >
-            <svg
-              viewBox="0 0 32 32"
-              className="h-6 w-6 md:h-7 md:w-7"
-              fill="none"
-              aria-hidden="true"
-            >
-              <defs>
-                <linearGradient
-                  id="monogramChrome"
-                  x1="12"
-                  y1="4"
-                  x2="28"
-                  y2="26"
-                  gradientUnits="userSpaceOnUse"
-                >
-                  <stop offset="0%" stopColor="#ffffff" />
-                  <stop offset="45%" stopColor="#d4d4d8" />
-                  <stop offset="100%" stopColor="#f34213" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M17 3H25V10.5H17V3ZM7 11.5H17V21.5H25V29H15.5C10.8 29 7 25.2 7 20.5V11.5Z"
-                fill="#f34213"
-              />
-              <path
-                d="M17 11.5H25V17.5H17V11.5Z"
-                fill="url(#monogramChrome)"
-              />
-            </svg>
+            <span className="relative h-[1.25em] overflow-hidden leading-[1.25em]">
+              <span className="flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] translate-y-0 group-hover:-translate-y-1/2">
+                <span className="block h-[1.25em] whitespace-nowrap">
+                  <span className="text-[#e7e1d7]">AE</span>
+                  <span className="text-[#f34213]">.S</span>
+                </span>
+                <span aria-hidden="true" className="block h-[1.25em] whitespace-nowrap">
+                  <span className="text-[#e7e1d7]">AE</span>
+                  <span className="text-[#f34213]">.S</span>
+                </span>
+              </span>
+            </span>
           </button>
         </div>
 

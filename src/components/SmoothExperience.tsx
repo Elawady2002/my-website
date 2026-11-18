@@ -10,6 +10,11 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
   const dotRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+
     const lenis = new Lenis({
       duration: 1.15,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -66,10 +71,19 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        window.scrollTo(0, 0);
+        lenis.scrollTo(0, { immediate: true, force: true });
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
     return () => {
       disposed = true;
       unsubVirtual();
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pageshow", handlePageShow);
       if (rafId !== 0) window.cancelAnimationFrame(rafId);
       delete (window as unknown as { __lenis?: Lenis }).__lenis;
       lenis.destroy();
