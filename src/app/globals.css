@@ -402,6 +402,7 @@ html[data-intro-done="true"] [data-intro-portrait] {
 }
 
 .voy-popover-glass {
+  scrollbar-width: none;
   background:
     radial-gradient(
       125% 95% at 14% 0%,
@@ -428,6 +429,10 @@ html[data-intro-done="true"] [data-intro-portrait] {
     inset 0 -1px 0 rgba(255, 255, 255, 0.05),
     0 28px 68px rgba(0, 0, 0, 0.76),
     0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.voy-popover-glass::-webkit-scrollbar {
+  display: none;
 }
 
 .voy-glass-input {

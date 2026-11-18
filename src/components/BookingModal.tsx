@@ -898,6 +898,7 @@ export function BookingModal({
       if (keyboardOpen && vv) {
         const maxH = Math.max(210, vv.height - 16);
         shell.style.maxHeight = `${maxH.toFixed(0)}px`;
+        shell.style.overflowY = "auto";
         const cardH = Math.min(shell.offsetHeight || 300, maxH);
         const top = vv.offsetTop + Math.max(8, (vv.height - cardH) * 0.5);
         shell.style.top = `${top.toFixed(1)}px`;
@@ -907,6 +908,7 @@ export function BookingModal({
       }
 
       shell.style.maxHeight = "";
+      shell.style.overflowY = "";
       if (upward) {
         shell.style.bottom = `${(vh - r.top + 12).toFixed(1)}px`;
         shell.style.top = "auto";
@@ -974,7 +976,7 @@ export function BookingModal({
             : "auto",
         transformOrigin: initialBox.openUpward ? "50% 100%" : "50% 0%",
       }}
-      className={`voy-popover-glass fixed z-[52] rounded-[24px] overflow-x-hidden overflow-y-auto overscroll-contain text-white transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      className={`voy-popover-glass fixed z-[52] rounded-[24px] overflow-hidden overscroll-contain text-white transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         open
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto visible"
           : `opacity-0 ${
