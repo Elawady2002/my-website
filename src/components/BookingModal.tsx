@@ -7,6 +7,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Mail,
+  MessageSquare,
+  User,
 } from "lucide-react";
 import { siteConfig } from "@/data/site";
 import {
@@ -152,6 +155,9 @@ function BookingPopoverBody({
     null
   );
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadAvailability = (signal?: AbortSignal) => {
     const reqNowMs = Date.now();
@@ -311,11 +317,13 @@ function BookingPopoverBody({
     if (cleanName.length < 2) {
       playBookingError();
       setSubmitError("Enter your name");
+      nameInputRef.current?.focus();
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       playBookingError();
       setSubmitError("Enter a valid email");
+      emailInputRef.current?.focus();
       return;
     }
 
@@ -435,7 +443,7 @@ function BookingPopoverBody({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-full bg-white hover:bg-white/90 px-4 text-[12px] font-medium text-[#0b0b0b] transition-colors cursor-pointer"
+            className="voy-glass-cta h-9 rounded-full px-5 text-[12px] font-medium text-white cursor-pointer"
           >
             Done
           </button>
@@ -468,44 +476,55 @@ function BookingPopoverBody({
             </span>
           </button>
 
-          <span className="text-[12px] text-white/45">
+          <span className="rounded-full bg-white/[0.06] border border-white/[0.09] px-2.5 py-0.5 text-[11px] text-white/65">
             {duration === 60 ? "1 hr" : `${duration} min`}
           </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-2.5">
-          <input
-            type="text"
-            required
-            minLength={2}
-            maxLength={80}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name"
-            aria-label="Your name"
-            className="h-10 w-full rounded-[11px] bg-white/[0.045] border border-white/[0.085] px-3.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/28 focus:bg-white/[0.07] focus:outline-none transition-colors"
-          />
+        <form onSubmit={handleSubmit} noValidate className="p-4 space-y-2.5">
+          <div className="voy-glass-input rounded-[12px] h-[42px] px-3.5 flex items-center gap-2.5">
+            <User className="h-3.5 w-3.5 shrink-0 text-white/38" />
+            <input
+              ref={nameInputRef}
+              type="text"
+              required
+              minLength={2}
+              maxLength={80}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              aria-label="Your name"
+              className="w-full bg-transparent text-[13px] text-white placeholder:text-white/32 focus:outline-none"
+            />
+          </div>
 
-          <input
-            type="email"
-            required
-            maxLength={120}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            aria-label="Your email"
-            className="h-10 w-full rounded-[11px] bg-white/[0.045] border border-white/[0.085] px-3.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/28 focus:bg-white/[0.07] focus:outline-none transition-colors"
-          />
+          <div className="voy-glass-input rounded-[12px] h-[42px] px-3.5 flex items-center gap-2.5">
+            <Mail className="h-3.5 w-3.5 shrink-0 text-white/38" />
+            <input
+              ref={emailInputRef}
+              type="email"
+              required
+              maxLength={120}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address"
+              aria-label="Your email"
+              className="w-full bg-transparent text-[13px] text-white placeholder:text-white/32 focus:outline-none"
+            />
+          </div>
 
-          <input
-            type="text"
-            maxLength={600}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Note (optional)"
-            aria-label="Optional note"
-            className="h-10 w-full rounded-[11px] bg-white/[0.045] border border-white/[0.085] px-3.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/28 focus:bg-white/[0.07] focus:outline-none transition-colors"
-          />
+          <div className="voy-glass-input rounded-[12px] px-3.5 py-2.5 flex items-start gap-2.5">
+            <MessageSquare className="mt-1 h-3.5 w-3.5 shrink-0 text-white/38" />
+            <textarea
+              rows={2}
+              maxLength={600}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Note (optional)"
+              aria-label="Optional note"
+              className="w-full resize-none bg-transparent text-[13px] leading-[1.45] text-white placeholder:text-white/32 focus:outline-none"
+            />
+          </div>
 
           {submitError ? (
             <p className="px-0.5 text-[11.5px] text-[#ff9482]">
@@ -516,7 +535,7 @@ function BookingPopoverBody({
           <button
             type="submit"
             disabled={submitting}
-            className="h-10 w-full rounded-[11px] bg-white hover:bg-white/90 text-[#0b0b0b] text-[13px] font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            className="voy-glass-cta h-[42px] w-full rounded-[12px] text-[13px] font-medium tracking-[-0.01em] text-white disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
           >
             {submitting ? (
               <>
@@ -636,7 +655,7 @@ function BookingPopoverBody({
                     className={`h-[38px] rounded-[11px] border text-[12px] tabular-nums transition-all duration-150 ${
                       isBooked
                         ? "border-white/[0.03] text-white/18 cursor-not-allowed"
-                        : "bg-white/[0.04] hover:bg-white/[0.14] border-white/[0.075] hover:border-white/[0.24] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] text-white/85 hover:text-white cursor-pointer"
+                        : "bg-white/[0.04] hover:bg-white/[0.14] border-white/[0.075] hover:border-white/[0.24] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] text-white/85 hover:text-white cursor-pointer"
                     }`}
                   >
                     {slot.label12h}
@@ -820,7 +839,7 @@ export function BookingModal({
             : "auto",
         transformOrigin: initialBox.openUpward ? "50% 100%" : "50% 0%",
       }}
-      className={`fixed z-[52] transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      className={`voy-popover-glass fixed z-[52] rounded-[24px] overflow-hidden text-white transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         open
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto visible"
           : `opacity-0 ${
@@ -828,14 +847,12 @@ export function BookingModal({
             } scale-[0.96] pointer-events-none invisible`
       }`}
     >
-      <div className="voy-popover-glass rounded-[24px] overflow-hidden text-white">
-        <BookingPopoverBody
-          key={sessionKey}
-          isActive={open}
-          openedAtMs={openedAtMs}
-          onClose={onClose}
-        />
-      </div>
+      <BookingPopoverBody
+        key={sessionKey}
+        isActive={open}
+        openedAtMs={openedAtMs}
+        onClose={onClose}
+      />
     </div>
   );
 }

@@ -395,18 +395,89 @@ html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
 }
 
 .voy-popover-glass {
+  background:
+    radial-gradient(
+      125% 95% at 14% 0%,
+      rgba(255, 255, 255, 0.095) 0%,
+      rgba(255, 255, 255, 0) 56%
+    ),
+    radial-gradient(
+      95% 85% at 88% 100%,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0) 55%
+    ),
+    linear-gradient(
+      168deg,
+      rgba(28, 28, 32, 0.84) 0%,
+      rgba(16, 16, 19, 0.9) 54%,
+      rgba(11, 11, 13, 0.93) 100%
+    );
+  backdrop-filter: blur(48px) saturate(180%);
+  -webkit-backdrop-filter: blur(48px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 28px 68px rgba(0, 0, 0, 0.76),
+    0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.voy-glass-input {
   background: linear-gradient(
     180deg,
-    rgba(22, 22, 24, 0.78) 0%,
-    rgba(11, 11, 13, 0.88) 100%
+    rgba(255, 255, 255, 0.038) 0%,
+    rgba(255, 255, 255, 0.062) 100%
   );
-  backdrop-filter: blur(52px) saturate(180%);
-  -webkit-backdrop-filter: blur(52px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.095);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.045),
-    0 28px 68px rgba(0, 0, 0, 0.75);
+    inset 0 1px 2px rgba(0, 0, 0, 0.38),
+    0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.voy-glass-input:focus-within {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.065) 0%,
+    rgba(255, 255, 255, 0.095) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+
+.voy-glass-cta {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    0 6px 18px rgba(0, 0, 0, 0.35);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.voy-glass-cta:hover:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.26) 0%,
+    rgba(255, 255, 255, 0.15) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    0 8px 22px rgba(0, 0, 0, 0.42);
 }
 
 #header:not([data-in-view="true"]) [data-hero-star] {
