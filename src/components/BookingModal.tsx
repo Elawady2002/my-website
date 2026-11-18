@@ -575,7 +575,7 @@ function BookingPopoverBody({
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
               aria-label="Your name"
-              className="w-full bg-transparent text-[13px] text-white placeholder:text-white/32 focus:outline-none"
+              className="w-full bg-transparent text-[16px] sm:text-[13px] text-white placeholder:text-white/32 focus:outline-none"
             />
           </div>
 
@@ -590,7 +590,7 @@ function BookingPopoverBody({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
               aria-label="Your email"
-              className="w-full bg-transparent text-[13px] text-white placeholder:text-white/32 focus:outline-none"
+              className="w-full bg-transparent text-[16px] sm:text-[13px] text-white placeholder:text-white/32 focus:outline-none"
             />
           </div>
 
@@ -603,7 +603,7 @@ function BookingPopoverBody({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Note (optional)"
               aria-label="Optional note"
-              className="w-full resize-none bg-transparent text-[13px] leading-[1.45] text-white placeholder:text-white/32 focus:outline-none"
+              className="w-full resize-none bg-transparent text-[16px] sm:text-[13px] leading-[1.45] text-white placeholder:text-white/32 focus:outline-none"
             />
           </div>
 
@@ -875,6 +875,10 @@ export function BookingModal({
   useEffect(() => {
     if (!open) return;
 
+    const focusTimers: number[] = [];
+    const shellEl = shellRef.current;
+    const vv = window.visualViewport;
+
     const syncPosition = () => {
       const anchor = anchorRef.current;
       const shell = shellRef.current;
@@ -889,6 +893,20 @@ export function BookingModal({
 
       shell.style.left = `${left.toFixed(1)}px`;
       shell.style.width = `${width.toFixed(1)}px`;
+
+      const keyboardOpen = Boolean(!isSmUp && vv && vh - vv.height > 110);
+      if (keyboardOpen && vv) {
+        const maxH = Math.max(210, vv.height - 16);
+        shell.style.maxHeight = `${maxH.toFixed(0)}px`;
+        const cardH = Math.min(shell.offsetHeight || 300, maxH);
+        const top = vv.offsetTop + Math.max(8, (vv.height - cardH) * 0.5);
+        shell.style.top = `${top.toFixed(1)}px`;
+        shell.style.bottom = "auto";
+        shell.style.transformOrigin = "50% 50%";
+        return;
+      }
+
+      shell.style.maxHeight = "";
       if (upward) {
         shell.style.bottom = `${(vh - r.top + 12).toFixed(1)}px`;
         shell.style.top = "auto";
@@ -900,12 +918,36 @@ export function BookingModal({
       }
     };
 
+    const scheduleKeyboardSync = () => {
+      syncPosition();
+      focusTimers.push(
+        window.setTimeout(syncPosition, 140),
+        window.setTimeout(syncPosition, 320)
+      );
+    };
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (shellEl) {
+      resizeObserver = new ResizeObserver(syncPosition);
+      resizeObserver.observe(shellEl);
+      shellEl.addEventListener("focusin", scheduleKeyboardSync);
+      shellEl.addEventListener("focusout", scheduleKeyboardSync);
+    }
+
     syncPosition();
     window.addEventListener("scroll", syncPosition, { passive: true });
     window.addEventListener("resize", syncPosition);
+    vv?.addEventListener("resize", syncPosition);
+    vv?.addEventListener("scroll", syncPosition);
     return () => {
       window.removeEventListener("scroll", syncPosition);
       window.removeEventListener("resize", syncPosition);
+      vv?.removeEventListener("resize", syncPosition);
+      vv?.removeEventListener("scroll", syncPosition);
+      shellEl?.removeEventListener("focusin", scheduleKeyboardSync);
+      shellEl?.removeEventListener("focusout", scheduleKeyboardSync);
+      resizeObserver?.disconnect();
+      focusTimers.forEach((t) => window.clearTimeout(t));
     };
   }, [open, anchorRef]);
 
@@ -932,7 +974,7 @@ export function BookingModal({
             : "auto",
         transformOrigin: initialBox.openUpward ? "50% 100%" : "50% 0%",
       }}
-      className={`voy-popover-glass fixed z-[52] rounded-[24px] overflow-hidden text-white transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      className={`voy-popover-glass fixed z-[52] rounded-[24px] overflow-x-hidden overflow-y-auto overscroll-contain text-white transition-[opacity,transform,visibility] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         open
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto visible"
           : `opacity-0 ${

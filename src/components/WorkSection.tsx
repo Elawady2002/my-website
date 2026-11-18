@@ -224,7 +224,6 @@ export function WorkSection() {
       wheelSnapTimerRef.current = null;
     }
     isDraggingRef.current = true;
-    setIsDraggingUI(true);
     startXRef.current = e.clientX;
     lastXRef.current = e.clientX;
     lastTimeRef.current = performance.now();
@@ -268,6 +267,9 @@ export function WorkSection() {
     }
 
     if (!isDraggingRef.current) return;
+    if (Math.abs(e.clientX - startXRef.current) > 10) {
+      setIsDraggingUI((prev) => (prev ? prev : true));
+    }
     const now = performance.now();
     const dt = Math.max(now - lastTimeRef.current, 1);
     const dx = e.clientX - lastXRef.current;
@@ -384,7 +386,7 @@ export function WorkSection() {
           if (e.key === "ArrowLeft") stepBy(-1);
         }}
         tabIndex={0}
-        className="relative w-full h-[100svh] min-h-[820px] max-h-[1020px] overflow-hidden select-none cursor-grab active:cursor-grabbing focus:outline-none"
+        className="relative w-full h-[100svh] min-h-[560px] sm:min-h-[820px] max-h-[1020px] overflow-hidden select-none cursor-grab active:cursor-grabbing focus:outline-none"
       >
         {/* WebGL Three.js Canvas Mount (rendered before caption in DOM for clean layer order) */}
         {webglReady ? (
@@ -414,7 +416,7 @@ export function WorkSection() {
         <div
           ref={captionRef}
           aria-live="polite"
-          className="pointer-events-none absolute top-[84px] sm:top-[102px] left-1/2 -translate-x-1/2 z-20 text-center w-[90vw] max-w-[760px]"
+          className="pointer-events-none absolute top-[96px] sm:top-[102px] left-1/2 -translate-x-1/2 z-20 text-center w-[90vw] max-w-[760px]"
         >
           <div ref={captionContentRef} className="will-change-transform">
             <h3 className="text-[28px] sm:text-[46px] leading-[1.0] tracking-[-0.02em] font-normal uppercase text-[#e7e1d7]">
@@ -431,34 +433,41 @@ export function WorkSection() {
           <div
             data-project-links=""
             data-visible={showLinksDock ? "true" : "false"}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            onPointerEnter={() => setIsDockHovered(true)}
-            onPointerLeave={() => setIsDockHovered(false)}
-            className={`absolute bottom-[70px] sm:bottom-[84px] left-1/2 -translate-x-1/2 z-30 max-w-[92vw] transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-              isDraggingUI
-                ? "opacity-0 translate-y-4 scale-[0.96] pointer-events-none"
-                : showLinksDock
-                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                : "opacity-100 translate-y-0 scale-100 pointer-events-auto md:opacity-0 md:translate-y-4 md:scale-[0.96] md:pointer-events-none"
-            }`}
+            className="pointer-events-none absolute inset-x-0 bottom-[82px] sm:bottom-[84px] z-30 flex justify-center px-4"
           >
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              {projectLinks.map((link, idx) => (
-                <a
-                  key={`${activeProject.id}-${link.type}`}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    transitionDelay: showLinksDock ? `${idx * 45}ms` : "0ms",
-                  }}
-                  className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
-                >
-                  <ProjectLinkIcon type={link.type} />
-                  <span>{link.label ?? LINK_LABELS[link.type]}</span>
-                </a>
-              ))}
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onPointerEnter={() => setIsDockHovered(true)}
+              onPointerLeave={() => setIsDockHovered(false)}
+              className={`max-w-[92vw] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                isDraggingUI
+                  ? "opacity-55 scale-[0.98] pointer-events-none md:opacity-0 md:translate-y-4 md:scale-[0.96]"
+                  : showLinksDock
+                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                  : "opacity-100 translate-y-0 scale-100 pointer-events-auto md:opacity-0 md:translate-y-4 md:scale-[0.96] md:pointer-events-none"
+              }`}
+            >
+              <div
+                key={activeProject.id}
+                className="booking-step-in flex flex-wrap items-center justify-center gap-2 sm:gap-2.5"
+              >
+                {projectLinks.map((link, idx) => (
+                  <a
+                    key={`${activeProject.id}-${link.type}`}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      transitionDelay: showLinksDock ? `${idx * 45}ms` : "0ms",
+                    }}
+                    className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
+                  >
+                    <ProjectLinkIcon type={link.type} />
+                    <span>{link.label ?? LINK_LABELS[link.type]}</span>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         ) : null}
@@ -466,7 +475,7 @@ export function WorkSection() {
         {/* Bottom-Center Clean Counter */}
         <div
           data-work-counter=""
-          className="pointer-events-none absolute bottom-[28px] sm:bottom-[34px] left-1/2 -translate-x-1/2 z-20 text-[13px] sm:text-[14px] font-normal tabular-nums tracking-[0.04em] text-[#e7e1d7]"
+          className="pointer-events-none absolute bottom-[36px] sm:bottom-[34px] left-1/2 -translate-x-1/2 z-20 text-[13px] sm:text-[14px] font-normal tabular-nums tracking-[0.04em] text-[#e7e1d7]"
         >
           {counterLabel}
         </div>
