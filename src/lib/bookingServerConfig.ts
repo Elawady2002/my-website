@@ -1,8 +1,19 @@
-const DEFAULT_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwfxxQuDBzjSIjOQnKbMHuLrcXwgCCsBunTuax0pmOGUqosXXdXxMtJlCvBOCDeDUR0/exec";
-
 export function getAppsScriptUrl(): string {
-  return (process.env.GOOGLE_APPS_SCRIPT_URL || DEFAULT_APPS_SCRIPT_URL).trim();
+  const raw = (process.env.GOOGLE_APPS_SCRIPT_URL || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "script.google.com" &&
+      parsed.pathname.startsWith("/macros/s/")
+    ) {
+      return parsed.toString();
+    }
+    return "";
+  } catch {
+    return "";
+  }
 }
 
 export function getWebhookSecret(): string {

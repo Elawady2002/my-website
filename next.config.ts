@@ -1,27 +1,33 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
+const allowVercelLive = isDev || process.env.VERCEL_ENV === "preview";
+const isVercelProd = process.env.VERCEL_ENV === "production";
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://vercel.live`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${
+    allowVercelLive ? " https://vercel.live" : ""
+  }`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://vercel.live",
+  `img-src 'self' data: blob:${allowVercelLive ? " https://vercel.live" : ""}`,
   "media-src 'self' blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://vercel.live",
+  `connect-src 'self'${allowVercelLive ? " https://vercel.live" : ""}`,
   "worker-src 'self' blob:",
-  "frame-src https://vercel.live",
+  `frame-src ${allowVercelLive ? "https://vercel.live" : "'none'"}`,
   "object-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  ...(isVercelProd ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const SECURITY_HEADERS = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",

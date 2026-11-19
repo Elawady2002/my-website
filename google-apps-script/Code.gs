@@ -2,22 +2,66 @@
  * Google Apps Script Web App — Abdullah Elawady Studio Booking Bridge
  *
  * Setup (2 minutes, 100% free):
- * 1. Open https://script.google.com signed in as abdalla.awadi@gmail.com
+ * 1. Open https://script.google.com signed in as your studio Google account
  * 2. Create a "New project" and paste this entire file into Code.gs
  * 3. Left sidebar -> Services (+) -> select "Google Calendar API" -> Add
- * 4. Click Deploy -> New deployment -> Type: Web app
- *    - Execute as: Me (abdalla.awadi@gmail.com)
+ * 4. Project Settings -> Script Properties -> Add `BOOKING_SECRET` (required, 32-byte random secret)
+ * 5. Click Deploy -> New deployment -> Type: Web app
+ *    - Execute as: Me (your studio Google account)
  *    - Who has access: Anyone
- * 5. Authorize permissions and copy the resulting /exec Web App URL
+ * 6. Authorize permissions and store the /exec Web App URL + secret in Vercel Env Vars
  */
 
 var BOOKING_TIMEZONE = "Africa/Cairo";
 var HOST_NAME = "Abdullah Elawady";
 var ALLOWED_DURATIONS = { 30: true, 45: true, 60: true };
+var MAX_PAYLOAD_CHARS = 4096;
+var MAX_ADVANCE_MS = 47 * 86400000;
+var MIN_LEAD_MS = 10 * 60000;
+var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Optional: set a shared secret via Script Properties (BOOKING_SECRET) if desired.
 function getConfiguredSecret_() {
-  return PropertiesService.getScriptProperties().getProperty("BOOKING_SECRET") || "";
+  return (
+    PropertiesService.getScriptProperties().getProperty("BOOKING_SECRET") || ""
+  ).trim();
+}
+
+function timingSafeEqual_(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  var lenA = a.length;
+  var lenB = b.length;
+  var maxLen = Math.max(lenA, lenB);
+  var diff = lenA ^ lenB;
+  for (var i = 0; i < maxLen; i++) {
+    var codeA = i < lenA ? a.charCodeAt(i) : 0;
+    var codeB = i < lenB ? b.charCodeAt(i) : 0;
+    diff |= codeA ^ codeB;
+  }
+  return diff === 0;
+}
+
+function verifySecret_(provided) {
+  var expected = getConfiguredSecret_();
+  if (!expected || typeof provided !== "string" || !provided) {
+    return false;
+  }
+  return timingSafeEqual_(provided, expected);
+}
+
+function sanitizeSingleLine_(value) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/[\u0000-\u001F\u007F<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sanitizeNotes_(value) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>]/g, "")
+    .trim();
 }
 
 function jsonOutput_(payload) {
@@ -26,22 +70,40 @@ function jsonOutput_(payload) {
   );
 }
 
-function doGet(e) {
+function doGet() {
+  return jsonOutput_({
+    ok: false,
+    code: "METHOD_NOT_ALLOWED",
+    error: "Method not allowed.",
+  });
+}
+
+function handleAvailability_(body) {
   try {
-    var params = (e && e.parameter) || {};
-    var expectedSecret = getConfiguredSecret_();
-    if (expectedSecret && params.secret !== expectedSecret) {
-      return jsonOutput_({ ok: false, code: "UNAUTHORIZED", error: "Unauthorized" });
+    var nowMs = Date.now();
+    var minAllowed = nowMs - 3600000;
+    var maxAllowed = nowMs + MAX_ADVANCE_MS;
+
+    var startMs = body.timeMin ? new Date(String(body.timeMin)).getTime() : minAllowed;
+    var endMs = body.timeMax ? new Date(String(body.timeMax)).getTime() : maxAllowed;
+
+    if (isNaN(startMs) || isNaN(endMs)) {
+      return jsonOutput_({
+        ok: false,
+        code: "INVALID_RANGE",
+        error: "Invalid availability range.",
+      });
     }
 
-    var now = new Date();
-    var timeMin = params.timeMin || new Date(now.getTime() - 3600000).toISOString();
-    var timeMax =
-      params.timeMax || new Date(now.getTime() + 47 * 86400000).toISOString();
+    startMs = Math.max(minAllowed, startMs);
+    endMs = Math.min(maxAllowed, endMs);
+    if (endMs <= startMs) {
+      return jsonOutput_({ ok: true, busy: [] });
+    }
 
     var freebusy = Calendar.Freebusy.query({
-      timeMin: timeMin,
-      timeMax: timeMax,
+      timeMin: new Date(startMs).toISOString(),
+      timeMax: new Date(endMs).toISOString(),
       timeZone: BOOKING_TIMEZONE,
       items: [{ id: "primary" }],
     });
@@ -60,15 +122,59 @@ function doGet(e) {
       }),
     });
   } catch (err) {
+    console.error("Availability error:", err);
     return jsonOutput_({
       ok: false,
       code: "FREEBUSY_ERROR",
-      error: String((err && err.message) || err),
+      error: "Calendar request failed.",
     });
   }
 }
 
-function doPost(e) {
+function handleBook_(body) {
+  var name = sanitizeSingleLine_(body.name);
+  var email = sanitizeSingleLine_(body.email);
+  var notes = sanitizeNotes_(body.notes);
+  var startIso = typeof body.startIso === "string" ? body.startIso.trim() : "";
+  var endIso = typeof body.endIso === "string" ? body.endIso.trim() : "";
+  var durationMinutes = Number(body.durationMinutes);
+  var visitorTimeZone =
+    sanitizeSingleLine_(body.visitorTimeZone) || BOOKING_TIMEZONE;
+
+  if (
+    name.length < 2 ||
+    name.length > 80 ||
+    !EMAIL_RE.test(email) ||
+    email.length > 120 ||
+    notes.length > 600 ||
+    !startIso ||
+    !endIso ||
+    !ALLOWED_DURATIONS[durationMinutes]
+  ) {
+    return jsonOutput_({
+      ok: false,
+      code: "INVALID_PAYLOAD",
+      error: "Missing or invalid booking fields.",
+    });
+  }
+
+  var nowMs = Date.now();
+  var startMs = new Date(startIso).getTime();
+  var endMs = new Date(endIso).getTime();
+  if (
+    isNaN(startMs) ||
+    isNaN(endMs) ||
+    endMs - startMs !== durationMinutes * 60000 ||
+    startMs < nowMs + MIN_LEAD_MS ||
+    startMs > nowMs + MAX_ADVANCE_MS
+  ) {
+    return jsonOutput_({
+      ok: false,
+      code: "INVALID_TIME",
+      error: "Invalid meeting start or end timestamp.",
+    });
+  }
+
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -81,44 +187,6 @@ function doPost(e) {
   }
 
   try {
-    var raw = (e && e.postData && e.postData.contents) || "{}";
-    var body = JSON.parse(raw);
-
-    var expectedSecret = getConfiguredSecret_();
-    if (expectedSecret && body.secret !== expectedSecret) {
-      return jsonOutput_({ ok: false, code: "UNAUTHORIZED", error: "Unauthorized" });
-    }
-
-    var name = String(body.name || "").trim();
-    var email = String(body.email || "").trim();
-    var notes = String(body.notes || "").trim();
-    var startIso = String(body.startIso || "").trim();
-    var endIso = String(body.endIso || "").trim();
-    var durationMinutes = Number(body.durationMinutes);
-    var visitorTimeZone = String(body.visitorTimeZone || BOOKING_TIMEZONE).trim();
-
-    if (!name || !email || !startIso || !endIso || !ALLOWED_DURATIONS[durationMinutes]) {
-      return jsonOutput_({
-        ok: false,
-        code: "INVALID_PAYLOAD",
-        error: "Missing or invalid booking fields.",
-      });
-    }
-
-    var startMs = new Date(startIso).getTime();
-    var endMs = new Date(endIso).getTime();
-    if (
-      isNaN(startMs) ||
-      isNaN(endMs) ||
-      endMs - startMs !== durationMinutes * 60000
-    ) {
-      return jsonOutput_({
-        ok: false,
-        code: "INVALID_TIME",
-        error: "Invalid meeting start or end timestamp.",
-      });
-    }
-
     // Re-check Google Calendar inside the mutex lock to guarantee zero double-bookings
     var freebusy = Calendar.Freebusy.query({
       timeMin: new Date(startMs).toISOString(),
@@ -219,12 +287,55 @@ function doPost(e) {
       endIso: new Date(endMs).toISOString(),
     });
   } catch (err) {
+    console.error("Booking error:", err);
     return jsonOutput_({
       ok: false,
       code: "BOOKING_ERROR",
-      error: String((err && err.message) || err),
+      error: "Calendar request failed.",
     });
   } finally {
     lock.releaseLock();
+  }
+}
+
+function doPost(e) {
+  try {
+    var raw = (e && e.postData && e.postData.contents) || "";
+    if (!raw || raw.length > MAX_PAYLOAD_CHARS) {
+      return jsonOutput_({
+        ok: false,
+        code: "PAYLOAD_TOO_LARGE",
+        error: "Invalid request payload size.",
+      });
+    }
+
+    var body = JSON.parse(raw);
+    if (!body || typeof body !== "object" || !verifySecret_(body.secret)) {
+      return jsonOutput_({
+        ok: false,
+        code: "UNAUTHORIZED",
+        error: "Unauthorized.",
+      });
+    }
+
+    if (body.action === "availability") {
+      return handleAvailability_(body);
+    }
+    if (body.action === "book") {
+      return handleBook_(body);
+    }
+
+    return jsonOutput_({
+      ok: false,
+      code: "INVALID_ACTION",
+      error: "Invalid request.",
+    });
+  } catch (err) {
+    console.error("Dispatch error:", err);
+    return jsonOutput_({
+      ok: false,
+      code: "BOOKING_ERROR",
+      error: "Calendar request failed.",
+    });
   }
 }

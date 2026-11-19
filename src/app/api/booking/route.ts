@@ -1,11 +1,16 @@
 import type { NextRequest } from "next/server";
 import { siteConfig } from "@/data/site";
 import { getAppsScriptUrl, getWebhookSecret } from "@/lib/bookingServerConfig";
-import { getTimeZoneWallParts } from "@/lib/bookingSlots";
+import {
+  addDaysToCalendarDate,
+  getTimeZoneWallParts,
+  wallTimeToUtcMs,
+} from "@/lib/bookingSlots";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TZ_RE = /^[A-Za-z0-9_+-]+(\/[A-Za-z0-9_+-]+)*$/;
 const ALLOWED_DURATIONS = new Set<number>(siteConfig.booking.durations);
+const MAX_POST_BYTES = 4096;
 const SEC_HEADERS = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
@@ -29,12 +34,19 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function getClientIp(request: NextRequest): string {
+  const vercelFwd = request.headers.get("x-vercel-forwarded-for");
+  if (vercelFwd) {
+    const first = vercelFwd.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  return "unknown";
 }
 
 function consumeRateLimit(
@@ -70,7 +82,7 @@ function isSameOriginPost(request: NextRequest): boolean {
   }
 
   const origin = request.headers.get("origin");
-  if (!origin) return true;
+  if (!origin) return false;
 
   const expectedHost = (
     request.headers.get("x-forwarded-host") ||
@@ -81,18 +93,95 @@ function isSameOriginPost(request: NextRequest): boolean {
     ?.trim()
     .toLowerCase();
 
+  if (!expectedHost) return false;
+
   try {
-    return new URL(origin).host.toLowerCase() === expectedHost;
+    const parsed = new URL(origin);
+    const isLocalHost =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const protoOk =
+      parsed.protocol === "https:" ||
+      (parsed.protocol === "http:" &&
+        (isLocalHost || process.env.NODE_ENV !== "production"));
+    return protoOk && parsed.host.toLowerCase() === expectedHost;
   } catch {
     return false;
   }
 }
 
-function sanitizeText(value: unknown): string {
+function sanitizeSingleLine(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
+    .replace(/[\u0000-\u001F\u007F<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sanitizeNotes(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\r\n?/g, "\n")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>]/g, "")
     .trim();
+}
+
+function clipBusyToWorkingHours(
+  busy: ReadonlyArray<{ start: string; end: string }>,
+  rangeStartMs: number,
+  rangeEndMs: number
+): Array<{ start: string; end: string }> {
+  const { startHour, endHour, timezoneIana } = siteConfig.booking;
+  const clipped: Array<{ start: string; end: string }> = [];
+
+  for (const item of busy) {
+    const bStart = Date.parse(item.start);
+    const bEnd = Date.parse(item.end);
+    if (!Number.isFinite(bStart) || !Number.isFinite(bEnd) || bEnd <= bStart) {
+      continue;
+    }
+    const winStart = Math.max(bStart, rangeStartMs);
+    const winEnd = Math.min(bEnd, rangeEndMs);
+    if (winEnd <= winStart) continue;
+
+    const startDay = getTimeZoneWallParts(winStart, timezoneIana);
+    let curDay = {
+      year: startDay.year,
+      month: startDay.month,
+      day: startDay.day,
+    };
+
+    for (let d = 0; d < 62; d += 1) {
+      const workStartMs = wallTimeToUtcMs(
+        curDay.year,
+        curDay.month,
+        curDay.day,
+        startHour,
+        0,
+        timezoneIana
+      );
+      const workEndMs = wallTimeToUtcMs(
+        curDay.year,
+        curDay.month,
+        curDay.day,
+        endHour,
+        0,
+        timezoneIana
+      );
+      if (workStartMs >= winEnd) break;
+
+      const segStart = Math.max(winStart, workStartMs);
+      const segEnd = Math.min(winEnd, workEndMs);
+      if (segEnd > segStart) {
+        clipped.push({
+          start: new Date(segStart).toISOString(),
+          end: new Date(segEnd).toISOString(),
+        });
+      }
+      curDay = addDaysToCalendarDate(curDay.year, curDay.month, curDay.day, 1);
+    }
+  }
+
+  return clipped;
 }
 
 export async function GET(request: NextRequest) {
@@ -108,10 +197,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const maxAllowedToMs =
+    nowMs + (siteConfig.booking.maxAdvanceDays + 2) * 86_400_000;
   const defaultFromIso = new Date(nowMs - 3_600_000).toISOString();
-  const defaultToIso = new Date(
-    nowMs + (siteConfig.booking.maxAdvanceDays + 2) * 86_400_000
-  ).toISOString();
+  const defaultToIso = new Date(maxAllowedToMs).toISOString();
 
   const rawFrom = searchParams.get("from");
   const rawTo = searchParams.get("to");
@@ -126,10 +215,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clampedToMs = Math.min(toMs, fromMs + 62 * 86_400_000);
+  const clampedFromMs = Math.max(fromMs, nowMs - 86_400_000);
+  const clampedToMs = Math.min(
+    toMs,
+    clampedFromMs + 62 * 86_400_000,
+    maxAllowedToMs
+  );
+  if (clampedToMs <= clampedFromMs) {
+    return jsonResponse({ ok: true, configured: true, busy: [] });
+  }
 
   const scriptUrl = getAppsScriptUrl();
-  if (!scriptUrl) {
+  const secret = getWebhookSecret();
+  if (!scriptUrl || !secret) {
     return jsonResponse({ ok: true, configured: false, busy: [] });
   }
 
@@ -137,35 +235,38 @@ export async function GET(request: NextRequest) {
   if (
     cached &&
     nowMs - cached.fetchedAtMs < AVAILABILITY_CACHE_TTL_MS &&
-    cached.fromMs <= fromMs &&
+    cached.fromMs <= clampedFromMs &&
     cached.toMs >= clampedToMs
   ) {
-    return jsonResponse({ ok: true, configured: true, busy: cached.busy });
+    return jsonResponse({
+      ok: true,
+      configured: true,
+      busy: clipBusyToWorkingHours(cached.busy, clampedFromMs, clampedToMs),
+    });
   }
 
   // Pad upstream end by 60s so slightly shifted client timestamps within the 15s TTL hit cache
   const upstreamToMs = Math.min(
-    fromMs + 62 * 86_400_000,
+    maxAllowedToMs,
+    clampedFromMs + 62 * 86_400_000,
     clampedToMs + 60_000
   );
-  const fromIso = new Date(fromMs).toISOString();
+  const fromIso = new Date(clampedFromMs).toISOString();
   const toIso = new Date(upstreamToMs).toISOString();
 
   try {
-    const targetUrl = new URL(scriptUrl);
-    targetUrl.searchParams.set("action", "availability");
-    targetUrl.searchParams.set("timeMin", fromIso);
-    targetUrl.searchParams.set("timeMax", toIso);
-    const secret = getWebhookSecret();
-    if (secret) {
-      targetUrl.searchParams.set("secret", secret);
-    }
-
-    const upstream = await fetch(targetUrl.toString(), {
-      method: "GET",
+    const upstream = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       cache: "no-store",
       redirect: "follow",
       signal: AbortSignal.timeout(12_000),
+      body: JSON.stringify({
+        action: "availability",
+        secret,
+        timeMin: fromIso,
+        timeMax: toIso,
+      }),
     });
 
     if (!upstream.ok) {
@@ -182,7 +283,6 @@ export async function GET(request: NextRequest) {
     const data = (await upstream.json()) as {
       ok?: boolean;
       busy?: Array<{ start?: string; end?: string }>;
-      error?: string;
     };
 
     if (data.ok === false) {
@@ -190,30 +290,40 @@ export async function GET(request: NextRequest) {
         {
           ok: false,
           configured: true,
-          error: data.error || "Calendar bridge returned an error.",
+          error: "Failed to read calendar availability.",
         },
         502
       );
     }
 
-    const busy = Array.isArray(data.busy)
+    const rawBusy = Array.isArray(data.busy)
       ? data.busy.filter(
           (item): item is { start: string; end: string } =>
             typeof item?.start === "string" && typeof item?.end === "string"
         )
       : [];
 
+    const workingBusy = clipBusyToWorkingHours(
+      rawBusy,
+      clampedFromMs,
+      upstreamToMs
+    );
+
     if (AVAILABILITY_CACHE.size > 16) {
       AVAILABILITY_CACHE.clear();
     }
     AVAILABILITY_CACHE.set(scriptUrl, {
       fetchedAtMs: nowMs,
-      fromMs,
+      fromMs: clampedFromMs,
       toMs: upstreamToMs,
-      busy,
+      busy: workingBusy,
     });
 
-    return jsonResponse({ ok: true, configured: true, busy });
+    return jsonResponse({
+      ok: true,
+      configured: true,
+      busy: clipBusyToWorkingHours(workingBusy, clampedFromMs, clampedToMs),
+    });
   } catch {
     return jsonResponse(
       { ok: false, configured: true, error: "Unable to reach Google Calendar." },
@@ -227,6 +337,30 @@ export async function POST(request: NextRequest) {
     return jsonResponse(
       { ok: false, code: "FORBIDDEN", error: "Invalid request origin." },
       403
+    );
+  }
+
+  const contentType = request.headers.get("content-type")?.toLowerCase() || "";
+  if (!contentType.includes("application/json")) {
+    return jsonResponse(
+      {
+        ok: false,
+        code: "UNSUPPORTED_MEDIA_TYPE",
+        error: "Content-Type must be application/json.",
+      },
+      415
+    );
+  }
+
+  const contentLengthRaw = request.headers.get("content-length");
+  if (contentLengthRaw && Number(contentLengthRaw) > MAX_POST_BYTES) {
+    return jsonResponse(
+      {
+        ok: false,
+        code: "PAYLOAD_TOO_LARGE",
+        error: "Request payload too large.",
+      },
+      413
     );
   }
 
@@ -255,7 +389,25 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    body = (await request.json()) as typeof body;
+    const rawText = await request.text();
+    if (Buffer.byteLength(rawText, "utf8") > MAX_POST_BYTES) {
+      return jsonResponse(
+        {
+          ok: false,
+          code: "PAYLOAD_TOO_LARGE",
+          error: "Request payload too large.",
+        },
+        413
+      );
+    }
+    const parsed = JSON.parse(rawText) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return jsonResponse(
+        { ok: false, code: "INVALID_JSON", error: "Invalid request payload." },
+        400
+      );
+    }
+    body = parsed as typeof body;
   } catch {
     return jsonResponse(
       { ok: false, code: "INVALID_JSON", error: "Invalid request payload." },
@@ -270,9 +422,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const name = sanitizeText(body.name);
-  const email = sanitizeText(body.email);
-  const notes = sanitizeText(body.notes);
+  const name = sanitizeSingleLine(body.name);
+  const email = sanitizeSingleLine(body.email);
+  const notes = sanitizeNotes(body.notes);
   const startIso = typeof body.startIso === "string" ? body.startIso.trim() : "";
   const endIso = typeof body.endIso === "string" ? body.endIso.trim() : "";
   const durationMinutes =
@@ -397,13 +549,14 @@ export async function POST(request: NextRequest) {
   }
 
   const scriptUrl = getAppsScriptUrl();
-  if (!scriptUrl) {
+  const secret = getWebhookSecret();
+  if (!scriptUrl || !secret) {
     return jsonResponse(
       {
         ok: false,
         code: "NOT_CONFIGURED",
         error:
-          "Google Meet calendar bridge is not connected yet. Add GOOGLE_APPS_SCRIPT_URL to activate live bookings.",
+          "Google Meet calendar bridge is not connected yet. Add GOOGLE_APPS_SCRIPT_URL and BOOKING_WEBHOOK_SECRET to activate live bookings.",
       },
       503
     );
@@ -418,7 +571,7 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(12_000),
       body: JSON.stringify({
         action: "book",
-        secret: getWebhookSecret(),
+        secret,
         name,
         email,
         notes,
@@ -432,7 +585,6 @@ export async function POST(request: NextRequest) {
     const data = (await upstream.json()) as {
       ok?: boolean;
       code?: string;
-      error?: string;
       meetLink?: string;
       htmlLink?: string;
       eventId?: string;
@@ -451,13 +603,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (data.code === "LOCK_TIMEOUT") {
+      return jsonResponse(
+        {
+          ok: false,
+          code: "LOCK_TIMEOUT",
+          error:
+            "Server is busy processing another booking. Please try again.",
+        },
+        503
+      );
+    }
+
     if (!upstream.ok || !data.ok) {
       return jsonResponse(
         {
           ok: false,
-          code: data.code || "UPSTREAM_ERROR",
+          code: "UPSTREAM_ERROR",
           error:
-            data.error ||
             "Could not schedule the Google Meet right now. Please try again.",
         },
         502

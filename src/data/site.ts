@@ -88,7 +88,6 @@ export const siteConfig = {
   },
   booking: {
     hostName: "Abdullah Elawady",
-    hostEmail: "abdalla.awadi@gmail.com",
     timezoneIana: "Africa/Cairo",
     timezoneLabel: "CAI",
     durations: [30, 45, 60] as readonly (30 | 45 | 60)[],
