@@ -14,6 +14,16 @@ const SEC_HEADERS = {
 const RATE_BUCKETS = new Map<string, number[]>();
 const MAX_RATE_KEYS = 2000;
 
+interface AvailabilityCacheEntry {
+  fetchedAtMs: number;
+  fromMs: number;
+  toMs: number;
+  busy: Array<{ start: string; end: string }>;
+}
+
+const AVAILABILITY_CACHE_TTL_MS = 15_000;
+const AVAILABILITY_CACHE = new Map<string, AvailabilityCacheEntry>();
+
 function jsonResponse(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: SEC_HEADERS });
 }
@@ -117,13 +127,29 @@ export async function GET(request: NextRequest) {
   }
 
   const clampedToMs = Math.min(toMs, fromMs + 62 * 86_400_000);
-  const fromIso = new Date(fromMs).toISOString();
-  const toIso = new Date(clampedToMs).toISOString();
 
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) {
     return jsonResponse({ ok: true, configured: false, busy: [] });
   }
+
+  const cached = AVAILABILITY_CACHE.get(scriptUrl);
+  if (
+    cached &&
+    nowMs - cached.fetchedAtMs < AVAILABILITY_CACHE_TTL_MS &&
+    cached.fromMs <= fromMs &&
+    cached.toMs >= clampedToMs
+  ) {
+    return jsonResponse({ ok: true, configured: true, busy: cached.busy });
+  }
+
+  // Pad upstream end by 60s so slightly shifted client timestamps within the 15s TTL hit cache
+  const upstreamToMs = Math.min(
+    fromMs + 62 * 86_400_000,
+    clampedToMs + 60_000
+  );
+  const fromIso = new Date(fromMs).toISOString();
+  const toIso = new Date(upstreamToMs).toISOString();
 
   try {
     const targetUrl = new URL(scriptUrl);
@@ -176,6 +202,16 @@ export async function GET(request: NextRequest) {
             typeof item?.start === "string" && typeof item?.end === "string"
         )
       : [];
+
+    if (AVAILABILITY_CACHE.size > 16) {
+      AVAILABILITY_CACHE.clear();
+    }
+    AVAILABILITY_CACHE.set(scriptUrl, {
+      fetchedAtMs: nowMs,
+      fromMs,
+      toMs: upstreamToMs,
+      busy,
+    });
 
     return jsonResponse({ ok: true, configured: true, busy });
   } catch {
@@ -403,6 +439,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (data.code === "SLOT_TAKEN") {
+      AVAILABILITY_CACHE.delete(scriptUrl);
       return jsonResponse(
         {
           ok: false,
@@ -426,6 +463,8 @@ export async function POST(request: NextRequest) {
         502
       );
     }
+
+    AVAILABILITY_CACHE.delete(scriptUrl);
 
     return jsonResponse({
       ok: true,

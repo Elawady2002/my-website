@@ -9,6 +9,7 @@ import { formatCairoClock12h } from "@/lib/bookingSlots";
 export function InfoSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const clockRef = useRef<HTMLSpanElement | null>(null);
+  const ctaRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -37,12 +38,26 @@ export function InfoSection() {
 
     formatClock();
     const timer = window.setInterval(formatClock, 10000);
-    return () => window.clearInterval(timer);
+    const invalidateCtaRect = () => {
+      ctaRectRef.current = null;
+    };
+    window.addEventListener("scroll", invalidateCtaRect, { passive: true });
+    window.addEventListener("resize", invalidateCtaRect, { passive: true });
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("scroll", invalidateCtaRect);
+      window.removeEventListener("resize", invalidateCtaRect);
+    };
   }, []);
+
+  const handleCtaEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    ctaRectRef.current = e.currentTarget.getBoundingClientRect();
+  };
 
   const handleCtaMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     const el = e.currentTarget;
-    const rect = el.getBoundingClientRect();
+    const rect = ctaRectRef.current || el.getBoundingClientRect();
+    ctaRectRef.current = rect;
     const dx = e.clientX - (rect.left + rect.width / 2);
     const dy = e.clientY - (rect.top + rect.height / 2);
     el.style.transform = `translate3d(${(dx * 0.16).toFixed(1)}px, ${(
@@ -51,6 +66,7 @@ export function InfoSection() {
   };
 
   const handleCtaLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    ctaRectRef.current = null;
     e.currentTarget.style.transform = "translate3d(0px, 0px, 0)";
   };
 
@@ -125,6 +141,7 @@ export function InfoSection() {
           <a
             href={siteConfig.infoSection.ctaHref}
             onClick={handleCtaClick}
+            onMouseEnter={handleCtaEnter}
             onMouseMove={handleCtaMove}
             onMouseLeave={handleCtaLeave}
             className="group relative self-start inline-flex h-[50px] items-center gap-3 overflow-hidden rounded-full border border-[#e7e1d7]/25 bg-white/[0.04] px-7 text-[13px] font-normal uppercase tracking-[0.06em] text-[#e7e1d7] backdrop-blur-xs transition-transform duration-200 ease-out"

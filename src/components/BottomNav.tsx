@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type Lenis from "lenis";
 import type { PopoverAnchorBox } from "@/components/BookingModal";
 import {
@@ -9,6 +9,7 @@ import {
   type MenuPhase,
 } from "@/components/FullscreenMenuOverlay";
 import { siteConfig } from "@/data/site";
+import { prefetchBookingAvailability } from "@/lib/bookingAvailabilityClient";
 import { formatCairoClock12h } from "@/lib/bookingSlots";
 import { playModalClose, playModalOpen } from "@/lib/bookingAudio";
 
@@ -29,7 +30,6 @@ export function BottomNav() {
   const [isNavDocked, setIsNavDocked] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("home");
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [cairoTime, setCairoTime] = useState("--:--");
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingAnchorBox, setBookingAnchorBox] =
     useState<PopoverAnchorBox | null>(null);
@@ -41,8 +41,10 @@ export function BottomNav() {
   const pillNavRef = useRef<HTMLElement | null>(null);
   const pillLinkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const navDotRef = useRef<HTMLSpanElement | null>(null);
+  const cairoTimeRef = useRef<HTMLSpanElement | null>(null);
   const leadColRefs = useRef<(HTMLDivElement | null)[]>([]);
   const mainColRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const magneticRectsRef = useRef<WeakMap<HTMLElement, DOMRect>>(new WeakMap());
 
   const leadScalesRef = useRef<number[]>(Array(MENU_COLS).fill(0));
   const mainScalesRef = useRef<number[]>(Array(MENU_COLS).fill(0));
@@ -94,14 +96,18 @@ export function BottomNav() {
   }, [isBookingOpen]);
 
   useEffect(() => {
-    const syncClock = () => setCairoTime(formatCairoClock12h());
-    const initTimer = window.setTimeout(syncClock, 0);
+    if (!isOpen) return;
+    const syncClock = () => {
+      if (cairoTimeRef.current) {
+        cairoTimeRef.current.textContent = formatCairoClock12h();
+      }
+    };
+    syncClock();
     const interval = window.setInterval(syncClock, 15000);
     return () => {
-      window.clearTimeout(initTimer);
       window.clearInterval(interval);
     };
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     const updateDot = (tabId: string) => {
@@ -147,6 +153,7 @@ export function BottomNav() {
     };
 
     const syncOnScroll = () => {
+      magneticRectsRef.current = new WeakMap();
       const y = window.scrollY;
 
       const el = navBarRef.current;
@@ -184,6 +191,7 @@ export function BottomNav() {
     };
 
     const measureLayout = () => {
+      magneticRectsRef.current = new WeakMap();
       const y = window.scrollY;
       const vh = window.innerHeight || 900;
       const docHeight = document.documentElement.scrollHeight;
@@ -482,9 +490,18 @@ export function BottomNav() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleMagneticEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const btn = e.currentTarget;
+    magneticRectsRef.current.set(btn, btn.getBoundingClientRect());
+  };
+
   const handleMagneticMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const btn = e.currentTarget;
-    const rect = btn.getBoundingClientRect();
+    let rect = magneticRectsRef.current.get(btn);
+    if (!rect) {
+      rect = btn.getBoundingClientRect();
+      magneticRectsRef.current.set(btn, rect);
+    }
     const dx = e.clientX - (rect.left + rect.width / 2);
     const dy = e.clientY - (rect.top + rect.height / 2);
     btn.style.transform = `translate3d(${(dx * 0.22).toFixed(1)}px, ${(
@@ -493,6 +510,7 @@ export function BottomNav() {
   };
 
   const handleMagneticLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    magneticRectsRef.current.delete(e.currentTarget);
     e.currentTarget.style.transform = "translate3d(0px, 0px, 0) scale(1)";
   };
 
@@ -518,22 +536,43 @@ export function BottomNav() {
     setActiveTab(tabId);
   };
 
-  const handleLinkClick = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    href: string
-  ) => {
-    e.preventDefault();
-    const mappedTab =
-      href === "#contact"
-        ? "connect"
-        : href === "#work"
-        ? "work"
-        : href === "#info" || href === "#about"
-        ? "about"
-        : "home";
-    lockScrollSpy(mappedTab);
-    closeMenu(href);
-  };
+  const closeMenuRef = useRef(closeMenu);
+  const lockScrollSpyRef = useRef(lockScrollSpy);
+  useEffect(() => {
+    closeMenuRef.current = closeMenu;
+    lockScrollSpyRef.current = lockScrollSpy;
+  });
+
+  const handleLeadColRef = useCallback(
+    (idx: number, el: HTMLDivElement | null) => {
+      leadColRefs.current[idx] = el;
+    },
+    []
+  );
+
+  const handleMainColRef = useCallback(
+    (idx: number, el: HTMLDivElement | null) => {
+      mainColRefs.current[idx] = el;
+    },
+    []
+  );
+
+  const handleLinkClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+      e.preventDefault();
+      const mappedTab =
+        href === "#contact"
+          ? "connect"
+          : href === "#work"
+          ? "work"
+          : href === "#info" || href === "#about"
+          ? "about"
+          : "home";
+      lockScrollSpyRef.current(mappedTab);
+      closeMenuRef.current(href);
+    },
+    []
+  );
 
   const handlePillClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -545,8 +584,41 @@ export function BottomNav() {
     scrollToTarget(item.id === "home" ? null : item.href);
   };
 
+  useEffect(() => {
+    let idleId = 0;
+    const warmTimer = window.setTimeout(() => {
+      const winWithIdle = window as Window & {
+        requestIdleCallback?: (
+          cb: () => void,
+          opts?: { timeout: number }
+        ) => number;
+      };
+      if (typeof winWithIdle.requestIdleCallback === "function") {
+        idleId = winWithIdle.requestIdleCallback(
+          () => {
+            idleId = 0;
+            prefetchBookingAvailability();
+          },
+          { timeout: 1500 }
+        );
+      } else {
+        prefetchBookingAvailability();
+      }
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(warmTimer);
+      if (idleId !== 0) {
+        (
+          window as Window & { cancelIdleCallback?: (id: number) => void }
+        ).cancelIdleCallback?.(idleId);
+      }
+    };
+  }, []);
+
   const preloadBooking = () => {
     void import("@/components/BookingModal");
+    prefetchBookingAvailability();
   };
 
   const computeAnchorBox = (): PopoverAnchorBox => {
@@ -575,12 +647,8 @@ export function BottomNav() {
         hoveredIdx={hoveredIdx}
         onHoverIdxChange={setHoveredIdx}
         onLinkClick={handleLinkClick}
-        onLeadColRef={(idx, el) => {
-          leadColRefs.current[idx] = el;
-        }}
-        onMainColRef={(idx, el) => {
-          mainColRefs.current[idx] = el;
-        }}
+        onLeadColRef={handleLeadColRef}
+        onMainColRef={handleMainColRef}
       />
 
       {/* Persistent Fixed Corner & Center Glass Pill Header Bar */}
@@ -599,6 +667,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={handleTopClick}
+            onMouseEnter={handleMagneticEnter}
             onMouseMove={handleMagneticMove}
             onMouseLeave={handleMagneticLeave}
             aria-label="Abdullah Elawady Studio — Scroll to top"
@@ -687,6 +756,7 @@ export function BottomNav() {
                   setIsBookingOpen(true);
                 }
               }}
+              onMouseEnter={handleMagneticEnter}
               onMouseMove={handleMagneticMove}
               onMouseLeave={handleMagneticLeave}
               aria-hidden={isOpen}
@@ -767,7 +837,8 @@ export function BottomNav() {
             </div>
             <div>
               W<span className="playfair-o">o</span>RKING GL
-              <span className="playfair-o">o</span>BALLY ({cairoTime} EET)
+              <span className="playfair-o">o</span>BALLY (
+              <span ref={cairoTimeRef}>--:--</span> EET)
             </div>
           </div>
 
@@ -780,7 +851,11 @@ export function BottomNav() {
             }`}
           >
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e] opacity-75" />
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full bg-[#22c55e] opacity-75 ${
+                  isOpen ? "animate-ping" : ""
+                }`}
+              />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.65)]" />
             </span>
             <span>
@@ -794,6 +869,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => (isOpen ? closeMenu() : openMenu())}
+            onMouseEnter={handleMagneticEnter}
             onMouseMove={handleMagneticMove}
             onMouseLeave={handleMagneticLeave}
             aria-expanded={isOpen}

@@ -95,6 +95,7 @@ export function WorkSection() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const captionRef = useRef<HTMLDivElement | null>(null);
   const captionContentRef = useRef<HTMLDivElement | null>(null);
+  const counterRef = useRef<HTMLDivElement | null>(null);
   const stageRectRef = useRef<{
     left: number;
     top: number;
@@ -144,14 +145,53 @@ export function WorkSection() {
   }, []);
 
   useEffect(() => {
-    const invalidateRect = () => {
-      stageRectDirtyRef.current = true;
+    let cancelled = false;
+    let counterPageTop = Number.POSITIVE_INFINITY;
+    let lastOpacityStr = "";
+
+    const updateCounterFade = () => {
+      const el = counterRef.current;
+      if (!el || !Number.isFinite(counterPageTop)) return;
+      const screenTop = counterPageTop - window.scrollY;
+      const opacity =
+        screenTop >= 132 ? 1 : screenTop <= 88 ? 0 : (screenTop - 88) / 44;
+      const nextOpStr =
+        opacity >= 1 ? "1" : opacity <= 0 ? "0" : opacity.toFixed(3);
+      if (nextOpStr !== lastOpacityStr) {
+        lastOpacityStr = nextOpStr;
+        el.style.opacity = nextOpStr;
+      }
     };
-    window.addEventListener("scroll", invalidateRect, { passive: true });
-    window.addEventListener("resize", invalidateRect, { passive: true });
+
+    const handleScroll = () => {
+      stageRectDirtyRef.current = true;
+      updateCounterFade();
+    };
+
+    const measureCounterAndInvalidate = () => {
+      stageRectDirtyRef.current = true;
+      const el = counterRef.current;
+      if (!el) return;
+      counterPageTop = el.getBoundingClientRect().top + window.scrollY;
+      updateCounterFade();
+    };
+
+    const resizeObserver = new ResizeObserver(measureCounterAndInvalidate);
+    resizeObserver.observe(document.documentElement);
+    document.fonts?.ready.then(() => {
+      if (!cancelled) measureCounterAndInvalidate();
+    });
+
+    measureCounterAndInvalidate();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", measureCounterAndInvalidate, {
+      passive: true,
+    });
     return () => {
-      window.removeEventListener("scroll", invalidateRect);
-      window.removeEventListener("resize", invalidateRect);
+      cancelled = true;
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", measureCounterAndInvalidate);
     };
   }, []);
 
@@ -474,6 +514,7 @@ export function WorkSection() {
 
         {/* Bottom-Center Clean Counter */}
         <div
+          ref={counterRef}
           data-work-counter=""
           className="pointer-events-none absolute bottom-[36px] sm:bottom-[34px] left-1/2 -translate-x-1/2 z-20 text-[13px] sm:text-[14px] font-normal tabular-nums tracking-[0.04em] text-[#e7e1d7]"
         >

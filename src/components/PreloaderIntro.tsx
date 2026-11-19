@@ -27,6 +27,27 @@ const SIM_HZ = 240;
 const SIM_DT = 1 / SIM_HZ;
 const BALL_BOX_SCALE = 1.28;
 
+let preloaderSceneModulePromise:
+  | Promise<typeof import("./preloaderFootballScene")>
+  | null = null;
+
+function preloadFootballSceneModule(): Promise<
+  typeof import("./preloaderFootballScene")
+> | null {
+  if (typeof window === "undefined") return null;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    return null;
+  }
+  if (!preloaderSceneModulePromise) {
+    preloaderSceneModulePromise = import("./preloaderFootballScene");
+  }
+  return preloaderSceneModulePromise;
+}
+
+if (typeof window !== "undefined") {
+  preloadFootballSceneModule();
+}
+
 function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, val));
 }
@@ -41,75 +62,121 @@ function simulateTrajectory(
   const x0 = Math.max(radius * 0.92, vw * 0.058);
   const y0 = -radius * 1.22;
   const vy0 = 0.18 * vh;
+  const safeRadiusSpin = Math.max(radius, 28);
+  const safeRadiusBounce = Math.max(radius, 24);
 
   const vxScales = [0.88, 0.94, 1.0, 1.06, 1.12, 0.82, 1.18];
   const restitutions = [0.71, 0.68, 0.73];
 
-  let best: TrajectoryResult | null = null;
+  let bestVxScale = -1;
+  let bestE = -1;
   let bestScore = Number.POSITIVE_INFINITY;
 
+  // Pass 1: evaluate candidate parameters with zero array/frame allocations
   for (const vxScale of vxScales) {
     for (const e of restitutions) {
       let x = x0;
       let y = y0;
       let vx = vxScale * 0.23 * vw;
       let vy = vy0;
-      let rot = 0;
-      let omega = (vxScale * 0.78 * vw) / Math.max(radius, 28);
+      let omega = (vxScale * 0.78 * vw) / safeRadiusSpin;
 
-      const frames: SimFrame[] = [];
-      const bounces: BounceEvent[] = [];
+      let stepCount = 0;
+      let bounceCount = 0;
       let firstBounceX = 0;
 
       for (let step = 0; step < SIM_HZ * 4.0; step += 1) {
-        const t = step * SIM_DT;
         vy += gravity * SIM_DT;
         vx *= 1 - 0.075 * SIM_DT;
         vy *= 1 - 0.035 * SIM_DT;
         x += vx * SIM_DT;
         y += vy * SIM_DT;
-        rot += omega * SIM_DT;
 
         if (y >= floorY) {
           y = floorY;
           if (vy > 55) {
-            if (bounces.length === 0) firstBounceX = x;
-            bounces.push({
-              time: t,
-              impactRatio: clamp(Math.abs(vy) / (3.35 * vh), 0.18, 1),
-            });
+            if (bounceCount === 0) firstBounceX = x;
+            bounceCount += 1;
           }
           const eEff = e - 0.02 * clamp(Math.abs(vy) / (3.5 * vh), 0, 1);
           vy = -Math.abs(vy) * eEff;
           const vSlip = vx - omega * radius;
           vx -= 0.44 * vSlip;
-          omega = 0.72 * (vx / Math.max(radius, 24)) + 0.28 * omega;
+          omega = 0.72 * (vx / safeRadiusBounce) + 0.28 * omega;
           vx *= 0.97;
         }
 
-        frames.push({ x, y, rot, vy });
-
+        stepCount += 1;
         if (x - radius > vw + 16) {
           break;
         }
       }
 
-      if (x - radius <= vw + 16 || bounces.length === 0) continue;
+      if (x - radius <= vw + 16 || bounceCount === 0) continue;
 
-      const duration = frames.length * SIM_DT;
+      const duration = stepCount * SIM_DT;
       const firstBounceRatio = firstBounceX / vw;
       let score =
-        Math.abs(duration - 2.35) * 3.5 + Math.abs(bounces.length - 4) * 3.2;
+        Math.abs(duration - 2.35) * 3.5 + Math.abs(bounceCount - 4) * 3.2;
       if (firstBounceRatio < 0.13 || firstBounceRatio > 0.24) score += 2.5;
 
       if (score < bestScore) {
         bestScore = score;
-        best = { frames, bounces, duration };
+        bestVxScale = vxScale;
+        bestE = e;
       }
     }
   }
 
-  if (best) return best;
+  // Pass 2: record frames & bounce events only for the winning trajectory
+  if (bestVxScale > 0) {
+    let x = x0;
+    let y = y0;
+    let vx = bestVxScale * 0.23 * vw;
+    let vy = vy0;
+    let rot = 0;
+    let omega = (bestVxScale * 0.78 * vw) / safeRadiusSpin;
+
+    const frames: SimFrame[] = [];
+    const bounces: BounceEvent[] = [];
+
+    for (let step = 0; step < SIM_HZ * 4.0; step += 1) {
+      const t = step * SIM_DT;
+      vy += gravity * SIM_DT;
+      vx *= 1 - 0.075 * SIM_DT;
+      vy *= 1 - 0.035 * SIM_DT;
+      x += vx * SIM_DT;
+      y += vy * SIM_DT;
+      rot += omega * SIM_DT;
+
+      if (y >= floorY) {
+        y = floorY;
+        if (vy > 55) {
+          bounces.push({
+            time: t,
+            impactRatio: clamp(Math.abs(vy) / (3.35 * vh), 0.18, 1),
+          });
+        }
+        const eEff = bestE - 0.02 * clamp(Math.abs(vy) / (3.5 * vh), 0, 1);
+        vy = -Math.abs(vy) * eEff;
+        const vSlip = vx - omega * radius;
+        vx -= 0.44 * vSlip;
+        omega = 0.72 * (vx / safeRadiusBounce) + 0.28 * omega;
+        vx *= 0.97;
+      }
+
+      frames.push({ x, y, rot, vy });
+      if (x - radius > vw + 16) {
+        break;
+      }
+    }
+
+    return {
+      frames,
+      bounces,
+      duration: frames.length * SIM_DT,
+    };
+  }
 
   // Deterministic drop-and-bounce fallback for extreme viewports
   const fallbackFrames: SimFrame[] = [];
@@ -145,9 +212,6 @@ export function PreloaderIntro() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.removeAttribute("data-intro-done");
-    root.setAttribute("data-intro-ready", "true");
-
     window.scrollTo(0, 0);
     const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
     lenis?.scrollTo(0, { immediate: true, force: true });
@@ -162,6 +226,35 @@ export function PreloaderIntro() {
         "[data-intro-char], [data-intro-fade], [data-intro-line], [data-intro-portrait]"
       )
     );
+    const activeCols = colRefs.current.filter(
+      (el): el is HTMLDivElement => Boolean(el && el.offsetWidth > 0)
+    );
+
+    const vw = window.innerWidth || 1440;
+    const vh = window.innerHeight || 900;
+
+    // Read all geometry before mutating root[data-intro-ready] to prevent a forced reflow
+    const colBounds = activeCols.map((col) => {
+      const r = col.getBoundingClientRect();
+      return { left: r.left, right: r.right, mid: (r.left + r.right) * 0.5 };
+    });
+    const buckets: HTMLElement[][] = activeCols.map(() => []);
+    if (colBounds.length > 0) {
+      allIntroEls.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const targetX = rect.left + Math.min(8, rect.width * 0.15);
+        let colIdx = colBounds.findIndex(
+          (b) => targetX >= b.left - 1 && targetX < b.right + 1
+        );
+        if (colIdx < 0) {
+          colIdx = targetX < colBounds[0].left ? 0 : activeCols.length - 1;
+        }
+        buckets[colIdx].push(el);
+      });
+    }
+
+    root.removeAttribute("data-intro-done");
+    root.setAttribute("data-intro-ready", "true");
 
     const uncoverAll = () => {
       allIntroEls.forEach((el) => el.setAttribute("data-uncovered", "true"));
@@ -188,10 +281,7 @@ export function PreloaderIntro() {
     };
 
     if (reducedMotion) {
-      const cols = colRefs.current.filter(
-        (el): el is HTMLDivElement => Boolean(el && el.offsetWidth > 0)
-      );
-      cols.forEach((col, idx) => {
+      activeCols.forEach((col, idx) => {
         col.style.transition = `transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) ${
           idx * 22
         }ms`;
@@ -206,10 +296,6 @@ export function PreloaderIntro() {
       };
     }
 
-    const activeCols = colRefs.current.filter(
-      (el): el is HTMLDivElement => Boolean(el && el.offsetWidth > 0)
-    );
-
     if (activeCols.length === 0) {
       const t = window.setTimeout(finishIntro, 80);
       return () => {
@@ -218,31 +304,11 @@ export function PreloaderIntro() {
       };
     }
 
-    const vw = window.innerWidth || 1440;
-    const vh = window.innerHeight || 900;
     const diameter = Math.max(76, Math.min(124, vw / 11.6));
     const radius = diameter / 2;
     const floorPad = Math.max(8, Math.round(vh * 0.014));
     const floorY = Math.max(radius + 40, vh - radius - floorPad);
     const boxSize = Math.ceil(diameter * BALL_BOX_SCALE);
-
-    const colBounds = activeCols.map((col) => {
-      const r = col.getBoundingClientRect();
-      return { left: r.left, right: r.right, mid: (r.left + r.right) * 0.5 };
-    });
-
-    const buckets: HTMLElement[][] = activeCols.map(() => []);
-    allIntroEls.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      const targetX = rect.left + Math.min(8, rect.width * 0.15);
-      let colIdx = colBounds.findIndex(
-        (b) => targetX >= b.left - 1 && targetX < b.right + 1
-      );
-      if (colIdx < 0) {
-        colIdx = targetX < colBounds[0].left ? 0 : activeCols.length - 1;
-      }
-      buckets[colIdx].push(el);
-    });
 
     if (ballRef.current) {
       ballRef.current.style.width = `${boxSize}px`;
@@ -272,6 +338,7 @@ export function PreloaderIntro() {
     const liftDuration = 0.6;
     let maxTrigger = Math.max(...triggerTimes);
     let skipped = false;
+    let ballExited = false;
     let rafId = 0;
     let cancelled = false;
     let startPerf = 0;
@@ -279,7 +346,6 @@ export function PreloaderIntro() {
     const handleSkip = () => {
       if (skipped || !startPerf) return;
       skipped = true;
-      const nowSec = (performance.now() - startPerf) / 1000;
       if (ballRef.current) {
         ballRef.current.style.transition = "opacity 160ms ease-out";
         ballRef.current.style.opacity = "0";
@@ -288,6 +354,7 @@ export function PreloaderIntro() {
         shadowRef.current.style.transition = "opacity 160ms ease-out";
         shadowRef.current.style.opacity = "0";
       }
+      const nowSec = (performance.now() - startPerf) / 1000;
       let nextStep = 0;
       for (let i = 0; i < activeCols.length; i += 1) {
         if (!triggered[i]) {
@@ -310,8 +377,10 @@ export function PreloaderIntro() {
         ])
       : Promise.resolve();
 
+    const sceneModulePromise =
+      preloadFootballSceneModule() || import("./preloaderFootballScene");
     const sceneReadyPromise = Promise.race([
-      import("./preloaderFootballScene")
+      sceneModulePromise
         .then(({ mountPreloaderFootballScene }) => {
           if (cancelled || !ballRef.current) return;
           footballCtrl = mountPreloaderFootballScene(ballRef.current, boxSize);
@@ -340,14 +409,21 @@ export function PreloaderIntro() {
           if (cancelled) return;
           const elapsed = Math.max(0, (now - startPerf) / 1000);
 
-          if (!skipped) {
+          if (!skipped && !ballExited) {
             const fIdx = Math.min(
               sim.frames.length - 1,
               Math.floor(elapsed * SIM_HZ)
             );
             const f = sim.frames[fIdx];
 
-            if (f && ballRef.current && shadowRef.current) {
+            if (
+              fIdx >= sim.frames.length - 1 ||
+              (f && f.x - radius > vw + 16)
+            ) {
+              ballExited = true;
+              if (ballRef.current) ballRef.current.style.opacity = "0";
+              if (shadowRef.current) shadowRef.current.style.opacity = "0";
+            } else if (f && ballRef.current && shadowRef.current) {
               let squashX = 1;
               let squashY = 1;
               let inImpactWindow = false;

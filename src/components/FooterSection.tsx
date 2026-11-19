@@ -64,9 +64,9 @@ export function FooterSection() {
     <footer
       id="contact"
       ref={footerRef}
-      className="relative z-10 w-full bg-[#0b0b0b] px-4 sm:px-6 pt-12 pb-6"
+      className="relative z-10 w-full min-h-svh flex flex-col bg-[#0b0b0b] px-4 sm:px-6 pt-[84px] sm:pt-[104px] pb-6"
     >
-      <div className="relative min-h-[620px] sm:min-h-[680px] w-full rounded-[20px] sm:rounded-[24px] bg-[#0e0d0c] border border-[#e7e1d7]/[0.08] overflow-hidden flex flex-col justify-between">
+      <div className="relative flex-1 min-h-[620px] sm:min-h-[680px] w-full rounded-[20px] sm:rounded-[24px] bg-[#0e0d0c] border border-[#e7e1d7]/[0.08] overflow-hidden flex flex-col justify-between">
         {/* Bottom-Left Burnt Vermilion Studio Glow */}
         <div
           aria-hidden="true"

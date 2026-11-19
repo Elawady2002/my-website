@@ -31,7 +31,7 @@ interface FullscreenMenuOverlayProps {
   onMainColRef: (idx: number, el: HTMLDivElement | null) => void;
 }
 
-export function FullscreenMenuOverlay({
+export const FullscreenMenuOverlay = React.memo(function FullscreenMenuOverlay({
   menuPhase,
   contentRevealed,
   isOpen,
@@ -79,7 +79,9 @@ export function FullscreenMenuOverlay({
                 transformOrigin: "50% 0%",
                 transform: "scaleY(0)",
               }}
-              className="absolute inset-0 bg-[#f34213] will-change-transform"
+              className={`absolute inset-0 bg-[#f34213] ${
+                showMenuLayer ? "will-change-transform" : ""
+              }`}
             />
             {/* Obsidian architectural surface column */}
             <div
@@ -88,7 +90,9 @@ export function FullscreenMenuOverlay({
                 transformOrigin: "50% 0%",
                 transform: "scaleY(0)",
               }}
-              className="absolute inset-0 bg-[#131210] shadow-[inset_1px_0_0_rgba(231,225,215,0.08)] border-b border-[#e7e1d7]/15 will-change-transform"
+              className={`absolute inset-0 bg-[#131210] shadow-[inset_1px_0_0_rgba(231,225,215,0.08)] border-b border-[#e7e1d7]/15 ${
+                showMenuLayer ? "will-change-transform" : ""
+              }`}
             />
           </div>
         ))}
@@ -97,7 +101,9 @@ export function FullscreenMenuOverlay({
       {/* Subtle Film Grain Over Menu Columns */}
       <div
         aria-hidden="true"
-        className={`menu-grain pointer-events-none absolute inset-0 transition-opacity duration-300 ${
+        className={`${
+          showMenuLayer ? "menu-grain " : ""
+        }pointer-events-none absolute inset-0 transition-opacity duration-300 ${
           contentRevealed ? "opacity-[0.035]" : "opacity-0"
         }`}
       />
@@ -274,7 +280,11 @@ export function FullscreenMenuOverlay({
                     </span>
 
                     {/* Outer horizontal spring shift wraps inner vertical clip mask */}
-                    <span className="menu-word-ink inline-block will-change-transform">
+                    <span
+                      className={`menu-word-ink inline-block ${
+                        showMenuLayer ? "will-change-transform" : ""
+                      }`}
+                    >
                       <span className="block overflow-hidden py-1 sm:py-1.5">
                         <span
                           style={{
@@ -294,7 +304,9 @@ export function FullscreenMenuOverlay({
                               contentRevealed ? 30 + idx * 50 : 0
                             }ms`,
                           }}
-                          className="block text-[clamp(2.95rem,7.4vw,7rem)] leading-[0.94] tracking-[-0.04em] font-normal uppercase will-change-transform"
+                          className={`block text-[clamp(2.95rem,7.4vw,7rem)] leading-[0.94] tracking-[-0.04em] font-normal uppercase ${
+                            showMenuLayer ? "will-change-transform" : ""
+                          }`}
                         >
                           <StylizedText text={item.label} />
                         </span>
@@ -329,4 +341,4 @@ export function FullscreenMenuOverlay({
       </div>
     </div>
   );
-}
+});

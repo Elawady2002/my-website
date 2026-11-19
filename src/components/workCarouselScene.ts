@@ -16,6 +16,7 @@ import {
   WORK_PLANE_HEIGHT,
   WORK_PLANE_WIDTH,
   createProjectTexture,
+  type ProjectTextureHandle,
 } from "@/components/workTextures";
 import type { WorkProjectItem } from "@/data/site";
 import { getDevicePerfTier } from "@/lib/deviceTier";
@@ -122,9 +123,19 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
 
-    float r = sampleSlide(uvR, fw).r;
-    float g = sampleSlide(uvG, fw).g;
-    float b = sampleSlide(uvB, fw).b;
+    float r;
+    float g;
+    float b;
+    if (edge < 0.00025) {
+      vec3 centerCol = sampleSlide(uvG, fw);
+      r = centerCol.r;
+      g = centerCol.g;
+      b = centerCol.b;
+    } else {
+      r = sampleSlide(uvR, fw).r;
+      g = sampleSlide(uvG, fw).g;
+      b = sampleSlide(uvB, fw).b;
+    }
 
     vec3 col = vec3(r, g, b);
     float glassRim = smoothstep(0.0, 0.04, vUv.x) * smoothstep(1.0, 0.96, vUv.x)
@@ -163,12 +174,24 @@ export interface WorkCarouselController {
   dispose: () => void;
 }
 
+type VideoWithFrameCallback = HTMLVideoElement & {
+  requestVideoFrameCallback?: (
+    callback: (now: number, metadata: unknown) => void
+  ) => number;
+  cancelVideoFrameCallback?: (handle: number) => void;
+};
+
 interface VideoEntry {
   video: HTMLVideoElement;
   texture: VideoTexture;
   isVisible: boolean;
+  rvfcId: number | null;
+  hasNewFrame: boolean;
+  lastRenderedTime: number;
   startLoad: () => void;
   tryPlay: () => void;
+  armFrameCallback: () => void;
+  cancelFrameCallback: () => void;
   onCanPlay: () => void;
   onLoadedData: () => void;
   onPlaying: () => void;
@@ -230,6 +253,8 @@ export function mountWorkCarouselScene({
   let isInView = false;
   let disposed = false;
   let videoPreloadArmed = false;
+  let needsForcedRender = true;
+  let wasSettled = false;
 
   const scheduleLoop = () => {
     if (disposed || !isInView || document.hidden || rafId !== 0) return;
@@ -238,6 +263,7 @@ export function mountWorkCarouselScene({
 
   const wake = () => {
     if (disposed) return;
+    needsForcedRender = true;
     if (isInView) {
       scheduleLoop();
     } else {
@@ -245,9 +271,24 @@ export function mountWorkCarouselScene({
     }
   };
 
-  const textures = projects.map((p) =>
-    createProjectTexture(activeRenderer, p, wake)
+  const materials: ShaderMaterial[] = [];
+  const meshes: Mesh[] = [];
+  let videoEntries: (VideoEntry | null)[] = [];
+
+  const textureHandles: ProjectTextureHandle[] = projects.map((p, idx) =>
+    createProjectTexture(activeRenderer, p, (loadedTex) => {
+      if (disposed) return;
+      const mat = materials[idx];
+      if (mat) {
+        mat.uniforms.uMap.value = loadedTex;
+        if (!videoEntries[idx]) {
+          mat.uniforms.uVideoMap.value = loadedTex;
+        }
+      }
+      wake();
+    })
   );
+
   const innerRectVec = new Vector4(
     SHOWCASE_INNER_UV.left,
     SHOWCASE_INNER_UV.bottom,
@@ -255,9 +296,11 @@ export function mountWorkCarouselScene({
     SHOWCASE_INNER_UV.top
   );
 
-  const videoEntries: (VideoEntry | null)[] = projects.map((p, idx) => {
+  let supportsRVFC = false;
+
+  videoEntries = projects.map((p, idx) => {
     if (!p.videoSrc) return null;
-    const video = document.createElement("video");
+    const video = document.createElement("video") as VideoWithFrameCallback;
     video.src = p.videoSrc;
     video.muted = true;
     video.defaultMuted = true;
@@ -265,6 +308,9 @@ export function mountWorkCarouselScene({
     video.playsInline = true;
     video.preload = "none";
     video.crossOrigin = "anonymous";
+
+    const hasRVFC = typeof video.requestVideoFrameCallback === "function";
+    if (hasRVFC) supportsRVFC = true;
 
     const videoTex = new VideoTexture(video);
     videoTex.colorSpace = SRGBColorSpace;
@@ -278,7 +324,40 @@ export function mountWorkCarouselScene({
       texture: videoTex,
       isVisible:
         Math.abs(wrapTrackOffset(idx * CARD_STRIDE, totalSpan)) <=
-        CARD_STRIDE * 2.1,
+        CARD_STRIDE * 1.35,
+      rvfcId: null,
+      hasNewFrame: false,
+      lastRenderedTime: -1,
+      cancelFrameCallback: () => {
+        if (entry.rvfcId !== null && hasRVFC) {
+          video.cancelVideoFrameCallback?.(entry.rvfcId);
+          entry.rvfcId = null;
+        }
+      },
+      armFrameCallback: () => {
+        if (
+          !hasRVFC ||
+          entry.rvfcId !== null ||
+          disposed ||
+          !isInView ||
+          document.hidden ||
+          !entry.isVisible ||
+          video.paused
+        ) {
+          return;
+        }
+        entry.rvfcId = video.requestVideoFrameCallback!(() => {
+          entry.rvfcId = null;
+          if (disposed) return;
+          entry.hasNewFrame = true;
+          if (isInView && !document.hidden && entry.isVisible) {
+            scheduleLoop();
+            if (!video.paused) {
+              entry.armFrameCallback();
+            }
+          }
+        });
+      },
       startLoad: () => {
         if (!hasLoaded) {
           hasLoaded = true;
@@ -293,16 +372,24 @@ export function mountWorkCarouselScene({
         if (!hasLoaded || !isInView || !entry.isVisible) return;
         if (video.paused) {
           video.play().catch(() => {});
+        } else {
+          entry.armFrameCallback();
         }
       },
       onCanPlay: () => {
+        entry.hasNewFrame = true;
         entry.tryPlay();
+        syncNearbyVideos();
         wake();
       },
       onLoadedData: () => {
+        entry.hasNewFrame = true;
+        syncNearbyVideos();
         wake();
       },
       onPlaying: () => {
+        entry.hasNewFrame = true;
+        entry.armFrameCallback();
         wake();
       },
     };
@@ -314,15 +401,14 @@ export function mountWorkCarouselScene({
     return entry;
   });
 
-  const materials: ShaderMaterial[] = [];
-  const meshes: Mesh[] = [];
-
   for (let i = 0; i < count; i += 1) {
     const videoEntry = videoEntries[i];
     const mat = new ShaderMaterial({
       uniforms: {
-        uMap: { value: textures[i] },
-        uVideoMap: { value: videoEntry ? videoEntry.texture : textures[i] },
+        uMap: { value: textureHandles[i].texture },
+        uVideoMap: {
+          value: videoEntry ? videoEntry.texture : textureHandles[i].texture,
+        },
         uHasVideo: { value: 0 },
         uInnerRect: { value: innerRectVec },
         uOffset: { value: i * CARD_STRIDE },
@@ -340,12 +426,73 @@ export function mountWorkCarouselScene({
     meshes.push(mesh);
   }
 
+  // Priority-staggered slide texture loading: immediate for visible center & neighbors,
+  // then one idle frame at a time for offscreen slides.
+  const immediateTextureSet = new Set<number>();
+  [0, 1, count - 1].forEach((idx) => {
+    if (idx >= 0 && idx < count && !immediateTextureSet.has(idx)) {
+      immediateTextureSet.add(idx);
+      textureHandles[idx].startLoad();
+    }
+  });
+
+  const deferredIndices: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    if (!immediateTextureSet.has(i)) {
+      deferredIndices.push(i);
+    }
+  }
+
+  let deferredCursor = 0;
+  let deferredIdleId = 0;
+  let deferredTimeoutId = 0;
+
+  const scheduleNextTextureLoad = () => {
+    if (disposed || deferredCursor >= deferredIndices.length) return;
+    const runNext = () => {
+      deferredIdleId = 0;
+      deferredTimeoutId = 0;
+      if (disposed || deferredCursor >= deferredIndices.length) return;
+      const idx = deferredIndices[deferredCursor];
+      deferredCursor += 1;
+      textureHandles[idx].startLoad();
+      scheduleNextTextureLoad();
+    };
+    const winWithIdle = window as Window & {
+      requestIdleCallback?: (
+        cb: () => void,
+        opts?: { timeout: number }
+      ) => number;
+    };
+    if (typeof winWithIdle.requestIdleCallback === "function") {
+      deferredIdleId = winWithIdle.requestIdleCallback(runNext, {
+        timeout: 120,
+      });
+    } else {
+      deferredTimeoutId = window.setTimeout(runNext, 45);
+    }
+  };
+  scheduleNextTextureLoad();
+
   const videoLoadRadius = perf.isLowTier
     ? CARD_STRIDE * 0.65
     : CARD_STRIDE * 1.35;
 
+  const isCenterVideoBlocking = () =>
+    videoEntries.some((entry, idx) => {
+      if (!entry) return false;
+      const wrapped = wrapTrackOffset(
+        idx * CARD_STRIDE + currentTrackRef.current,
+        totalSpan
+      );
+      return (
+        Math.abs(wrapped) <= CARD_STRIDE * 0.65 && entry.video.readyState < 2
+      );
+    });
+
   const syncNearbyVideos = () => {
     if (!videoPreloadArmed || disposed) return;
+    const centerBlocking = isCenterVideoBlocking();
     for (let i = 0; i < count; i += 1) {
       const entry = videoEntries[i];
       if (!entry) continue;
@@ -353,7 +500,11 @@ export function mountWorkCarouselScene({
         i * CARD_STRIDE + currentTrackRef.current,
         totalSpan
       );
-      if (Math.abs(wrapped) <= videoLoadRadius) {
+      const absWrapped = Math.abs(wrapped);
+      if (
+        absWrapped <= CARD_STRIDE * 0.65 ||
+        (!centerBlocking && absWrapped <= videoLoadRadius)
+      ) {
         entry.startLoad();
       }
     }
@@ -398,12 +549,22 @@ export function mountWorkCarouselScene({
       activityRef.current = 0;
     }
 
+    const centerBlocking =
+      videoPreloadArmed && isInView ? isCenterVideoBlocking() : false;
     let hasVisiblePlayingVideo = false;
+    let anyVideoHasNewFrame = false;
 
     for (let i = 0; i < count; i += 1) {
       const rawPos = i * CARD_STRIDE + currentTrackRef.current;
       const wrapped = wrapTrackOffset(rawPos, totalSpan);
-      const visible = Math.abs(wrapped) <= CARD_STRIDE * 2.1;
+      const absWrapped = Math.abs(wrapped);
+      const visible = absWrapped <= CARD_STRIDE * 1.75;
+      const playEligible = visible && absWrapped <= CARD_STRIDE * 1.35;
+
+      if (absWrapped <= CARD_STRIDE * 2.1) {
+        textureHandles[i].startLoad();
+      }
+
       meshes[i].visible = visible;
       materials[i].uniforms.uOffset.value = wrapped;
       materials[i].uniforms.uActivity.value = activityRef.current;
@@ -411,21 +572,37 @@ export function mountWorkCarouselScene({
 
       const videoEntry = videoEntries[i];
       if (videoEntry) {
-        videoEntry.isVisible = visible;
-        if (videoPreloadArmed && isInView && Math.abs(wrapped) <= videoLoadRadius) {
+        videoEntry.isVisible = playEligible;
+        if (
+          videoPreloadArmed &&
+          isInView &&
+          (absWrapped <= CARD_STRIDE * 0.65 ||
+            (!centerBlocking && absWrapped <= videoLoadRadius))
+        ) {
           videoEntry.startLoad();
         }
         const hasReadyVideo = videoEntry.video.readyState >= 2;
         materials[i].uniforms.uHasVideo.value = hasReadyVideo ? 1.0 : 0.0;
-        if (isInView && !document.hidden && visible) {
+        if (isInView && !document.hidden && playEligible) {
           if (videoEntry.video.paused && hasReadyVideo) {
             videoEntry.tryPlay();
           }
           if (!videoEntry.video.paused && hasReadyVideo) {
             hasVisiblePlayingVideo = true;
+            videoEntry.armFrameCallback();
+            if (
+              (supportsRVFC && videoEntry.hasNewFrame) ||
+              (!supportsRVFC &&
+                videoEntry.video.currentTime !== videoEntry.lastRenderedTime)
+            ) {
+              anyVideoHasNewFrame = true;
+            }
           }
-        } else if (!videoEntry.video.paused) {
-          videoEntry.video.pause();
+        } else {
+          if (!videoEntry.video.paused) {
+            videoEntry.video.pause();
+          }
+          videoEntry.cancelFrameCallback();
         }
       }
     }
@@ -454,7 +631,29 @@ export function mountWorkCarouselScene({
       )}px, 0)`;
     }
 
-    activeRenderer.render(scene, camera);
+    const shouldRender =
+      !motionSettled ||
+      !wasSettled ||
+      wheelSnapTimerRef.current !== null ||
+      needsForcedRender ||
+      anyVideoHasNewFrame;
+    wasSettled = motionSettled;
+
+    if (shouldRender) {
+      activeRenderer.render(scene, camera);
+      needsForcedRender = false;
+      for (let i = 0; i < count; i += 1) {
+        const videoEntry = videoEntries[i];
+        if (videoEntry && videoEntry.isVisible && !videoEntry.video.paused) {
+          videoEntry.hasNewFrame = false;
+          videoEntry.lastRenderedTime = videoEntry.video.currentTime;
+        }
+      }
+    }
+
+    if (supportsRVFC) {
+      return motionSettled && wheelSnapTimerRef.current === null;
+    }
 
     return (
       motionSettled &&
@@ -526,14 +725,15 @@ export function mountWorkCarouselScene({
         rafId = 0;
       }
       videoEntries.forEach((entry) => {
-        if (entry && !entry.video.paused) {
-          entry.video.pause();
+        if (entry) {
+          if (!entry.video.paused) entry.video.pause();
+          entry.cancelFrameCallback();
         }
       });
     } else if (isInView) {
       syncNearbyVideos();
       videoEntries.forEach((entry) => entry?.tryPlay());
-      scheduleLoop();
+      wake();
     }
   };
   document.addEventListener("visibilitychange", handleVisibility);
@@ -558,15 +758,16 @@ export function mountWorkCarouselScene({
         videoPreloadArmed = true;
         syncNearbyVideos();
         videoEntries.forEach((entry) => entry?.tryPlay());
-        scheduleLoop();
+        wake();
       } else {
         if (rafId !== 0) {
           window.cancelAnimationFrame(rafId);
           rafId = 0;
         }
         videoEntries.forEach((entry) => {
-          if (entry && !entry.video.paused) {
-            entry.video.pause();
+          if (entry) {
+            if (!entry.video.paused) entry.video.pause();
+            entry.cancelFrameCallback();
           }
         });
       }
@@ -585,6 +786,16 @@ export function mountWorkCarouselScene({
         window.cancelAnimationFrame(rafId);
         rafId = 0;
       }
+      if (deferredIdleId !== 0) {
+        (
+          window as Window & { cancelIdleCallback?: (id: number) => void }
+        ).cancelIdleCallback?.(deferredIdleId);
+        deferredIdleId = 0;
+      }
+      if (deferredTimeoutId !== 0) {
+        window.clearTimeout(deferredTimeoutId);
+        deferredTimeoutId = 0;
+      }
       if (wheelSnapTimerRef.current !== null) {
         window.clearTimeout(wheelSnapTimerRef.current);
         wheelSnapTimerRef.current = null;
@@ -596,9 +807,10 @@ export function mountWorkCarouselScene({
       resizeObserver.disconnect();
       geometry.dispose();
       materials.forEach((m) => m.dispose());
-      textures.forEach((t) => t.dispose());
+      textureHandles.forEach((h) => h.dispose());
       videoEntries.forEach((entry) => {
         if (!entry) return;
+        entry.cancelFrameCallback();
         entry.video.removeEventListener("canplay", entry.onCanPlay);
         entry.video.removeEventListener("loadeddata", entry.onLoadedData);
         entry.video.removeEventListener("playing", entry.onPlaying);

@@ -25,8 +25,8 @@ export function clamp(val: number, min: number, max: number): number {
  * Generates an equirectangular studio softbox reflection map for glossy clearcoat orbs.
  */
 export function createStudioEnvTexture({
-  width = 512,
-  height = 256,
+  width = 256,
+  height = 128,
   bg = "#0c0d11",
   keyMidStop = "rgba(255, 255, 255, 0.45)",
   rimStop = "rgba(230, 236, 246, 0.38)",

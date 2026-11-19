@@ -104,23 +104,37 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
   let disposed = false;
   let notifyTextureReady = () => {};
+  let materials: MeshPhysicalMaterial[] = [];
 
   const orbCount = width >= 768 ? DESKTOP_ORB_COUNT : MOBILE_ORB_COUNT;
   const activeBrands = FOOTER_ORB_BRANDS.slice(0, orbCount);
   const maxAniso = activeRenderer.capabilities.getMaxAnisotropy();
-  const brandTexturePairs = activeBrands.map((spec) =>
+  const sharedMaskCanvas = document.createElement("canvas");
+  sharedMaskCanvas.width = perf.orbBumpSize;
+  sharedMaskCanvas.height = perf.orbBumpSize;
+
+  const brandTexturePairs = activeBrands.map((spec, idx) =>
     createBrandOrbTextures(
       spec,
       maxAniso,
-      () => {
-        if (!disposed) notifyTextureReady();
+      (nextColorTex, nextBumpTex) => {
+        if (disposed) return;
+        activeRenderer.initTexture(nextColorTex);
+        activeRenderer.initTexture(nextBumpTex);
+        const mat = materials[idx];
+        if (mat) {
+          mat.map = nextColorTex;
+          mat.bumpMap = nextBumpTex;
+        }
+        notifyTextureReady();
       },
       perf.orbColorSize,
-      perf.orbBumpSize
+      perf.orbBumpSize,
+      sharedMaskCanvas
     )
   );
 
-  const materials: MeshPhysicalMaterial[] = activeBrands.map((spec, idx) => {
+  materials = activeBrands.map((spec, idx) => {
     const { colorTex, bumpTex } = brandTexturePairs[idx];
     return new MeshPhysicalMaterial({
       map: colorTex,
@@ -138,6 +152,22 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       bumpScale: 0.95,
     });
   });
+
+  let textureLoadCursor = 0;
+  let textureBatchRaf = 0;
+  const pumpBrandTextureBatch = () => {
+    textureBatchRaf = 0;
+    if (disposed) return;
+    const batchEnd = Math.min(orbCount, textureLoadCursor + 2);
+    while (textureLoadCursor < batchEnd) {
+      brandTexturePairs[textureLoadCursor].startLoad();
+      textureLoadCursor += 1;
+    }
+    if (textureLoadCursor < orbCount) {
+      textureBatchRaf = window.requestAnimationFrame(pumpBrandTextureBatch);
+    }
+  };
+  pumpBrandTextureBatch();
 
   addStudioThreePointLights(scene, 100, 0x18191f);
 
@@ -352,12 +382,13 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
             Math.sin(orb.angle),
             Math.cos(orb.angle)
           );
-          if (Math.hypot(orb.vx, orb.vy) < 340 && orb.entered) {
+          const speedSq = orb.vx * orb.vx + orb.vy * orb.vy;
+          if (speedSq < 340 * 340 && orb.entered) {
             orb.omega -= wrappedAngle * 7.5 * subDt;
             orb.omega *= 1 - 1.85 * subDt;
           }
           if (
-            Math.hypot(orb.vx, orb.vy) < 12 &&
+            speedSq < 12 * 12 &&
             Math.abs(wrappedAngle) < 0.015 &&
             Math.abs(orb.omega) < 0.05
           ) {
@@ -752,6 +783,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   };
 
   const onPointerUp = (e: PointerEvent) => {
+    if (!pointerActive && grabbedIdx === null) return;
     const { x, y } = getLocalPoint(e.clientX, e.clientY);
     const releasedOrb = grabbedIdx;
     const wasClick = !didDragMove;
@@ -850,6 +882,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     resizeObserver.disconnect();
     document.removeEventListener("visibilitychange", handleVisibility);
     if (spawnTimer !== null) window.clearTimeout(spawnTimer);
+    if (textureBatchRaf !== 0) window.cancelAnimationFrame(textureBatchRaf);
     if (rafId) window.cancelAnimationFrame(rafId);
     domEl.removeEventListener("pointerdown", onPointerDown);
     domEl.removeEventListener("pointermove", onPointerMove);
@@ -862,10 +895,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     shadowMat.dispose();
     shadowTex.dispose();
     materials.forEach((mat) => mat.dispose());
-    brandTexturePairs.forEach(({ colorTex, bumpTex }) => {
-      colorTex.dispose();
-      bumpTex.dispose();
-    });
+    brandTexturePairs.forEach((handle) => handle.dispose());
     rawEnvTex.dispose();
     envTarget.dispose();
     pmrem.dispose();

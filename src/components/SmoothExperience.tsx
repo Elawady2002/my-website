@@ -107,16 +107,22 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
 
     let vw = window.innerWidth;
     let vh = window.innerHeight;
+    let dirtyHasBox = false;
+    let dirtyMinX = 0;
+    let dirtyMinY = 0;
+    let dirtyMaxX = 0;
+    let dirtyMaxY = 0;
 
     const resizeCanvas = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       vw = window.innerWidth;
       vh = window.innerHeight;
-      canvas.width = Math.floor(vw * dpr);
-      canvas.height = Math.floor(vh * dpr);
+      // DPR=1 is sufficient here because [data-cursor-canvas] has CSS blur(2px)
+      canvas.width = vw;
+      canvas.height = vh;
       canvas.style.width = `${vw}px`;
       canvas.style.height = `${vh}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      dirtyHasBox = false;
     };
 
     resizeCanvas();
@@ -132,6 +138,8 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     let currentMode = "legacy";
     let rafId = 0;
     let scrollRafId = 0;
+    let scrollTrailingTimer = 0;
+    let lastScrollHitTestMs = 0;
     let canvasCleared = true;
     let canvasHidden = true;
 
@@ -141,6 +149,23 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       x: mouseX,
       y: mouseY,
     }));
+
+    const clearDirtyRegion = () => {
+      if (canvasCleared) return;
+      if (dirtyHasBox) {
+        const cx = Math.max(0, Math.floor(dirtyMinX));
+        const cy = Math.max(0, Math.floor(dirtyMinY));
+        const cw = Math.min(vw, Math.ceil(dirtyMaxX)) - cx;
+        const ch = Math.min(vh, Math.ceil(dirtyMaxY)) - cy;
+        if (cw > 0 && ch > 0) {
+          ctx.clearRect(cx, cy, cw, ch);
+        }
+        dirtyHasBox = false;
+      } else {
+        ctx.clearRect(0, 0, vw, vh);
+      }
+      canvasCleared = true;
+    };
 
     const tick = () => {
       rafId = 0;
@@ -166,14 +191,22 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       }
 
       let chainLength = 0;
+      let nextMinX = nodes[0].x;
+      let nextMinY = nodes[0].y;
+      let nextMaxX = nodes[0].x;
+      let nextMaxY = nodes[0].y;
+
       for (let i = 1; i < TRAIL_NODES; i += 1) {
         const f = inHero ? Math.max(0.16, 0.42 - i * 0.012) : 0.6;
         nodes[i].x += (nodes[i - 1].x - nodes[i].x) * f;
         nodes[i].y += (nodes[i - 1].y - nodes[i].y) * f;
-        chainLength += Math.hypot(
-          nodes[i].x - nodes[i - 1].x,
-          nodes[i].y - nodes[i - 1].y
-        );
+        const nx = nodes[i].x;
+        const ny = nodes[i].y;
+        if (nx < nextMinX) nextMinX = nx;
+        if (nx > nextMaxX) nextMaxX = nx;
+        if (ny < nextMinY) nextMinY = ny;
+        if (ny > nextMaxY) nextMaxY = ny;
+        chainLength += Math.hypot(nx - nodes[i - 1].x, ny - nodes[i - 1].y);
       }
 
       if (trailAlpha > 0.02 && chainLength > 1.5) {
@@ -181,8 +214,14 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
           canvas.style.visibility = "visible";
           canvasHidden = false;
         }
-        ctx.clearRect(0, 0, vw, vh);
+        clearDirtyRegion();
         canvasCleared = false;
+        dirtyMinX = nextMinX - 18;
+        dirtyMinY = nextMinY - 18;
+        dirtyMaxX = nextMaxX + 18;
+        dirtyMaxY = nextMaxY + 18;
+        dirtyHasBox = true;
+
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
@@ -208,10 +247,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
           prevY = midY;
         }
       } else {
-        if (!canvasCleared) {
-          ctx.clearRect(0, 0, vw, vh);
-          canvasCleared = true;
-        }
+        clearDirtyRegion();
         if (!canvasHidden && trailAlpha <= 0.005) {
           canvas.style.visibility = "hidden";
           canvasHidden = true;
@@ -288,17 +324,33 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       wakeCursor();
     };
 
+    const runScrollHitTest = () => {
+      if (!isVisible) return;
+      lastScrollHitTestMs = performance.now();
+      const underPointer = document.elementFromPoint(
+        mouseX,
+        mouseY
+      ) as HTMLElement | null;
+      syncMode(underPointer);
+    };
+
     const onScroll = () => {
-      if (!isVisible || scrollRafId !== 0) return;
-      scrollRafId = window.requestAnimationFrame(() => {
-        scrollRafId = 0;
-        if (!isVisible) return;
-        const underPointer = document.elementFromPoint(
-          mouseX,
-          mouseY
-        ) as HTMLElement | null;
-        syncMode(underPointer);
-      });
+      if (!isVisible) return;
+      if (scrollTrailingTimer !== 0) {
+        window.clearTimeout(scrollTrailingTimer);
+      }
+      scrollTrailingTimer = window.setTimeout(() => {
+        scrollTrailingTimer = 0;
+        runScrollHitTest();
+      }, 100);
+
+      const now = performance.now();
+      if (scrollRafId === 0 && now - lastScrollHitTestMs >= 80) {
+        scrollRafId = window.requestAnimationFrame(() => {
+          scrollRafId = 0;
+          runScrollHitTest();
+        });
+      }
     };
 
     const onMouseLeave = () => {
@@ -309,6 +361,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       if (!canvasCleared) {
         ctx.clearRect(0, 0, vw, vh);
         canvasCleared = true;
+        dirtyHasBox = false;
       }
       if (!canvasHidden) {
         canvas.style.visibility = "hidden";
@@ -317,6 +370,10 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       if (rafId !== 0) {
         window.cancelAnimationFrame(rafId);
         rafId = 0;
+      }
+      if (scrollTrailingTimer !== 0) {
+        window.clearTimeout(scrollTrailingTimer);
+        scrollTrailingTimer = 0;
       }
     };
 
@@ -332,6 +389,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       document.removeEventListener("mouseleave", onMouseLeave);
       if (rafId !== 0) window.cancelAnimationFrame(rafId);
       if (scrollRafId !== 0) window.cancelAnimationFrame(scrollRafId);
+      if (scrollTrailingTimer !== 0) window.clearTimeout(scrollTrailingTimer);
     };
   }, []);
 

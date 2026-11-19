@@ -35,11 +35,28 @@ export interface WallClockParts {
   second: number;
 }
 
+const FMT_CACHE = new Map<string, Intl.DateTimeFormat>();
+
+function getCachedFormatter(
+  cacheKey: string,
+  options: Intl.DateTimeFormatOptions
+): Intl.DateTimeFormat {
+  let fmt = FMT_CACHE.get(cacheKey);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", options);
+    if (FMT_CACHE.size > 64) {
+      FMT_CACHE.clear();
+    }
+    FMT_CACHE.set(cacheKey, fmt);
+  }
+  return fmt;
+}
+
 export function getTimeZoneWallParts(
   ms: number,
   timeZone: string = siteConfig.booking.timezoneIana
 ): WallClockParts {
-  const parts = new Intl.DateTimeFormat("en-US", {
+  const parts = getCachedFormatter(`wall:${timeZone}`, {
     timeZone,
     year: "numeric",
     month: "2-digit",
@@ -173,7 +190,7 @@ export function formatTime12h(
   ms: number,
   timeZone: string = siteConfig.booking.timezoneIana
 ): string {
-  return new Intl.DateTimeFormat("en-US", {
+  return getCachedFormatter(`t12:${timeZone}`, {
     timeZone,
     hour: "numeric",
     minute: "2-digit",
@@ -193,7 +210,7 @@ export function formatCairoClock12h(nowMs: number = Date.now()): string {
 }
 
 export function formatMonthHeading(year: number, month: number): string {
-  return new Intl.DateTimeFormat("en-US", {
+  return getCachedFormatter("monthHeading:UTC", {
     timeZone: "UTC",
     month: "long",
     year: "numeric",
@@ -207,7 +224,7 @@ export function formatDateHeading(
   month: number,
   day: number
 ): string {
-  return new Intl.DateTimeFormat("en-US", {
+  return getCachedFormatter("dateHeading:UTC", {
     timeZone: "UTC",
     weekday: "short",
     month: "short",

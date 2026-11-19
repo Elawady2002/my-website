@@ -58,12 +58,23 @@ export function HeaderStage() {
     height: number;
   } | null>(null);
   const heroRectDirtyRef = useRef(true);
+  const portraitSizeRef = useRef({ w: 450, h: 750 });
   const wakeTiltRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let vh = window.innerHeight || 900;
     let lastProgress = -1;
     let lastStarY = -1;
+
+    const syncPortraitSize = () => {
+      const inner = portraitInnerRef.current;
+      if (inner) {
+        portraitSizeRef.current = {
+          w: inner.clientWidth || 450,
+          h: inner.clientHeight || 750,
+        };
+      }
+    };
 
     const updateOnScroll = () => {
       heroRectDirtyRef.current = true;
@@ -97,6 +108,7 @@ export function HeaderStage() {
       heroRectDirtyRef.current = true;
       lastProgress = -1;
       lastStarY = -1;
+      syncPortraitSize();
       updateOnScroll();
     };
 
@@ -120,6 +132,7 @@ export function HeaderStage() {
       io.observe(headerEl);
     }
 
+    syncPortraitSize();
     updateOnScroll();
     window.addEventListener("scroll", updateOnScroll, { passive: true });
     window.addEventListener("resize", handleResize);
@@ -147,10 +160,10 @@ export function HeaderStage() {
       }
 
       if (glowRef.current) {
-        const px = (cur.x + 0.5) * 100;
-        const py = (cur.y + 0.5) * 100;
-        glowRef.current.style.setProperty("--mx", `${px.toFixed(1)}%`);
-        glowRef.current.style.setProperty("--my", `${py.toFixed(1)}%`);
+        const { w, h } = portraitSizeRef.current;
+        glowRef.current.style.transform = `translate3d(${(cur.x * w).toFixed(
+          1
+        )}px, ${(cur.y * h).toFixed(1)}px, 0)`;
       }
 
       if (titleWrapRef.current) {
@@ -268,17 +281,18 @@ export function HeaderStage() {
                 alt={siteConfig.portraitAlt}
                 fill
                 preload
+                fetchPriority="high"
                 quality={85}
-                sizes="(max-width: 768px) 85vw, 35vw"
+                sizes="(max-width: 768px) 84vw, (max-width: 1536px) 32vw, 600px"
                 className="object-cover object-[50%_14%]"
               />
-              {/* Cursor-reactive vermilion rim-light glow */}
+              {/* Cursor-reactive vermilion rim-light glow (GPU-composited layer) */}
               <div
                 ref={glowRef}
-                className="absolute inset-0 opacity-90"
+                className="pointer-events-none absolute left-1/2 top-1/2 -ml-[340px] -mt-[340px] h-[680px] w-[680px] opacity-90 will-change-transform"
                 style={{
                   background:
-                    "radial-gradient(340px circle at var(--mx, 50%) var(--my, 40%), rgba(243, 66, 19, 0.24), transparent 70%)",
+                    "radial-gradient(340px circle at 50% 50%, rgba(243, 66, 19, 0.24), transparent 70%)",
                 }}
               />
             </div>

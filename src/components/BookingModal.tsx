@@ -14,6 +14,13 @@ import {
 } from "lucide-react";
 import { siteConfig } from "@/data/site";
 import {
+  fetchBookingAvailability,
+  getCachedAvailability,
+  invalidateAvailabilityCache,
+  isAvailabilityFresh,
+  recordBookedSlotInCache,
+} from "@/lib/bookingAvailabilityClient";
+import {
   playBookingError,
   playBookingSuccess,
   playHoverTick,
@@ -64,29 +71,35 @@ const DURATION_LABELS: Record<DurationOption, string> = {
   60: "1h",
 };
 
+const CLEAN_MONTH_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  month: "long",
+  year: "numeric",
+});
+
+const SHORT_DAY_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+const COMPACT_DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  month: "short",
+  day: "numeric",
+});
+
 function formatCleanMonth(year: number, month: number): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(Date.UTC(year, month - 1, 15)));
+  return CLEAN_MONTH_FMT.format(new Date(Date.UTC(year, month - 1, 15)));
 }
 
 function formatShortDay(year: number, month: number, day: number): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
+  return SHORT_DAY_FMT.format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function formatCompactDate(year: number, month: number, day: number): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
+  return COMPACT_DATE_FMT.format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function InteractiveSuccessOrb({
@@ -145,7 +158,10 @@ function InteractiveSuccessOrb({
   );
 }
 
-function getInitialBookingSnapshot(nowMs: number): {
+function getInitialBookingSnapshot(
+  nowMs: number,
+  initialBusy: readonly BusyInterval[] = []
+): {
   today: SelectedDateState;
   initialDate: SelectedDateState;
   localTimeZone: string;
@@ -156,7 +172,7 @@ function getInitialBookingSnapshot(nowMs: number): {
     month: today.month,
     day: today.day,
     durationMinutes: siteConfig.booking.defaultDuration,
-    busyIntervals: [],
+    busyIntervals: initialBusy,
     nowMs,
   }).some((slot) => slot.status === "available");
 
@@ -185,9 +201,16 @@ function BookingPopoverBody({
   openedAtMs: number;
   onClose: () => void;
 }) {
-  const [{ today, initialDate, localTimeZone }] = useState(() =>
-    getInitialBookingSnapshot(openedAtMs)
-  );
+  const [{ today, initialDate, localTimeZone, initialBusy, needsInitialSync }] =
+    useState(() => {
+      const initialCache = getCachedAvailability(openedAtMs);
+      const cachedBusy = initialCache?.busy ?? [];
+      return {
+        ...getInitialBookingSnapshot(openedAtMs, cachedBusy),
+        initialBusy: cachedBusy,
+        needsInitialSync: isActive && !initialCache,
+      };
+    });
 
   const [nowMs, setNowMs] = useState(openedAtMs);
   const [viewYear, setViewYear] = useState(initialDate.year);
@@ -199,8 +222,9 @@ function BookingPopoverBody({
   );
   const [step, setStep] = useState<PopoverStep>("date");
 
-  const [loadingSlots, setLoadingSlots] = useState(isActive);
-  const [busyIntervals, setBusyIntervals] = useState<BusyInterval[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(needsInitialSync);
+  const [busyIntervals, setBusyIntervals] =
+    useState<BusyInterval[]>(initialBusy);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotItem | null>(null);
@@ -219,48 +243,33 @@ function BookingPopoverBody({
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const orbCtrlRef = useRef<SuccessOrbController | null>(null);
 
-  const loadAvailability = (signal?: AbortSignal) => {
-    const reqNowMs = Date.now();
-    const fromIso = new Date(reqNowMs - 3_600_000).toISOString();
-    const toIso = new Date(
-      reqNowMs + (siteConfig.booking.maxAdvanceDays + 2) * 86_400_000
-    ).toISOString();
-
-    return fetch(
-      `/api/booking?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(
-        toIso
-      )}`,
-      { cache: "no-store", signal }
-    )
-      .then(async (res) => {
-        const data = (await res.json()) as {
-          ok?: boolean;
-          busy?: BusyInterval[];
-          error?: string;
-        };
-        if (signal?.aborted) return;
+  const syncAvailability = (
+    options: { force?: boolean; isCancelled?: () => boolean } = {}
+  ) =>
+    fetchBookingAvailability({ force: options.force })
+      .then((snapshot) => {
+        if (options.isCancelled?.()) return;
         setNowMs(Date.now());
-        if (!res.ok || data.ok === false) {
-          setFetchError(data.error || "Could not sync calendar");
-        } else {
-          setBusyIntervals(Array.isArray(data.busy) ? data.busy : []);
-          setFetchError(null);
-        }
+        setBusyIntervals(snapshot.busy);
+        setFetchError(null);
         setLoadingSlots(false);
       })
       .catch((err: unknown) => {
-        if ((err as { name?: string })?.name === "AbortError") return;
-        setFetchError("Could not sync calendar");
+        if (options.isCancelled?.()) return;
+        if (!getCachedAvailability()) {
+          setFetchError(
+            err instanceof Error ? err.message : "Could not sync calendar"
+          );
+        }
         setLoadingSlots(false);
       });
-  };
 
   useEffect(() => {
-    if (!isActive) return;
-    const controller = new AbortController();
-    loadAvailability(controller.signal);
+    if (!isActive || isAvailabilityFresh()) return;
+    let cancelled = false;
+    void syncAvailability({ isCancelled: () => cancelled });
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, [isActive]);
 
@@ -415,8 +424,9 @@ function BookingPopoverBody({
 
       if (res.status === 409 || data.code === "SLOT_TAKEN") {
         playBookingError();
+        invalidateAvailabilityCache();
         setLoadingSlots(true);
-        await loadAvailability();
+        await syncAvailability({ force: true });
         setSelectedSlot(null);
         setStep("time");
         setSubmitError("Slot just taken — pick another");
@@ -432,10 +442,12 @@ function BookingPopoverBody({
       }
 
       playBookingSuccess();
-      setBusyIntervals((prev) => [
-        ...prev,
-        { start: selectedSlot.startIso, end: selectedSlot.endIso },
-      ]);
+      const bookedInterval = {
+        start: selectedSlot.startIso,
+        end: selectedSlot.endIso,
+      };
+      recordBookedSlotInCache(bookedInterval);
+      setBusyIntervals((prev) => [...prev, bookedInterval]);
 
       const startFmt = formatTime12h(
         selectedSlot.startMs,
@@ -694,8 +706,17 @@ function BookingPopoverBody({
           ) : null}
 
           {loadingSlots ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-4 w-4 animate-spin text-white/45" />
+            <div
+              aria-busy="true"
+              aria-label="Loading available times"
+              className="grid grid-cols-3 gap-2"
+            >
+              {Array.from({ length: 12 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="h-[38px] rounded-[11px] border border-white/[0.06] bg-white/[0.045] animate-pulse"
+                />
+              ))}
             </div>
           ) : fetchError ? (
             <div className="flex flex-col items-center justify-center gap-2.5 py-10 text-center">
@@ -704,7 +725,7 @@ function BookingPopoverBody({
                 type="button"
                 onClick={() => {
                   setLoadingSlots(true);
-                  loadAvailability();
+                  void syncAvailability({ force: true });
                 }}
                 className="h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] px-4 text-[12px] text-white transition-colors cursor-pointer"
               >

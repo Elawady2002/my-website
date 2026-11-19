@@ -32,9 +32,10 @@ export interface PreloaderFootballController {
 const FOV_DEG = 22;
 
 /**
- * Computes the 32 outward face plane vectors (`n / d`) for an exact
- * truncated icosahedron: indices 0..11 are the 12 black pentagons and
- * indices 12..31 are the 20 white hexagons.
+ * Computes the 16 canonical outward face plane vectors (`n / d`) for an exact
+ * truncated icosahedron (antipodal symmetry doubles them to 32 faces in-shader):
+ * indices 0..5 are the 6 canonical pentagon pairs and indices 6..15 are the
+ * 10 canonical hexagon pairs.
  */
 function buildFootballFacePlanes(): Vector3[] {
   const phi = (1 + Math.sqrt(5)) * 0.5;
@@ -54,14 +55,23 @@ function buildFootballFacePlanes(): Vector3[] {
     new Vector3(-phi, 0, -1),
   ];
 
+  const canonicalPentVerts: Vector3[] = [
+    new Vector3(0, 1, phi),
+    new Vector3(0, -1, phi),
+    new Vector3(1, phi, 0),
+    new Vector3(-1, phi, 0),
+    new Vector3(phi, 0, 1),
+    new Vector3(-phi, 0, 1),
+  ];
+
   const dPent = (1 / 3 + phi * phi) / Math.sqrt(1 + phi * phi);
   const dHex = (phi * phi) / Math.sqrt(3);
 
   const planes: Vector3[] = [];
 
-  for (let i = 0; i < icoVerts.length; i += 1) {
+  for (let i = 0; i < canonicalPentVerts.length; i += 1) {
     planes.push(
-      icoVerts[i]
+      canonicalPentVerts[i]
         .clone()
         .normalize()
         .multiplyScalar(1 / dPent)
@@ -81,7 +91,14 @@ function buildFootballFacePlanes(): Vector3[] {
             .add(icoVerts[j])
             .add(icoVerts[k])
             .normalize();
-          planes.push(hexNormal.multiplyScalar(1 / dHex));
+          const isCanonical =
+            hexNormal.z > 1e-4 ||
+            (Math.abs(hexNormal.z) <= 1e-4 &&
+              (hexNormal.y > 1e-4 ||
+                (Math.abs(hexNormal.y) <= 1e-4 && hexNormal.x > 0)));
+          if (isCanonical) {
+            planes.push(hexNormal.multiplyScalar(1 / dHex));
+          }
         }
       }
     }
@@ -180,7 +197,7 @@ vBallObjPos = position;`
       .replace(
         "#include <common>",
         `#include <common>
-uniform vec3 uFacePlanes[32];
+uniform vec3 uFacePlanes[16];
 uniform mat3 uBallNormalMat;
 varying vec3 vBallObjPos;
 
@@ -207,6 +224,39 @@ float fbNoise(vec3 x) {
     ),
     f.z
   );
+}
+
+vec4 fbNoiseGrad(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  vec3 du = 6.0 * f * (1.0 - f);
+
+  float c000 = fbHash(i + vec3(0.0, 0.0, 0.0));
+  float c100 = fbHash(i + vec3(1.0, 0.0, 0.0));
+  float c010 = fbHash(i + vec3(0.0, 1.0, 0.0));
+  float c110 = fbHash(i + vec3(1.0, 1.0, 0.0));
+  float c001 = fbHash(i + vec3(0.0, 0.0, 1.0));
+  float c101 = fbHash(i + vec3(1.0, 0.0, 1.0));
+  float c011 = fbHash(i + vec3(0.0, 1.0, 1.0));
+  float c111 = fbHash(i + vec3(1.0, 1.0, 1.0));
+
+  float k0 = c000;
+  float k1 = c100 - c000;
+  float k2 = c010 - c000;
+  float k3 = c001 - c000;
+  float k4 = c000 - c100 - c010 + c110;
+  float k5 = c000 - c010 - c001 + c011;
+  float k6 = c000 - c100 - c001 + c101;
+  float k7 = -c000 + c100 + c010 - c110 + c001 - c101 - c011 + c111;
+
+  float val = k0 + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z;
+  vec3 grad = du * vec3(
+    k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z,
+    k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x,
+    k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y
+  );
+  return vec4(val, grad);
 }`
       )
       .replace(
@@ -221,14 +271,18 @@ vec3 fbG2 = vec3(0.0);
 vec3 fbG3 = vec3(0.0);
 float fbIsPent = 0.0;
 
-for (int i = 0; i < 32; i++) {
+for (int i = 0; i < 16; i++) {
   vec3 fbG = uFacePlanes[i];
   float fbS = dot(fbP, fbG);
+  if (fbS < 0.0) {
+    fbS = -fbS;
+    fbG = -fbG;
+  }
   if (fbS > fbS1) {
     fbS3 = fbS2; fbG3 = fbG2;
     fbS2 = fbS1; fbG2 = fbG1;
     fbS1 = fbS;  fbG1 = fbG;
-    fbIsPent = (i < 12) ? 1.0 : 0.0;
+    fbIsPent = (i < 6) ? 1.0 : 0.0;
   } else if (fbS > fbS2) {
     fbS3 = fbS2; fbG3 = fbG2;
     fbS2 = fbS;  fbG2 = fbG;
@@ -251,7 +305,8 @@ float fbSeamDist = mix(fbD13, fbD12, fbH) - fbK * fbH * (1.0 - fbH);
 float fbAA = max(fwidth(fbSeamDist), 0.0025);
 float fbSeamMask = smoothstep(0.010 - fbAA * 0.5, 0.018 + fbAA, fbSeamDist);
 
-float fbGrain = fbNoise(fbP * 88.0);
+vec4 fbGrainRes = fbNoiseGrad(fbP * 88.0);
+float fbGrain = fbGrainRes.x;
 float fbGrainFine = fbNoise(fbP * 195.0);
 float fbLeatherTone = (fbGrain - 0.5) * 0.045 + (fbGrainFine - 0.5) * 0.025;
 
@@ -285,15 +340,11 @@ vec3 fbFaceDir = normalize(fbG1);
 vec3 fbRadialRaw = fbP - fbFaceDir * dot(fbP, fbFaceDir);
 vec3 fbPillowOffset = fbRadialRaw * (0.16 * fbSeamMask);
 
-float fbEps = 0.006;
-float fbGx = fbNoise((fbP + vec3(fbEps, 0.0, 0.0)) * 88.0) - fbGrain;
-float fbGy = fbNoise((fbP + vec3(0.0, fbEps, 0.0)) * 88.0) - fbGrain;
-float fbGz = fbNoise((fbP + vec3(0.0, 0.0, fbEps)) * 88.0) - fbGrain;
-vec3 fbGrainGrad = vec3(fbGx, fbGy, fbGz) / fbEps;
+vec3 fbGrainGrad = fbGrainRes.yzw;
 fbGrainGrad -= fbP * dot(fbP, fbGrainGrad);
 
 vec3 fbPerturbedObjN = normalize(
-  fbP - fbT12 * fbSlope12 - fbT13 * fbSlope13 + fbPillowOffset - fbGrainGrad * (0.0022 * fbSeamMask)
+  fbP - fbT12 * fbSlope12 - fbT13 * fbSlope13 + fbPillowOffset - fbGrainGrad * (0.16 * fbSeamMask)
 );
 normal = normalize(uBallNormalMat * fbPerturbedObjN);
 

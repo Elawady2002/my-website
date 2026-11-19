@@ -174,88 +174,157 @@ export const FOOTER_ORB_BRANDS: readonly OrbBrandSpec[] = [
   },
 ];
 
+export interface BrandOrbTextureHandle {
+  colorTex: CanvasTexture;
+  bumpTex: CanvasTexture;
+  startLoad: () => void;
+  dispose: () => void;
+}
+
 export function createBrandOrbTextures(
   spec: OrbBrandSpec,
   maxAnisotropy: number,
-  onLoaded: () => void,
+  onLoaded: (colorTex: CanvasTexture, bumpTex: CanvasTexture) => void,
   colorSize = 1024,
-  bumpSize = 512
-): { colorTex: CanvasTexture; bumpTex: CanvasTexture } {
-  const colorCanvas = document.createElement("canvas");
-  colorCanvas.width = colorSize;
-  colorCanvas.height = colorSize;
-  const colorCtx = colorCanvas.getContext("2d");
-  if (colorCtx) {
-    colorCtx.fillStyle = spec.baseBg;
-    colorCtx.fillRect(0, 0, colorSize, colorSize);
+  bumpSize = 512,
+  sharedMaskCanvas?: HTMLCanvasElement
+): BrandOrbTextureHandle {
+  const placeholderColorCanvas = document.createElement("canvas");
+  placeholderColorCanvas.width = 2;
+  placeholderColorCanvas.height = 2;
+  const placeholderColorCtx = placeholderColorCanvas.getContext("2d");
+  if (placeholderColorCtx) {
+    placeholderColorCtx.fillStyle = spec.baseBg;
+    placeholderColorCtx.fillRect(0, 0, 2, 2);
   }
 
-  const bumpCanvas = document.createElement("canvas");
-  bumpCanvas.width = bumpSize;
-  bumpCanvas.height = bumpSize;
-  const bumpCtx = bumpCanvas.getContext("2d");
-  if (bumpCtx) {
-    bumpCtx.fillStyle = "#ffffff";
-    bumpCtx.fillRect(0, 0, bumpSize, bumpSize);
+  const placeholderBumpCanvas = document.createElement("canvas");
+  placeholderBumpCanvas.width = 2;
+  placeholderBumpCanvas.height = 2;
+  const placeholderBumpCtx = placeholderBumpCanvas.getContext("2d");
+  if (placeholderBumpCtx) {
+    placeholderBumpCtx.fillStyle = "#ffffff";
+    placeholderBumpCtx.fillRect(0, 0, 2, 2);
   }
 
-  const colorTex = new CanvasTexture(colorCanvas);
-  colorTex.colorSpace = SRGBColorSpace;
-  colorTex.anisotropy = Math.min(8, maxAnisotropy);
+  const placeholderColorTex = new CanvasTexture(placeholderColorCanvas);
+  placeholderColorTex.colorSpace = SRGBColorSpace;
+  placeholderColorTex.needsUpdate = true;
 
-  const bumpTex = new CanvasTexture(bumpCanvas);
-  bumpTex.anisotropy = Math.min(4, maxAnisotropy);
+  const placeholderBumpTex = new CanvasTexture(placeholderBumpCanvas);
+  placeholderBumpTex.needsUpdate = true;
 
-  const img = new window.Image();
-  img.onload = () => {
-    img.onload = null;
-    if (colorCtx) {
-      const drawSize = Math.round(colorSize * spec.iconScale);
-      const offset = (colorSize - drawSize) / 2;
-      colorCtx.imageSmoothingEnabled = true;
-      colorCtx.imageSmoothingQuality = "high";
-      colorCtx.fillStyle = spec.baseBg;
-      colorCtx.fillRect(0, 0, colorSize, colorSize);
-      colorCtx.drawImage(img, offset, offset, drawSize, drawSize);
-      colorTex.needsUpdate = true;
-    }
+  let activeColorTex = placeholderColorTex;
+  let activeBumpTex = placeholderBumpTex;
+  let started = false;
+  let disposed = false;
 
-    if (bumpCtx) {
-      const maskCanvas = document.createElement("canvas");
-      maskCanvas.width = bumpSize;
-      maskCanvas.height = bumpSize;
-      const maskCtx = maskCanvas.getContext("2d");
-      if (maskCtx) {
-        const bumpDrawSize = Math.round(bumpSize * spec.iconScale);
-        const bumpOffset = (bumpSize - bumpDrawSize) / 2;
-        maskCtx.imageSmoothingEnabled = true;
-        maskCtx.imageSmoothingQuality = "high";
-        maskCtx.drawImage(
-          img,
-          bumpOffset,
-          bumpOffset,
-          bumpDrawSize,
-          bumpDrawSize
-        );
-        maskCtx.globalCompositeOperation = "source-in";
-        maskCtx.fillStyle = "#363636";
-        maskCtx.fillRect(0, 0, bumpSize, bumpSize);
+  const startLoad = () => {
+    if (started || disposed) return;
+    started = true;
 
-        bumpCtx.fillStyle = "#ffffff";
-        bumpCtx.fillRect(0, 0, bumpSize, bumpSize);
-        bumpCtx.save();
-        bumpCtx.filter = `blur(${(3.2 * (bumpSize / 512)).toFixed(2)}px)`;
-        bumpCtx.drawImage(maskCanvas, 0, 0);
-        bumpCtx.filter = "none";
-        bumpCtx.restore();
-        bumpTex.needsUpdate = true;
+    const img = new window.Image();
+    img.decoding = "async";
+
+    const drawTextures = () => {
+      if (disposed) return;
+
+      const colorCanvas = document.createElement("canvas");
+      colorCanvas.width = colorSize;
+      colorCanvas.height = colorSize;
+      const colorCtx = colorCanvas.getContext("2d");
+      if (colorCtx) {
+        const drawSize = Math.round(colorSize * spec.iconScale);
+        const offset = (colorSize - drawSize) / 2;
+        colorCtx.imageSmoothingEnabled = true;
+        colorCtx.imageSmoothingQuality = "high";
+        colorCtx.fillStyle = spec.baseBg;
+        colorCtx.fillRect(0, 0, colorSize, colorSize);
+        colorCtx.drawImage(img, offset, offset, drawSize, drawSize);
       }
-    }
 
-    onLoaded();
+      const bumpCanvas = document.createElement("canvas");
+      bumpCanvas.width = bumpSize;
+      bumpCanvas.height = bumpSize;
+      const bumpCtx = bumpCanvas.getContext("2d");
+      if (bumpCtx) {
+        const maskCanvas =
+          sharedMaskCanvas || document.createElement("canvas");
+        if (maskCanvas.width !== bumpSize) maskCanvas.width = bumpSize;
+        if (maskCanvas.height !== bumpSize) maskCanvas.height = bumpSize;
+        const maskCtx = maskCanvas.getContext("2d");
+        if (maskCtx) {
+          const bumpDrawSize = Math.round(bumpSize * spec.iconScale);
+          const bumpOffset = (bumpSize - bumpDrawSize) / 2;
+          maskCtx.globalCompositeOperation = "source-over";
+          maskCtx.clearRect(0, 0, bumpSize, bumpSize);
+          maskCtx.imageSmoothingEnabled = true;
+          maskCtx.imageSmoothingQuality = "high";
+          maskCtx.drawImage(
+            img,
+            bumpOffset,
+            bumpOffset,
+            bumpDrawSize,
+            bumpDrawSize
+          );
+          maskCtx.globalCompositeOperation = "source-in";
+          maskCtx.fillStyle = "#363636";
+          maskCtx.fillRect(0, 0, bumpSize, bumpSize);
+          maskCtx.globalCompositeOperation = "source-over";
+
+          bumpCtx.fillStyle = "#ffffff";
+          bumpCtx.fillRect(0, 0, bumpSize, bumpSize);
+          bumpCtx.save();
+          bumpCtx.filter = `blur(${(3.2 * (bumpSize / 512)).toFixed(2)}px)`;
+          bumpCtx.drawImage(maskCanvas, 0, 0);
+          bumpCtx.filter = "none";
+          bumpCtx.restore();
+        }
+      }
+
+      const nextColorTex = new CanvasTexture(colorCanvas);
+      nextColorTex.colorSpace = SRGBColorSpace;
+      nextColorTex.anisotropy = Math.min(8, maxAnisotropy);
+      nextColorTex.needsUpdate = true;
+
+      const nextBumpTex = new CanvasTexture(bumpCanvas);
+      nextBumpTex.anisotropy = Math.min(4, maxAnisotropy);
+      nextBumpTex.needsUpdate = true;
+
+      activeColorTex = nextColorTex;
+      activeBumpTex = nextBumpTex;
+      onLoaded(nextColorTex, nextBumpTex);
+      placeholderColorTex.dispose();
+      placeholderBumpTex.dispose();
+    };
+
+    img.onload = () => {
+      img.onload = null;
+      if (disposed) return;
+      if (typeof img.decode === "function") {
+        img.decode().catch(() => {}).finally(drawTextures);
+      } else {
+        drawTextures();
+      }
+    };
+
+    img.src =
+      "data:image/svg+xml;charset=utf-8," + encodeURIComponent(spec.svg);
   };
 
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(spec.svg);
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    placeholderColorTex.dispose();
+    placeholderBumpTex.dispose();
+    activeColorTex.dispose();
+    activeBumpTex.dispose();
+  };
 
-  return { colorTex, bumpTex };
+  return {
+    colorTex: placeholderColorTex,
+    bumpTex: placeholderBumpTex,
+    startLoad,
+    dispose,
+  };
 }

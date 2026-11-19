@@ -48,9 +48,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    inlineCss: true,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     qualities: [75, 85],
+    minimumCacheTTL: 31536000,
   },
   turbopack: {
     rules: {
