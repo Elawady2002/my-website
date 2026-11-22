@@ -566,8 +566,8 @@ export function PreloaderIntro() {
               colRefs.current[idx] = el;
             }}
             className={`h-full bg-[#f34213] -mr-[2px] will-change-transform ${
-              idx >= 8 ? "hidden md:block" : ""
-            }`}
+              idx > 0 ? "shadow-[inset_1px_0_0_rgba(11,11,11,0.14)]" : ""
+            } ${idx >= 8 ? "hidden md:block" : ""}`}
           />
         ))}
       </div>
