@@ -123,19 +123,12 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
 
-    float r;
-    float g;
-    float b;
-    if (edge < 0.00025) {
-      vec3 centerCol = sampleSlide(uvG, fw);
-      r = centerCol.r;
-      g = centerCol.g;
-      b = centerCol.b;
-    } else {
-      r = sampleSlide(uvR, fw).r;
-      g = sampleSlide(uvG, fw).g;
-      b = sampleSlide(uvB, fw).b;
-    }
+    // Sample all three channels unconditionally so texture2D(uMap, ...) never
+    // runs inside per-pixel divergent control flow (which breaks implicit
+    // dFdx/dFdy mipmap derivatives across 2x2 quads and produces a 1px seam).
+    float r = sampleSlide(uvR, fw).r;
+    float g = sampleSlide(uvG, fw).g;
+    float b = sampleSlide(uvB, fw).b;
 
     vec3 col = vec3(r, g, b);
     float glassRim = smoothstep(0.0, 0.04, vUv.x) * smoothstep(1.0, 0.96, vUv.x)
