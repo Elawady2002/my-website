@@ -1,12 +1,193 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
 import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
-import { siteConfig } from "@/data/site";
+import { siteConfig, type CertificateItem } from "@/data/site";
 import { getLenis } from "@/lib/dom";
+
+interface CertificateArchiveRowProps {
+  cert: CertificateItem;
+  totalPadded: string;
+}
+
+function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps) {
+  const series = cert.series;
+  const hasSeries = Boolean(series && series.length > 1);
+  const [activeSeriesIdx, setActiveSeriesIdx] = useState(0);
+
+  const activeLevel =
+    hasSeries && series ? (series[activeSeriesIdx] ?? series[0]) : undefined;
+
+  const displayCert: CertificateItem = activeLevel
+    ? {
+        ...cert,
+        id: activeLevel.id,
+        imageSrc: activeLevel.imageSrc,
+        frameFormat: activeLevel.frameFormat ?? cert.frameFormat,
+      }
+    : cert;
+
+  const effectiveDate = activeLevel ? activeLevel.issuedDate : cert.issuedDate;
+  const effectiveVerifyUrl = activeLevel?.verifyUrl ?? cert.verifyUrl;
+
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!series || series.length < 2) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setActiveSeriesIdx((prev) => (prev + 1) % series.length);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setActiveSeriesIdx((prev) => (prev - 1 + series.length) % series.length);
+    }
+  };
+
+  return (
+    <article
+      id={cert.id}
+      className="scroll-mt-24 py-14 sm:py-20 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center"
+    >
+      <div className="lg:col-span-7">
+        <CertificateFrame3D
+          certificate={displayCert}
+          allowWideOrbit
+          className={
+            displayCert.frameFormat === "portrait"
+              ? "h-[420px] sm:h-[520px] lg:h-[580px] w-full"
+              : "h-[340px] sm:h-[430px] lg:h-[480px] w-full"
+          }
+        />
+
+        {hasSeries && series && activeLevel ? (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <div
+              role="tablist"
+              aria-label={`${cert.title} certificates`}
+              onKeyDown={handleTabKeyDown}
+              className="flex items-center justify-center gap-1"
+            >
+              {series.map((level, idx) => {
+                const isActive = idx === activeSeriesIdx;
+                return (
+                  <button
+                    key={level.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-label={`${level.label} — ${level.level}`}
+                    onClick={() => setActiveSeriesIdx(idx)}
+                    className="group p-1.5 cursor-pointer focus:outline-none"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`block h-2 rounded-full transition-all duration-300 ${
+                        isActive
+                          ? "w-7 bg-[#f34213] shadow-[0_0_12px_rgba(243,66,19,0.65)]"
+                          : "w-2 bg-[#e7e1d7]/25 group-hover:bg-[#e7e1d7]/60"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-[11.5px] uppercase tracking-[0.08em] tabular-nums text-[#e7e1d7]/60">
+              {activeLevel.label} · {activeLevel.level} ·{" "}
+              {activeSeriesIdx + 1} / {series.length}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="lg:col-span-5 flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-2 text-[12px] uppercase tracking-[0.08em]">
+          <span className="tabular-nums text-[#f34213]">
+            {cert.number} / {totalPadded}
+          </span>
+          <span className="text-[#e7e1d7]/55">{effectiveDate}</span>
+        </div>
+
+        <div>
+          <h2 className="text-[24px] sm:text-[30px] xl:text-[34px] leading-[1.08] tracking-[-0.025em] font-normal uppercase text-[#e7e1d7]">
+            <StylizedWords text={cert.title} />
+          </h2>
+          <p className="mt-2 text-[13.5px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
+            {cert.issuer}
+          </p>
+          {hasSeries && series ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-[#f34213]"
+              />
+              <span>
+                {series.length} Levels · {series.length} Certificates
+              </span>
+            </p>
+          ) : null}
+        </div>
+
+        <p className="text-[15px] sm:text-[16px] leading-[1.65] text-[#e7e1d7]/80">
+          {cert.description}
+        </p>
+
+        <div className="border-t border-[#e7e1d7]/15 text-[12.5px] uppercase tracking-[0.05em]">
+          <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
+            <span className="text-[#e7e1d7]/45 shrink-0">ISSUED BY</span>
+            <span className="text-right text-[#e7e1d7]">{cert.issuer}</span>
+          </div>
+          {hasSeries && activeLevel ? (
+            <>
+              <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
+                <span className="text-[#e7e1d7]/45 shrink-0">TRACK</span>
+                <span className="text-right text-[#e7e1d7]">
+                  {cert.details}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
+                <span className="text-[#e7e1d7]/45 shrink-0">VIEWING</span>
+                <span className="text-right text-[#e7e1d7]">
+                  {activeLevel.label} · {activeLevel.details}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
+              <span className="text-[#e7e1d7]/45 shrink-0">DETAILS</span>
+              <span className="text-right text-[#e7e1d7]">{cert.details}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          {effectiveVerifyUrl ? (
+            <a
+              href={effectiveVerifyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#f34213] px-5 text-[12px] font-medium uppercase tracking-[0.06em] text-[#0b0b0b] hover:bg-[#ff5629] transition-colors"
+            >
+              <span>Verify</span>
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          ) : null}
+
+          <a
+            href={cert.programUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="voy-glass inline-flex h-10 items-center gap-1.5 rounded-full px-5 text-[12px] uppercase tracking-[0.06em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-colors"
+          >
+            <span>{cert.programLabel}</span>
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function CertificatesArchiveView() {
   const { certificates } = siteConfig.certificatesSection;
@@ -68,86 +249,11 @@ export function CertificatesArchiveView() {
 
         <div>
           {certificates.map((cert) => (
-            <article
+            <CertificateArchiveRow
               key={cert.id}
-              id={cert.id}
-              className="scroll-mt-24 py-14 sm:py-20 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center"
-            >
-              <div className="lg:col-span-7">
-                <CertificateFrame3D
-                  certificate={cert}
-                  allowWideOrbit
-                  className={
-                    cert.frameFormat === "portrait"
-                      ? "h-[420px] sm:h-[520px] lg:h-[580px] w-full"
-                      : "h-[340px] sm:h-[430px] lg:h-[480px] w-full"
-                  }
-                />
-              </div>
-
-              <div className="lg:col-span-5 flex flex-col gap-6">
-                <div className="flex items-center justify-between gap-2 text-[12px] uppercase tracking-[0.08em]">
-                  <span className="tabular-nums text-[#f34213]">
-                    {cert.number} / {totalPadded}
-                  </span>
-                  <span className="text-[#e7e1d7]/55">{cert.issuedDate}</span>
-                </div>
-
-                <div>
-                  <h2 className="text-[24px] sm:text-[30px] xl:text-[34px] leading-[1.08] tracking-[-0.025em] font-normal uppercase text-[#e7e1d7]">
-                    <StylizedWords text={cert.title} />
-                  </h2>
-                  <p className="mt-2 text-[13.5px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
-                    {cert.issuer}
-                  </p>
-                </div>
-
-                <p className="text-[15px] sm:text-[16px] leading-[1.65] text-[#e7e1d7]/80">
-                  {cert.description}
-                </p>
-
-                <div className="border-t border-[#e7e1d7]/15 text-[12.5px] uppercase tracking-[0.05em]">
-                  <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
-                    <span className="text-[#e7e1d7]/45 shrink-0">
-                      ISSUED BY
-                    </span>
-                    <span className="text-right text-[#e7e1d7]">
-                      {cert.issuer}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
-                    <span className="text-[#e7e1d7]/45 shrink-0">DETAILS</span>
-                    <span className="text-right text-[#e7e1d7]">
-                      {cert.details}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  {cert.verifyUrl ? (
-                    <a
-                      href={cert.verifyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#f34213] px-5 text-[12px] font-medium uppercase tracking-[0.06em] text-[#0b0b0b] hover:bg-[#ff5629] transition-colors"
-                    >
-                      <span>Verify</span>
-                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                    </a>
-                  ) : null}
-
-                  <a
-                    href={cert.programUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="voy-glass inline-flex h-10 items-center gap-1.5 rounded-full px-5 text-[12px] uppercase tracking-[0.06em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-colors"
-                  >
-                    <span>{cert.programLabel}</span>
-                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-                </div>
-              </div>
-            </article>
+              cert={cert}
+              totalPadded={totalPadded}
+            />
           ))}
         </div>
       </main>

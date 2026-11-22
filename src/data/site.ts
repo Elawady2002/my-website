@@ -46,6 +46,17 @@ export interface WorkProjectItem {
  */
 export type CertificateFrameFormat = "landscape" | "landscape-4x3" | "portrait";
 
+export interface CertificateSeriesLevel {
+  id: string;
+  label: string;
+  level: string;
+  issuedDate: string;
+  details: string;
+  imageSrc: string;
+  frameFormat?: CertificateFrameFormat;
+  verifyUrl?: string;
+}
+
 export interface CertificateItem {
   id: string;
   number: string;
@@ -61,6 +72,7 @@ export interface CertificateItem {
   programUrl: string;
   programLabel: string;
   featured?: boolean;
+  series?: readonly CertificateSeriesLevel[];
 }
 
 export const siteConfig = {
@@ -435,8 +447,50 @@ export const siteConfig = {
         featured: false,
       },
       {
-        id: "busuu-english-a1",
+        id: "satr-dart-track",
         number: "05",
+        title: "DART PROGRAMMING TRACK",
+        issuer: "Tuwaiq Academy · Satr",
+        issuedDate: "MAY 2024",
+        details: "3 Levels Completed · 3 Certificates · 6 Hours Total",
+        description:
+          "Completed the 3-level Dart programming certification track (Dart 101, 102 & 103) on Satr by Tuwaiq Academy, covering core syntax, object-oriented fundamentals, and intermediate Dart patterns for Flutter engineering.",
+        accentColor: "#00B4E6",
+        frameFormat: "landscape",
+        imageSrc: "/images/certificates/satr-dart-101.webp",
+        programUrl: "https://satr.codes/",
+        programLabel: "Explore Satr",
+        featured: false,
+        series: [
+          {
+            id: "satr-dart-101",
+            label: "Dart 101",
+            level: "Beginner",
+            issuedDate: "MAY 20, 2024",
+            details: "Level 1 of 3 · Beginner · 2 Hours",
+            imageSrc: "/images/certificates/satr-dart-101.webp",
+          },
+          {
+            id: "satr-dart-102",
+            label: "Dart 102",
+            level: "Intermediate",
+            issuedDate: "MAY 21, 2024",
+            details: "Level 2 of 3 · Intermediate · 2 Hours",
+            imageSrc: "/images/certificates/satr-dart-102.webp",
+          },
+          {
+            id: "satr-dart-103",
+            label: "Dart 103",
+            level: "Intermediate",
+            issuedDate: "MAY 21, 2024",
+            details: "Level 3 of 3 · Intermediate · 2 Hours",
+            imageSrc: "/images/certificates/satr-dart-103.webp",
+          },
+        ],
+      },
+      {
+        id: "busuu-english-a1",
+        number: "06",
         title: "ENGLISH LEVEL A1",
         issuer: "Busuu",
         issuedDate: "JAN 2023",
