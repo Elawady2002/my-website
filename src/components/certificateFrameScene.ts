@@ -1,5 +1,4 @@
 import {
-  AdditiveBlending,
   BoxGeometry,
   CanvasTexture,
   Color,
@@ -47,10 +46,10 @@ export interface CertificateFrameMountOptions {
 }
 
 const FOV_DEG = 32;
-const OUTER_W = 3.56;
-const OUTER_H = 2.68;
+const OUTER_W = 3.59;
+const OUTER_H = 2.66;
 const RAIL_W = 0.2;
-const FRAME_DEPTH = 0.14;
+const FRAME_DEPTH = 0.16;
 const BEVEL_SIZE = 0.018;
 const BEVEL_THICKNESS = 0.022;
 
@@ -59,14 +58,21 @@ const HH = OUTER_H * 0.5;
 const IHW = HW - RAIL_W;
 const IHH = HH - RAIL_W;
 
-const ART_W = 2.66;
-const ART_H = 1.88;
+const FILLET_W = 0.015;
+const ART_W = (IHW - FILLET_W) * 2;
+const ART_H = (IHH - FILLET_W) * 2;
 
 const GLASS_GLARE_VERTEX = /* glsl */ `
   varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+
   void main() {
     vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPos = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;
 
@@ -74,30 +80,66 @@ const GLASS_GLARE_FRAGMENT = /* glsl */ `
   uniform vec2 uTilt;
   uniform float uIntensity;
   varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
 
   void main() {
-    // Shift reflection coordinate based on frame tilt so light glides smoothly across glass
-    vec2 p = vUv - vec2(0.5) + vec2(-uTilt.y * 0.36, uTilt.x * 0.36);
+    vec3 viewDir = normalize(cameraPosition - vWorldPos);
+    vec3 N = normalize(vWorldNormal);
+    float ndotv = clamp(abs(dot(N, viewDir)), 0.0, 1.0);
+    float schlick = 0.04 + 0.96 * pow(1.0 - ndotv, 4.2);
 
-    // Primary diagonal gallery window reflection streak
-    float diag1 = p.x * 0.78 + p.y * 0.62;
-    float band1 = smoothstep(-0.26, -0.06, diag1) * (1.0 - smoothstep(0.06, 0.24, diag1));
-    band1 *= smoothstep(0.58, 0.05, abs(p.y - p.x * 0.35));
+    vec3 R = reflect(-viewDir, N);
+    R.xy += vec2(-uTilt.y * 0.22, uTilt.x * 0.18);
 
-    // Secondary crisp specular highlight ribbon
-    float diag2 = p.x * 0.82 + p.y * 0.57 - 0.29;
-    float band2 = smoothstep(-0.08, -0.015, diag2) * (1.0 - smoothstep(0.015, 0.085, diag2));
-    band2 *= smoothstep(0.62, 0.05, abs(p.y + 0.12));
+    // Primary soft gallery softbox reflection (organic feathered upper-left diffuser)
+    vec2 s = R.xy - vec2(-0.24, 0.15);
+    float softbox = smoothstep(0.52, 0.12, abs(s.x + s.y * 0.28)) *
+                    smoothstep(0.36, 0.06, abs(s.y - s.x * 0.18));
+    softbox *= mix(0.45, 1.0, smoothstep(-0.1, 0.95, vUv.y));
 
-    // Subtle Fresnel grazing edge shimmer near glass perimeter
-    vec2 edgeDist = min(vUv, 1.0 - vUv);
-    float edgeMask = 1.0 - smoothstep(0.0, 0.075, min(edgeDist.x, edgeDist.y));
-    float angleBoost = clamp(length(uTilt) * 1.45, 0.18, 0.95);
+    // Subtle secondary right-side studio window bounce
+    vec2 f = R.xy - vec2(0.36, 0.20);
+    float fillWindow = smoothstep(0.48, 0.10, abs(f.x - f.y * 0.22)) *
+                       smoothstep(0.34, 0.08, abs(f.y + f.x * 0.14));
 
-    float glareAlpha = (band1 * 0.125 + band2 * 0.175 + edgeMask * 0.065) * uIntensity * (0.58 + 0.68 * angleBoost);
-    vec3 glareColor = mix(vec3(0.92, 0.95, 1.0), vec3(1.0, 0.98, 0.95), band1);
+    // Gentle ambient skylight gradient across upper glass
+    float skyGrad = smoothstep(-0.35, 0.45, R.y);
 
-    gl_FragColor = vec4(glareColor * glareAlpha, glareAlpha);
+    // Hairline physical glass edge catch right inside the brass/wood rabbet
+    float topEdge = 1.0 - smoothstep(0.0, 0.006, 1.0 - vUv.y);
+    float leftEdge = 1.0 - smoothstep(0.0, 0.005, vUv.x);
+    float botEdge = 1.0 - smoothstep(0.0, 0.005, vUv.y);
+    float rightEdge = 1.0 - smoothstep(0.0, 0.004, 1.0 - vUv.x);
+    float edgeGlint = clamp(
+      topEdge * 0.9 + leftEdge * 0.75 + botEdge * 0.25 + rightEdge * 0.25,
+      0.0,
+      1.0
+    );
+
+    // Subtle understated glass presence with authentic optical reflection
+    float baseAlpha = clamp(0.028 + schlick * 0.14, 0.0, 0.11);
+    vec3 baseColor = vec3(0.11, 0.14, 0.18);
+
+    float specAlpha = clamp(
+      (softbox * (0.095 + schlick * 0.85) +
+       fillWindow * (0.055 + schlick * 0.65) +
+       skyGrad * (0.018 + schlick * 0.22) +
+       edgeGlint * (0.11 + schlick * 0.25)) * uIntensity,
+      0.0,
+      0.28
+    );
+
+    vec3 specColor = mix(
+      vec3(0.95, 0.97, 1.0),
+      vec3(1.0, 0.985, 0.96),
+      clamp(softbox * 0.6, 0.0, 0.6)
+    );
+    float specDominance = smoothstep(0.008, 0.065, specAlpha);
+    vec3 finalColor = mix(baseColor, specColor, specDominance);
+    float finalAlpha = max(baseAlpha, specAlpha);
+
+    gl_FragColor = vec4(finalColor, finalAlpha);
   }
 `;
 
@@ -201,7 +243,7 @@ function getGalleryEnvCanvas(): HTMLCanvasElement {
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    ctx.fillStyle = "#0e0d0c";
+    ctx.fillStyle = "#0a0a0b";
     ctx.fillRect(0, 0, width, height);
 
     // Top-left warm gallery key softbox
@@ -234,16 +276,16 @@ function getGalleryEnvCanvas(): HTMLCanvasElement {
     ctx.fillStyle = rimGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Diagonal skylight strip for crisp glass reflection sweep
+    // Crisp diagonal skylight strip for clear glass specular reflection sweep
     ctx.save();
     ctx.translate(width * 0.5, height * 0.36);
     ctx.rotate(-0.42);
-    const stripGrad = ctx.createLinearGradient(0, -18, 0, 18);
+    const stripGrad = ctx.createLinearGradient(0, -14, 0, 14);
     stripGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-    stripGrad.addColorStop(0.5, "rgba(244, 248, 255, 0.5)");
+    stripGrad.addColorStop(0.5, "rgba(248, 252, 255, 0.68)");
     stripGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
     ctx.fillStyle = stripGrad;
-    ctx.fillRect(-width * 0.45, -18, width * 0.9, 36);
+    ctx.fillRect(-width * 0.45, -14, width * 0.9, 28);
     ctx.restore();
 
     // Subtle vermilion studio bounce from bottom
@@ -319,45 +361,51 @@ function wrapCanvasText(
   return lines;
 }
 
-function drawRecessedMatVignette(
+function drawRecessedFrameShadow(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number
 ): void {
-  const edge = 28;
-  const topGrad = ctx.createLinearGradient(0, 0, 0, edge);
-  topGrad.addColorStop(0, "rgba(18, 12, 6, 0.2)");
-  topGrad.addColorStop(1, "rgba(18, 12, 6, 0)");
+  const topEdge = 46;
+  const topGrad = ctx.createLinearGradient(0, 0, 0, topEdge);
+  topGrad.addColorStop(0, "rgba(12, 8, 4, 0.3)");
+  topGrad.addColorStop(1, "rgba(12, 8, 4, 0)");
   ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, width, edge);
+  ctx.fillRect(0, 0, width, topEdge);
 
-  const botGrad = ctx.createLinearGradient(0, height - edge, 0, height);
-  botGrad.addColorStop(0, "rgba(18, 12, 6, 0)");
-  botGrad.addColorStop(1, "rgba(18, 12, 6, 0.12)");
+  const bottomEdge = 26;
+  const botGrad = ctx.createLinearGradient(0, height - bottomEdge, 0, height);
+  botGrad.addColorStop(0, "rgba(12, 8, 4, 0)");
+  botGrad.addColorStop(1, "rgba(12, 8, 4, 0.15)");
   ctx.fillStyle = botGrad;
-  ctx.fillRect(0, height - edge, width, edge);
+  ctx.fillRect(0, height - bottomEdge, width, bottomEdge);
 
-  const leftGrad = ctx.createLinearGradient(0, 0, edge, 0);
-  leftGrad.addColorStop(0, "rgba(18, 12, 6, 0.16)");
-  leftGrad.addColorStop(1, "rgba(18, 12, 6, 0)");
+  const leftEdge = 38;
+  const leftGrad = ctx.createLinearGradient(0, 0, leftEdge, 0);
+  leftGrad.addColorStop(0, "rgba(12, 8, 4, 0.24)");
+  leftGrad.addColorStop(1, "rgba(12, 8, 4, 0)");
   ctx.fillStyle = leftGrad;
-  ctx.fillRect(0, 0, edge, height);
+  ctx.fillRect(0, 0, leftEdge, height);
 
-  const rightGrad = ctx.createLinearGradient(width - edge, 0, width, 0);
-  rightGrad.addColorStop(0, "rgba(18, 12, 6, 0)");
-  rightGrad.addColorStop(1, "rgba(18, 12, 6, 0.14)");
+  const rightEdge = 28;
+  const rightGrad = ctx.createLinearGradient(width - rightEdge, 0, width, 0);
+  rightGrad.addColorStop(0, "rgba(12, 8, 4, 0)");
+  rightGrad.addColorStop(1, "rgba(12, 8, 4, 0.16)");
   ctx.fillStyle = rightGrad;
-  ctx.fillRect(width - edge, 0, edge, height);
+  ctx.fillRect(width - rightEdge, 0, rightEdge, height);
 }
 
 function drawGeneratedCertificatePlate(
   canvas: HTMLCanvasElement,
   cert: CertificateItem
 ): void {
-  const width = canvas.width;
-  const height = canvas.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+
+  const width = 1280;
+  const height = 900;
+  ctx.save();
+  ctx.scale(canvas.width / width, canvas.height / height);
 
   // Warm archival ivory paper gradient
   const paperGrad = ctx.createRadialGradient(
@@ -405,16 +453,12 @@ function drawGeneratedCertificatePlate(
     ctx.fill();
   }
 
-  // Issuer / platform header
+  // Issuer header
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#5c5246";
   ctx.font = '600 18px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText(
-    `${cert.issuer.toUpperCase()}   ·   ${cert.platform.toUpperCase()}`,
-    width * 0.5,
-    136
-  );
+  ctx.fillText(cert.issuer.toUpperCase(), width * 0.5, 136);
 
   // Divider accent dash
   ctx.fillStyle = cert.accentColor || "#b5904c";
@@ -452,10 +496,10 @@ function drawGeneratedCertificatePlate(
     ctx.fillText(line, width * 0.5, startY + idx * lineHeight);
   });
 
-  // Category pill
+  // Details pill
   const catY = titleLines.length > 1 ? 548 : 526;
   ctx.font = '600 14px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-  const catText = cert.category.toUpperCase();
+  const catText = cert.details.toUpperCase();
   const pillW = Math.min(width - 280, ctx.measureText(catText).width + 54);
   ctx.fillStyle = "rgba(27, 24, 21, 0.05)";
   ctx.strokeStyle = "rgba(181, 144, 76, 0.55)";
@@ -490,7 +534,7 @@ function drawGeneratedCertificatePlate(
   ctx.fillText(cert.issuedDate.toUpperCase(), 270, footerY + 24);
   ctx.fillStyle = "#7a6f63";
   ctx.font = '500 12px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText("AUTHORIZED CREDENTIAL", 270, footerY + 46);
+  ctx.fillText("ISSUE DATE", 270, footerY + 46);
 
   // Bottom Center: Embossed Metallic Foil / Wax Rosette Seal
   const sealX = width * 0.5;
@@ -562,7 +606,7 @@ function drawGeneratedCertificatePlate(
   ctx.font = '600 9px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
   ctx.fillText("VERIFIED", sealX, sealY + 17);
 
-  // Bottom Right: Credential ID
+  // Bottom Right: Program Issuer
   ctx.strokeStyle = "rgba(27, 24, 21, 0.35)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -572,12 +616,13 @@ function drawGeneratedCertificatePlate(
 
   ctx.fillStyle = "#231e19";
   ctx.font = '600 14px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText(cert.credentialId, width - 270, footerY + 24);
+  ctx.fillText(cert.issuer.toUpperCase(), width - 270, footerY + 24);
   ctx.fillStyle = "#7a6f63";
   ctx.font = '500 12px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText("CREDENTIAL ID", width - 270, footerY + 46);
+  ctx.fillText("ISSUING AUTHORITY", width - 270, footerY + 46);
 
-  drawRecessedMatVignette(ctx, width, height);
+  drawRecessedFrameShadow(ctx, width, height);
+  ctx.restore();
 }
 
 function drawScannedCertificateImage(
@@ -589,13 +634,13 @@ function drawScannedCertificateImage(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  ctx.fillStyle = "#f6f1e7";
+  ctx.fillStyle = "#181614";
   ctx.fillRect(0, 0, width, height);
 
   const natW = img.naturalWidth || img.width;
   const natH = img.naturalHeight || img.height;
   if (natW > 0 && natH > 0) {
-    const scale = Math.min(width / natW, height / natH);
+    const scale = Math.max(width / natW, height / natH);
     const dw = natW * scale;
     const dh = natH * scale;
     ctx.imageSmoothingEnabled = true;
@@ -603,7 +648,7 @@ function drawScannedCertificateImage(
     ctx.drawImage(img, (width - dw) * 0.5, (height - dh) * 0.5, dw, dh);
   }
 
-  drawRecessedMatVignette(ctx, width, height);
+  drawRecessedFrameShadow(ctx, width, height);
 }
 
 function createMiterRailGeometry(
@@ -612,7 +657,7 @@ function createMiterRailGeometry(
   const b = BEVEL_SIZE;
   const eps = 0.0008;
   const diag = (b + eps) * Math.SQRT2;
-  const miterDelta = HW - HH; // 0.44
+  const miterDelta = HW - HH;
 
   const shape = new Shape();
 
@@ -773,25 +818,19 @@ export function mountCertificateFrameScene({
     envMapIntensity: 1.35,
   });
 
-  const matBoardMaterial = new MeshStandardMaterial({
-    color: new Color(0xebe5da),
-    roughness: 0.88,
-    metalness: 0.02,
-    envMapIntensity: 0.3,
-  });
-
-  const matBevelMaterial = new MeshStandardMaterial({
-    color: new Color(0xf8f4ed),
-    roughness: 0.72,
-    metalness: 0.03,
-    envMapIntensity: 0.45,
-  });
-
   // Certificate artwork texture
   const certCanvas = document.createElement("canvas");
-  certCanvas.width = 1280;
-  certCanvas.height = 900;
-  drawGeneratedCertificatePlate(certCanvas, certificate);
+  certCanvas.width = 1600;
+  certCanvas.height = 1128;
+  if (certificate.imageSrc) {
+    const cCtx = certCanvas.getContext("2d");
+    if (cCtx) {
+      cCtx.fillStyle = "#181614";
+      cCtx.fillRect(0, 0, certCanvas.width, certCanvas.height);
+    }
+  } else {
+    drawGeneratedCertificatePlate(certCanvas, certificate);
+  }
 
   const certTex = new CanvasTexture(certCanvas);
   certTex.colorSpace = SRGBColorSpace;
@@ -808,16 +847,16 @@ export function mountCertificateFrameScene({
   });
 
   const glassMaterial = new MeshPhysicalMaterial({
-    color: new Color(0xeef5ff),
+    color: new Color(0xe4eff7),
     transparent: true,
-    opacity: 0.12,
-    roughness: 0.04,
-    metalness: 0.05,
+    opacity: 0.055,
+    roughness: 0.025,
+    metalness: 0.02,
     clearcoat: 1.0,
     clearcoatRoughness: 0.02,
     ior: 1.52,
     reflectivity: 1.0,
-    envMapIntensity: 2.2,
+    envMapIntensity: 1.8,
     depthWrite: false,
   });
 
@@ -830,7 +869,6 @@ export function mountCertificateFrameScene({
     fragmentShader: GLASS_GLARE_FRAGMENT,
     transparent: true,
     depthWrite: false,
-    blending: AdditiveBlending,
   });
 
   const backboardTex = new CanvasTexture(getBackboardCanvas());
@@ -870,10 +908,10 @@ export function mountCertificateFrameScene({
     frameGroup.add(new Mesh(geo, woodMaterial));
   });
 
-  // 2. Recessed Antique-Brass Inner Fillet Liner
-  const filletW = 0.024;
-  const filletDepth = 0.055;
-  const filletZ = -0.02;
+  // 2. Deep Recessed Antique-Brass Inner Fillet Liner spanning from recessed art to front glass
+  const filletW = FILLET_W;
+  const filletDepth = 0.088;
+  const filletZ = -0.008;
   const topBotFilletGeo = new BoxGeometry(IHW * 2, filletW, filletDepth);
   const sideFilletGeo = new BoxGeometry(
     filletW,
@@ -892,85 +930,41 @@ export function mountCertificateFrameScene({
   filletRight.position.set(IHW - filletW * 0.5, 0, filletZ);
   frameGroup.add(filletTop, filletBot, filletLeft, filletRight);
 
-  // 3. Recessed Museum Passepartout Mat Board (aperture = ART_W x ART_H)
-  const matOuterW = (IHW - filletW) * 2;
-  const matOuterH = (IHH - filletW) * 2;
-  const matTopBotH = (matOuterH - ART_H) * 0.5;
-  const matSideW = (matOuterW - ART_W) * 0.5;
-  const matZ = -0.046;
-  const matDepth = 0.016;
-
-  const matTopBotGeo = new BoxGeometry(matOuterW, matTopBotH, matDepth);
-  const matSideGeo = new BoxGeometry(matSideW, ART_H, matDepth);
-  geometries.push(matTopBotGeo, matSideGeo);
-
-  const matTop = new Mesh(matTopBotGeo, matBoardMaterial);
-  matTop.position.set(0, ART_H * 0.5 + matTopBotH * 0.5, matZ);
-  const matBot = new Mesh(matTopBotGeo, matBoardMaterial);
-  matBot.position.set(0, -(ART_H * 0.5 + matTopBotH * 0.5), matZ);
-  const matLeft = new Mesh(matSideGeo, matBoardMaterial);
-  matLeft.position.set(-(ART_W * 0.5 + matSideW * 0.5), 0, matZ);
-  const matRight = new Mesh(matSideGeo, matBoardMaterial);
-  matRight.position.set(ART_W * 0.5 + matSideW * 0.5, 0, matZ);
-  frameGroup.add(matTop, matBot, matLeft, matRight);
-
-  // Crisp inner bevel cut trim framing the recessed paper
-  const bevelCutW = 0.014;
-  const bevelCutDepth = 0.014;
-  const bevelCutZ = -0.05;
-  const bevelTopBotGeo = new BoxGeometry(
-    ART_W + bevelCutW * 2,
-    bevelCutW,
-    bevelCutDepth
-  );
-  const bevelSideGeo = new BoxGeometry(bevelCutW, ART_H, bevelCutDepth);
-  geometries.push(bevelTopBotGeo, bevelSideGeo);
-
-  const bevelTop = new Mesh(bevelTopBotGeo, matBevelMaterial);
-  bevelTop.position.set(0, ART_H * 0.5 + bevelCutW * 0.5, bevelCutZ);
-  const bevelBot = new Mesh(bevelTopBotGeo, matBevelMaterial);
-  bevelBot.position.set(0, -(ART_H * 0.5 + bevelCutW * 0.5), bevelCutZ);
-  const bevelLeft = new Mesh(bevelSideGeo, matBevelMaterial);
-  bevelLeft.position.set(-(ART_W * 0.5 + bevelCutW * 0.5), 0, bevelCutZ);
-  const bevelRight = new Mesh(bevelSideGeo, matBevelMaterial);
-  bevelRight.position.set(ART_W * 0.5 + bevelCutW * 0.5, 0, bevelCutZ);
-  frameGroup.add(bevelTop, bevelBot, bevelLeft, bevelRight);
-
-  // 4. Certificate Artwork Plane (tucked behind mat aperture)
-  const artGeo = new PlaneGeometry(ART_W + 0.04, ART_H + 0.04);
+  // 3. Full-Bleed Recessed Certificate Artwork Plane (tucked securely behind brass rabbet)
+  const artGeo = new PlaneGeometry(ART_W + 0.024, ART_H + 0.024);
   geometries.push(artGeo);
   const artMesh = new Mesh(artGeo, artMaterial);
-  artMesh.position.z = -0.062;
+  artMesh.position.z = -0.052;
   frameGroup.add(artMesh);
 
-  // 5. Physical Front Glass Pane
-  const glassGeo = new PlaneGeometry(IHW * 2 - 0.01, IHH * 2 - 0.01);
+  // 4. Physical Front Glass Pane
+  const glassGeo = new PlaneGeometry(IHW * 2 - 0.004, IHH * 2 - 0.004);
   geometries.push(glassGeo);
   const glassMesh = new Mesh(glassGeo, glassMaterial);
-  glassMesh.position.z = 0.024;
+  glassMesh.position.z = 0.044;
   glassMesh.renderOrder = 2;
   frameGroup.add(glassMesh);
 
-  // 6. Dynamic Specular Glass Glare Plane
-  const glareGeo = new PlaneGeometry(IHW * 2 - 0.02, IHH * 2 - 0.02);
+  // 5. Dynamic Specular Glass & Mineral Edge Rim Plane
+  const glareGeo = new PlaneGeometry(IHW * 2 - 0.006, IHH * 2 - 0.006);
   geometries.push(glareGeo);
   const glareMesh = new Mesh(glareGeo, glareMaterial);
-  glareMesh.position.z = 0.028;
+  glareMesh.position.z = 0.048;
   glareMesh.renderOrder = 3;
   frameGroup.add(glareMesh);
 
-  // 7. Solid Archival Backboard + Back Stamp
+  // 6. Solid Archival Backboard + Back Stamp
   const backBoxGeo = new BoxGeometry(OUTER_W - 0.08, OUTER_H - 0.08, 0.028);
   const backStampGeo = new PlaneGeometry(OUTER_W - 0.1, OUTER_H - 0.1);
   geometries.push(backBoxGeo, backStampGeo);
   const backBoxMesh = new Mesh(backBoxGeo, backboardEdgeMaterial);
-  backBoxMesh.position.z = -0.088;
+  backBoxMesh.position.z = -0.092;
   const backStampMesh = new Mesh(backStampGeo, backboardFrontMaterial);
-  backStampMesh.position.z = -0.103;
+  backStampMesh.position.z = -0.108;
   backStampMesh.rotation.y = Math.PI;
   frameGroup.add(backBoxMesh, backStampMesh);
 
-  // 8. Floating Wall Shadow behind frame
+  // 7. Floating Wall Shadow behind frame
   const shadowGeo = new PlaneGeometry(4.6, 3.6);
   geometries.push(shadowGeo);
   const shadowMesh = new Mesh(shadowGeo, shadowMat);
@@ -980,8 +974,8 @@ export function mountCertificateFrameScene({
   // Interaction & entrance settle state
   let curRotX = 0.1;
   let curRotY = 0.24;
-  let targetRotX = 0.04;
-  let targetRotY = -0.07;
+  let targetRotX = 0.045;
+  let targetRotY = -0.085;
   let dragRotX = 0;
   let dragRotY = 0;
   let isDragging = false;
@@ -1062,11 +1056,13 @@ export function mountCertificateFrameScene({
   const loadCertificateArtwork = (cert: CertificateItem) => {
     certLoadSeq += 1;
     const seq = certLoadSeq;
-    drawGeneratedCertificatePlate(certCanvas, cert);
-    certTex.needsUpdate = true;
-    wake();
 
-    if (!cert.imageSrc) return;
+    if (!cert.imageSrc) {
+      drawGeneratedCertificatePlate(certCanvas, cert);
+      certTex.needsUpdate = true;
+      wake();
+      return;
+    }
 
     const img = new window.Image();
     img.crossOrigin = "anonymous";
@@ -1082,6 +1078,10 @@ export function mountCertificateFrameScene({
     img.onerror = () => {
       img.onload = null;
       img.onerror = null;
+      if (disposed || seq !== certLoadSeq) return;
+      drawGeneratedCertificatePlate(certCanvas, cert);
+      certTex.needsUpdate = true;
+      wake();
     };
     img.src = cert.imageSrc;
   };
@@ -1143,8 +1143,8 @@ export function mountCertificateFrameScene({
       // Subtle gallery flip impulse on swap
       curRotY += curRotY >= 0 ? -0.34 : 0.34;
       if (!pointerActive && !isDragging) {
-        targetRotX = 0.04;
-        targetRotY = -0.07;
+        targetRotX = 0.045;
+        targetRotY = -0.085;
       }
       loadCertificateArtwork(nextCert);
     },
@@ -1159,8 +1159,8 @@ export function mountCertificateFrameScene({
       if (disposed) return;
       pointerActive = false;
       isDragging = false;
-      targetRotX = 0.04;
-      targetRotY = -0.07;
+      targetRotX = 0.045;
+      targetRotY = -0.085;
       wake();
     },
     setDraggingDelta: (dxPx, dyPx) => {
@@ -1180,8 +1180,8 @@ export function mountCertificateFrameScene({
       if (disposed || !isDragging) return;
       isDragging = false;
       if (!allowWideOrbit) {
-        targetRotX = 0.04;
-        targetRotY = -0.07;
+        targetRotX = 0.045;
+        targetRotY = -0.085;
       } else {
         // Keep slight angled display pose or gentle return when wide-orbit inspection finishes
         targetRotX = clamp(curRotX * 0.35, -0.25, 0.25);
@@ -1204,8 +1204,6 @@ export function mountCertificateFrameScene({
       geometries.forEach((g) => g.dispose());
       woodMaterial.dispose();
       brassMaterial.dispose();
-      matBoardMaterial.dispose();
-      matBevelMaterial.dispose();
       artMaterial.dispose();
       glassMaterial.dispose();
       glareMaterial.dispose();

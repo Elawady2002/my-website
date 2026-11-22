@@ -40,28 +40,23 @@ export interface WorkProjectItem {
  * and on the dedicated `/certificates` archive page.
  *
  * To attach a real scanned certificate image:
- * 1. Save the image under `public/images/certificates/<file>.webp` (recommended 1600×1125 or ~1.42:1 landscape).
- * 2. Set `imageSrc: "/images/certificates/<file>.webp"` on the item below.
- * 3. Add the official verification link to `verifyUrl` so visitors can click "Verify Certificate".
+ * 1. Save the image under `public/images/certificates/<file>.jpg` (or `.webp`, ~1.41:1 landscape).
+ * 2. Set `imageSrc: "/images/certificates/<file>.jpg"` on the item below.
+ * 3. Optionally set `verifyUrl` if the issuer provides an online verification URL.
  */
 export interface CertificateItem {
   id: string;
   number: string;
   title: string;
   issuer: string;
-  platform: string;
-  category: string;
   issuedDate: string;
-  duration: string;
-  credentialId: string;
-  summary: string;
-  howEarned: string;
-  howToEarn: string;
-  skills: readonly string[];
+  details: string;
+  description: string;
   accentColor: string;
   imageSrc?: string;
   verifyUrl?: string;
   programUrl: string;
+  programLabel: string;
   featured?: boolean;
 }
 
@@ -94,7 +89,7 @@ export const siteConfig = {
     rows: [
       {
         label: "SERVICES",
-        value: "UI/UX, Product Design & Flutter Development",
+        value: "Product Engineer",
       },
       {
         label: "EXPERIENCE",
@@ -133,7 +128,7 @@ export const siteConfig = {
       "I BUILD PRODUCTS THAT TURN HEADS — MOBILE, WEB AND BEYOND",
     eyebrow: "BECAUSE",
     paragraphs: [
-      "I’m an independent UI/UX designer, product designer and Flutter engineer. I bring product strategy, interface craft and native-grade mobile development together to ship digital experiences that stand out and stay effortless across every screen.",
+      "I’m an independent Product Engineer. I bring product strategy, interface craft and native-grade mobile development together to ship digital experiences that stand out and stay effortless across every screen.",
       "From early user flows and design systems in Figma to production 60fps iOS, Android and web builds—I lead the full product journey from zero to launch.",
     ],
     closingLine: "One vision. Pixel-level craft. Products that work as one.",
@@ -374,114 +369,34 @@ export const siteConfig = {
      */
     certificates: [
       {
-        id: "google-ux-design",
+        id: "figma-variables",
         number: "01",
-        title: "GOOGLE UX DESIGN PROFESSIONAL",
-        issuer: "Google",
-        platform: "Coursera",
-        category: "UX & PRODUCT DESIGN",
-        issuedDate: "MAY 2024",
-        duration: "7 COURSES · ~240 HOURS",
-        credentialId: "GUX-2024-AE01",
-        summary:
-          "End-to-end UX research, wireframing, interactive Figma prototyping, and usability testing across mobile & web products.",
-        howEarned:
-          "Completed all 7 hands-on courses covering user research, empathy mapping, wireframes, design systems, and high-fidelity prototypes in Figma. Shipped 3 full portfolio case studies evaluated through peer-reviewed usability testing loops.",
-        howToEarn:
-          "Enroll in the 7-course Google UX Design specialization on Coursera, complete the graded labs and 3 end-to-end capstone projects (mobile app, responsive web, and cross-platform product), and pass peer assessments.",
-        skills: [
-          "User Research",
-          "Wireframing",
-          "Figma Prototyping",
-          "Usability Testing",
-          "Design Thinking",
-        ],
-        accentColor: "#f34213",
-        programUrl:
-          "https://www.coursera.org/professional-certificates/google-ux-design",
+        title: "FIGMA VARIABLES",
+        issuer: "Osama Eldrieny",
+        issuedDate: "OCT 2025",
+        details: "October 25, 2025 · Design Systems Track",
+        description:
+          "Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture taught by Osama Eldrieny.",
+        accentColor: "#00D084",
+        imageSrc: "/images/certificates/figma-variables-osama-eldrieny.jpg",
+        programUrl: "https://osamaeldrieny.com/course",
+        programLabel: "Take This Course",
         featured: true,
       },
       {
-        id: "flutter-dart-complete",
+        id: "ideation-camp",
         number: "02",
-        title: "FLUTTER & DART PRODUCTION ARCHITECTURE",
-        issuer: "Google Developers",
-        platform: "Flutter Learning Pathway",
-        category: "FLUTTER & MOBILE",
-        issuedDate: "NOV 2024",
-        duration: "MULTI-MODULE · 140+ HOURS",
-        credentialId: "FLT-2024-AE02",
-        summary:
-          "Cross-platform iOS & Android engineering focused on 60fps custom animations, state management, and native integrations.",
-        howEarned:
-          "Built production-grade Flutter applications applying clean architecture, Bloc/Riverpod state management, custom Canvas/Shader animations, offline persistence, and App Store / Google Play release pipelines.",
-        howToEarn:
-          "Follow the official Google Developers Flutter & Dart pathway, build responsive multi-screen mobile apps with state management and animations, and complete the practical architecture assessments.",
-        skills: [
-          "Flutter",
-          "Dart 3",
-          "State Management",
-          "60fps Motion",
-          "Mobile Release",
-        ],
-        accentColor: "#38bdf8",
-        programUrl: "https://docs.flutter.dev/learn/pathway",
+        title: "IDEATION CAMP",
+        issuer: "ITIDA · TIEC · Creativa Zagazig",
+        issuedDate: "NOV 2026",
+        details: "28 Hours Intensive Training · E.Spaces",
+        description:
+          "Completed 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig.",
+        accentColor: "#0057A8",
+        imageSrc: "/images/certificates/ideation-camp-creativa-tiec.jpg",
+        programUrl: "https://creativa.gov.eg/",
+        programLabel: "Explore Creativa",
         featured: true,
-      },
-      {
-        id: "idf-design-systems",
-        number: "03",
-        title: "DESIGN SYSTEMS & SCALABLE INTERFACES",
-        issuer: "Interaction Design Foundation",
-        platform: "IxDF",
-        category: "DESIGN SYSTEMS",
-        issuedDate: "FEB 2025",
-        duration: "8 WEEKS · GRADED TRACK",
-        credentialId: "IXDF-2025-AE03",
-        summary:
-          "Design tokens, multi-brand component libraries, accessibility contrast standards, and Figma-to-code handoff workflows.",
-        howEarned:
-          "Mastered semantic token architecture, component API governance, WCAG accessibility auditing, and multi-platform Figma variable pipelines that keep engineering and design tightly aligned.",
-        howToEarn:
-          "Join the Interaction Design Foundation (IxDF), complete the Design Systems & UI Pattern modules with ≥70% open-ended assignment grades, and publish your documented token architecture.",
-        skills: [
-          "Design Tokens",
-          "Figma Variables",
-          "WCAG Accessibility",
-          "Component APIs",
-          "Dev Handoff",
-        ],
-        accentColor: "#d4a656",
-        programUrl: "https://www.interaction-design.org/courses",
-        featured: true,
-      },
-      {
-        id: "meta-frontend-craft",
-        number: "04",
-        title: "META FRONT-END INTERACTIVE ENGINEERING",
-        issuer: "Meta",
-        platform: "Coursera",
-        category: "INTERACTIVE WEB",
-        issuedDate: "AUG 2025",
-        duration: "9 COURSES · ~210 HOURS",
-        credentialId: "META-2025-AE04",
-        summary:
-          "Modern React architecture, TypeScript UI engineering, responsive CSS layout craft, and performance-conscious web delivery.",
-        howEarned:
-          "Completed Meta's 9-course front-end track spanning semantic HTML, modern CSS grids, React component architecture, UI testing, and interactive web capstone delivery bridging design craft with clean production code.",
-        howToEarn:
-          "Complete Meta's Front-End Developer Professional Certificate on Coursera, pass all coding labs, version-control exercises, and build the final responsive React capstone project.",
-        skills: [
-          "React & Next.js",
-          "TypeScript",
-          "UI Architecture",
-          "Responsive Grids",
-          "Web Performance",
-        ],
-        accentColor: "#60a5fa",
-        programUrl:
-          "https://www.coursera.org/professional-certificates/meta-front-end-developer",
-        featured: false,
       },
     ] as CertificateItem[],
   },

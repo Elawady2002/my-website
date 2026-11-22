@@ -178,7 +178,7 @@ export function CertificateFrame3D({
       {!webglReady ? (
         <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4 pointer-events-none">
           <div
-            className="relative w-full max-w-[480px] aspect-[3.56/2.68] rounded-[4px] p-[14px] sm:p-[18px]"
+            className="relative w-full max-w-[480px] aspect-[3.59/2.66] rounded-[4px] p-[14px] sm:p-[18px]"
             style={{
               background:
                 "linear-gradient(135deg, #4b2f1d 0%, #2b180d 52%, #3f2617 100%)",
@@ -186,44 +186,42 @@ export function CertificateFrame3D({
                 "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.55), 0 24px 48px rgba(0,0,0,0.55)",
             }}
           >
-            {/* Antique brass inner fillet + ivory mat */}
-            <div className="relative h-full w-full border border-[#c9a66b]/65 bg-[#ebe5da] p-[14px] sm:p-[20px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.35)]">
-              <div className="relative h-full w-full overflow-hidden border border-[#1b1815]/20 bg-[#f6f1e7] flex flex-col items-center justify-center text-center px-5 py-4 shadow-[inset_0_2px_8px_rgba(0,0,0,0.18)]">
-                {certificate.imageSrc ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={certificate.imageSrc}
-                    alt={certificate.title}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <>
-                    <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.18em] text-[#5c5246]">
-                      {certificate.issuer} · {certificate.platform}
-                    </span>
-                    <span className="mt-2 text-[9px] uppercase tracking-[0.22em] text-[#9c7a3c]">
-                      CERTIFICATE OF ACHIEVEMENT
-                    </span>
-                    <p className="mt-2.5 text-[13px] sm:text-[16px] font-semibold uppercase tracking-[-0.01em] text-[#171412] leading-tight">
-                      {certificate.title}
-                    </p>
-                    <div className="mt-3 flex items-center gap-3 text-[9px] uppercase tracking-[0.12em] text-[#6e6459]">
-                      <span>{certificate.issuedDate}</span>
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: certificate.accentColor }}
-                      />
-                      <span>{certificate.credentialId}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              {/* Diagonal glass reflection sheen */}
+            {/* Antique brass hairline directly framing full-bleed certificate */}
+            <div className="relative h-full w-full overflow-hidden border border-[#c9a66b]/70 bg-[#181614] flex flex-col items-center justify-center text-center shadow-[inset_0_4px_14px_rgba(0,0,0,0.45)] ring-1 ring-inset ring-sky-100/10">
+              {certificate.imageSrc ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={certificate.imageSrc}
+                  alt={certificate.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-[#f6f1e7] px-5 py-4 flex flex-col items-center justify-center">
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.18em] text-[#5c5246]">
+                    {certificate.issuer}
+                  </span>
+                  <span className="mt-2 text-[9px] uppercase tracking-[0.22em] text-[#9c7a3c]">
+                    CERTIFICATE OF ACHIEVEMENT
+                  </span>
+                  <p className="mt-2.5 text-[13px] sm:text-[16px] font-semibold uppercase tracking-[-0.01em] text-[#171412] leading-tight">
+                    {certificate.title}
+                  </p>
+                  <div className="mt-3 flex items-center gap-3 text-[9px] uppercase tracking-[0.12em] text-[#6e6459]">
+                    <span>{certificate.issuedDate}</span>
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: certificate.accentColor }}
+                    />
+                    <span>{certificate.details}</span>
+                  </div>
+                </div>
+              )}
+              {/* Recessed wood rabbet edge shadow + soft studio softbox reflection overlay */}
               <div
-                className="pointer-events-none absolute inset-0"
+                className="pointer-events-none absolute inset-0 shadow-[inset_0_4px_14px_rgba(10,6,3,0.42)]"
                 style={{
                   background:
-                    "linear-gradient(125deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.03) 34%, transparent 52%, rgba(220,235,255,0.08) 76%, transparent 100%)",
+                    "radial-gradient(ellipse 70% 55% at 24% 18%, rgba(255,252,248,0.11) 0%, rgba(235,245,255,0.035) 48%, rgba(14,20,28,0.025) 100%)",
                 }}
               />
             </div>
