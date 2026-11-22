@@ -362,9 +362,9 @@ export function WorkSection() {
   return (
     <div className="relative z-10 w-full bg-[#0b0b0b]">
       <div id="work-intro" ref={introRef} className="px-4 sm:px-6 pt-16 sm:pt-24">
-        <h6 className="text-[13px] sm:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]/80">
+        <p className="text-[13px] sm:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]/80">
           <StylizedText text={siteConfig.workSection.eyebrow} />
-        </h6>
+        </p>
 
         <h2
           aria-label={siteConfig.workSection.heading}
@@ -418,9 +418,9 @@ export function WorkSection() {
                 {activeProject.badge}
               </span>
               <div>
-                <h4 className="text-4xl font-semibold text-[#e7e1d7]">
+                <p className="text-4xl font-semibold text-[#e7e1d7]">
                   {activeProject.headline}
-                </h4>
+                </p>
                 <p className="mt-3 text-base text-[#e7e1d7]/75">
                   {activeProject.subcopy}
                 </p>

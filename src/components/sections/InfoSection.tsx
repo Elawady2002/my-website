@@ -43,9 +43,9 @@ export function InfoSection() {
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-start">
         <div className="lg:col-span-3">
-          <h6 className="text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]">
+          <h2 className="text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]">
             <StylizedText text={siteConfig.infoSection.label} />
-          </h6>
+          </h2>
         </div>
 
         <div className="hidden lg:block lg:col-span-4" aria-hidden="true" />

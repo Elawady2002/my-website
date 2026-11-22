@@ -263,64 +263,38 @@ body {
   }
 }
 
-/* Column-synced Preloader Intro reveal states (controlled while html[data-intro-ready="true"]) */
-html[data-intro-ready="true"] [data-intro-char] {
-  animation: none !important;
-  transform: translate3d(0, 115%, 0);
-  transition: transform 0.58s cubic-bezier(0.22, 1, 0.36, 1);
+/* Pure-CSS GPU vertical-slat intro curtain (no JS hydration wait, no forced reflows) */
+@keyframes preloaderSlatLift {
+  from {
+    transform: translate3d(0, 0%, 0);
+  }
+  to {
+    transform: translate3d(0, -101.5%, 0);
+  }
 }
 
-html[data-intro-ready="true"] [data-intro-char][data-uncovered="true"] {
-  transform: translate3d(0, 0%, 0);
+@keyframes preloaderBarFade {
+  0%, 72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
-html[data-intro-ready="true"] [data-intro-fade] {
-  animation: none !important;
-  opacity: 0;
-  transform: translate3d(0, 18px, 0);
-  transition:
-    opacity 0.52s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+.preloader-slat {
+  animation: preloaderSlatLift 0.54s cubic-bezier(0.22, 1, 0.36, 1)
+    var(--slat-delay, 60ms) both;
 }
 
-html[data-intro-ready="true"] [data-intro-fade][data-uncovered="true"] {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
+.preloader-bar {
+  animation: preloaderBarFade 0.88s ease-out both;
 }
 
-html[data-intro-ready="true"] [data-intro-line] {
-  animation: none !important;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-html[data-intro-ready="true"] [data-intro-line][data-uncovered="true"] {
-  transform: scaleX(1);
-}
-
-html[data-intro-ready="true"] [data-intro-portrait] {
-  animation: none !important;
-  opacity: 0;
-  transform: scale(1.08);
-  clip-path: inset(0% 100% 0% 0%);
-  transition:
-    opacity 0.68s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1),
-    clip-path 0.68s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-html[data-intro-ready="true"] [data-intro-portrait][data-uncovered="true"] {
-  opacity: 1;
-  transform: scale(1);
-  clip-path: inset(0% 0% 0% 0%);
-}
-
-html[data-intro-done="true"] [data-intro-char],
-html[data-intro-done="true"] [data-intro-fade],
-html[data-intro-done="true"] [data-intro-line],
-html[data-intro-done="true"] [data-intro-portrait] {
-  animation: none !important;
+@media (prefers-reduced-motion: reduce) {
+  [data-preloader] {
+    display: none !important;
+  }
 }
 
 /* Menu overlay architectural noise & interactive row hover states */

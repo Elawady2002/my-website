@@ -22,7 +22,6 @@ function MaskedChars({
         return (
           <span key={idx} className="inline-block overflow-hidden align-top">
             <span
-              data-intro-char=""
               style={{
                 animation: `heroCharReveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) ${
                   baseDelayMs + idx * stepMs
@@ -127,11 +126,14 @@ export function HeaderStage() {
       io.observe(headerEl);
     }
 
-    syncPortraitSize();
-    updateOnScroll();
+    const initRaf = window.requestAnimationFrame(() => {
+      syncPortraitSize();
+      updateOnScroll();
+    });
     window.addEventListener("scroll", updateOnScroll, { passive: true });
     window.addEventListener("resize", handleResize);
     return () => {
+      window.cancelAnimationFrame(initRaf);
       io?.disconnect();
       window.removeEventListener("scroll", updateOnScroll);
       window.removeEventListener("resize", handleResize);
@@ -258,7 +260,6 @@ export function HeaderStage() {
           className="portrait-mask-x absolute top-6 bottom-0 left-1/2 -translate-x-1/2 md:left-[25.5%] md:translate-x-0 w-[84vw] max-w-[460px] md:max-w-[66svh] md:w-[31.5vw] md:min-w-[390px] max-h-[calc(84vw*1.75)] md:max-h-[calc(31.5vw*1.82)] overflow-hidden will-change-transform"
         >
           <div
-            data-intro-portrait=""
             style={{
               animation: "portraitIntro 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
             }}
@@ -316,10 +317,10 @@ export function HeaderStage() {
           }}
           className="pt-6 flex items-center justify-between text-[12px] sm:text-[14px] font-normal uppercase tracking-[0.04em] text-[#e7e1d7]"
         >
-          <span data-intro-fade="" className="inline-block">
+          <span className="inline-block">
             <StylizedText text={siteConfig.domain} />
           </span>
-          <span data-intro-fade="" className="inline-block">
+          <span className="inline-block">
             <StylizedText text={siteConfig.edition} />
           </span>
         </div>
@@ -327,7 +328,6 @@ export function HeaderStage() {
         <div className="mt-auto pt-36 sm:pt-44">
           <div className="grid grid-cols-1 md:grid-cols-12 items-end gap-4 pb-5">
             <div
-              data-intro-fade=""
               style={{
                 animation:
                   "heroFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both",
@@ -339,10 +339,7 @@ export function HeaderStage() {
               </span>
             </div>
 
-            <div
-              data-intro-fade=""
-              className="md:col-span-3 flex items-center md:justify-center"
-            >
+            <div className="md:col-span-3 flex items-center md:justify-center">
               <div ref={starScrollRef} className="will-change-transform">
                 <svg
                   data-hero-star=""
@@ -362,7 +359,6 @@ export function HeaderStage() {
             </div>
 
             <div
-              data-intro-fade=""
               style={{
                 animation:
                   "heroFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both",
@@ -376,7 +372,6 @@ export function HeaderStage() {
           </div>
 
           <div
-            data-intro-line=""
             style={{
               animation:
                 "heroLineDraw 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both",

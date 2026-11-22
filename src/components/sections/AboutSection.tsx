@@ -182,9 +182,9 @@ export function AboutSection() {
             style={{ "--about-delay": "90ms" } as React.CSSProperties}
             className="about-reveal-item md:col-span-3"
           >
-            <h6 className="text-[13px] sm:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]/70">
+            <h3 className="text-[13px] sm:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]/70">
               <StylizedText text={siteConfig.aboutSection.eyebrow} />
-            </h6>
+            </h3>
           </div>
 
           <div className="md:col-span-9 max-w-[820px] space-y-6">

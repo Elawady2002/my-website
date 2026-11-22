@@ -565,6 +565,7 @@ export function BookingModal({
       aria-modal="false"
       aria-label="Schedule a call"
       aria-hidden={!open}
+      inert={!open}
       data-lenis-prevent=""
       onWheel={(e) => e.stopPropagation()}
       style={{

@@ -39,6 +39,7 @@ export function FooterPhysicsOrbs() {
   return (
     <div
       ref={containerRef}
+      role="region"
       data-footer-orbs=""
       data-orbs-spawned="0"
       data-orbs-active-motion="0"

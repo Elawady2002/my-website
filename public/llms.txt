@@ -1,0 +1,34 @@
+# Abdullah Elawady Studio
+
+> Portfolio of Abdullah Elawady — Product Engineer with 6+ years of experience crafting 40+ mobile & web apps across iOS, Android, Flutter, and modern web platforms. Based in Cairo, Egypt.
+
+## Pages
+
+- [Home](https://my-website-neon-ten-94.vercel.app/): Main studio showcase including hero, studio overview (`#info`), engineering narrative (`#about`), interactive 3D project gallery (`#work`), featured credentials (`#certificates`), booking modal, and contact footer (`#contact`).
+- [Certificates Archive](https://my-website-neon-ten-94.vercel.app/certificates): Verified design and engineering credentials presented in interactive 3D frames with full details and course/organization links.
+
+## Selected Projects
+
+- [Yusr Academy](https://www.yusr-academy.com/): Arabic-first UI/UX design academy and design studio uniting practical projects, career coaching, and Vibe Coding.
+- [Active](https://activksa.com/brands/): End-to-end brand campaign discovery and creator matching web platform crafted for clarity and conversion.
+- [Malahi](https://malahi.com/ar): Interactive multi-brand Saudi entertainment and ticketing web experience uniting Wanoos, Doos Karting, Garage, and Remote.
+- [Quranic Radio (Figma)](https://www.figma.com/design/gbqTrzytAQLRcNWAvw5vyO/Quranic-Radio-%F0%9F%8E%A7?node-id=0-1): Minimalist Arabic Quran radio experience in Flutter pairing tactile vinyl turntable motion with curated reciter sleeves.
+- [Fi El Sekka (App Store)](https://apps.apple.com/eg/app/fi-el-sekka/id6813012849): Intercity shuttle booking and digital wallet app in Flutter with instant QR seat boarding passes, route tracking, and verified captains.
+- [Wanas AI (Figma)](https://www.figma.com/design/N8iSt8ctzQODLEwlzAvZId/Wanas-Ai-%D9%88%D9%86%D8%B3-?node-id=285-20730&t=eLBaqikobroLCw7R-1): Arabic mental wellness and tele-therapy platform featuring live moderated support rooms, licensed specialists, and AI guidance.
+- [Foxus (Figma)](https://www.figma.com/design/G0mquJC19n9qXrKTBnntPB/Foxus?node-id=627-840): Bilingual Egyptian marketplace app in Flutter uniting real estate, automotive, and electronics discovery with instant seller chat.
+- [Tride (App Store)](https://apps.apple.com/eg/app/tride-egypt/id6749056619) / [Google Play](https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share): Trusted school ride-booking app giving parents flexible car or seat plans, multi-child profiles, and verified school routes.
+- [Nursy (Figma)](https://www.figma.com/design/7gteXIlESSCoUq8haoZMQU/Nursy-app?node-id=0-1): On-demand home nursing platform pairing real-time Cairo geolocation matching with patient care history and live chat.
+
+## Certificates
+
+- **Figma Variables** (Osama Eldrieny · Oct 2025): Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture. [Course Playlist](https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft)
+- **Ideation Camp** (ITIDA · TIEC · Creativa Zagazig · Nov 2026): 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig. [Creativa Zagazig](https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr)
+
+## Contact
+
+- Email: mailto:abdullahelawady68@gmail.com
+- Phone: +20 103 319 0408
+- LinkedIn: https://www.linkedin.com/in/abdullah-elawady-019129330
+- GitHub: https://github.com/Elawady2002
+- Instagram: https://www.instagram.com/abdlla_67
+- Facebook: https://www.facebook.com/share/1A3SmiAnEj/?mibextid=wwXIfr

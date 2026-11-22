@@ -301,6 +301,7 @@ export function TimeStep({
 
         {loadingSlots ? (
           <div
+            role="status"
             aria-busy="true"
             aria-label="Loading available times"
             className="grid grid-cols-3 gap-2"

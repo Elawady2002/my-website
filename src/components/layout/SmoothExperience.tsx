@@ -14,7 +14,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
-    window.scrollTo(0, 0);
+    if (window.scrollY > 0) window.scrollTo(0, 0);
 
     const lenis = new Lenis({
       duration: 1.15,

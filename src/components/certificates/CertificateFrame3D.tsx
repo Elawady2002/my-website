@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import type { CertificateItem } from "@/data/site";
 import type { CertificateFrameController } from "@/three/certificateFrameScene";
 
@@ -176,12 +177,13 @@ export function CertificateFrame3D({
           >
             <div className="relative h-full w-full overflow-hidden border border-[#c9a66b]/70 bg-[#181614] flex flex-col items-center justify-center text-center shadow-[inset_0_4px_14px_rgba(0,0,0,0.45)] ring-1 ring-inset ring-sky-100/10">
               {certificate.imageSrc ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
+                <Image
                   src={certificate.imageSrc}
                   alt={certificate.title}
-                  decoding="async"
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(max-width: 640px) 92vw, 480px"
+                  quality={75}
+                  className="object-cover"
                 />
               ) : (
                 <div className="h-full w-full bg-[#f6f1e7] px-5 py-4 flex flex-col items-center justify-center">

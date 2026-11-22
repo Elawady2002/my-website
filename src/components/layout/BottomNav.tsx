@@ -231,7 +231,7 @@ export function BottomNav() {
     };
 
     syncOnScrollRef.current = syncOnScroll;
-    measureLayout();
+    const initRaf = window.requestAnimationFrame(measureLayout);
 
     const initTimer = window.setTimeout(measureLayout, 60);
     const resizeObserver = new ResizeObserver(measureLayout);
@@ -247,6 +247,7 @@ export function BottomNav() {
 
     return () => {
       cancelled = true;
+      window.cancelAnimationFrame(initRaf);
       syncOnScrollRef.current = () => {};
       window.clearTimeout(initTimer);
       if (scrollSpyTimerRef.current !== null) {
@@ -462,7 +463,7 @@ export function BottomNav() {
             : ""
         }`}
       >
-        <div data-intro-fade="">
+        <div>
           <button
             type="button"
             onClick={handleTopClick}
@@ -494,7 +495,6 @@ export function BottomNav() {
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <div
             ref={dockGroupRef}
-            data-intro-fade=""
             className="relative flex items-center gap-1.5 sm:gap-2 md:gap-2.5"
           >
             <nav
@@ -502,6 +502,7 @@ export function BottomNav() {
               data-glass-pill=""
               aria-label="Quick section navigation"
               aria-hidden={isOpen}
+              inert={isOpen}
               className={`voy-glass relative flex items-center justify-center h-[42px] sm:h-[44px] md:h-[50px] px-1 rounded-full transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                 isOpen
                   ? "opacity-0 scale-95 pointer-events-none"
@@ -665,7 +666,7 @@ export function BottomNav() {
         </div>
 
         {/* Right MENU / CLOSE Toggle Button */}
-        <div data-intro-fade="">
+        <div>
           <button
             type="button"
             onClick={() => (isOpen ? closeMenu() : openMenu())}

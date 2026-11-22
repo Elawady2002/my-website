@@ -70,6 +70,7 @@ export const FullscreenMenuOverlay = React.memo(function FullscreenMenuOverlay({
       data-phase={menuPhase}
       data-content-revealed={contentRevealed ? "true" : "false"}
       aria-hidden={!isOpen}
+      inert={!isOpen}
       className={`fixed inset-0 z-40 overflow-hidden ${
         showMenuLayer ? "visible" : "invisible pointer-events-none"
       } ${isOpen ? "pointer-events-auto" : "pointer-events-none"}`}

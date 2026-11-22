@@ -11,14 +11,16 @@ export default function HomePage() {
   return (
     <SmoothExperience>
       <PreloaderIntro />
-      <main className="bg-[#0b0b0b] text-[#e7e1d7]">
-        <HeaderStage />
-        <AboutSection />
-        <WorkSection />
-        <CertificatesSection />
+      <div className="bg-[#0b0b0b] text-[#e7e1d7]">
+        <main>
+          <HeaderStage />
+          <AboutSection />
+          <WorkSection />
+          <CertificatesSection />
+        </main>
         <FooterSection />
         <BottomNav />
-      </main>
+      </div>
     </SmoothExperience>
   );
 }
