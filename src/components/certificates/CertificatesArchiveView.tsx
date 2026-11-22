@@ -2,11 +2,19 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
 import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
 import { siteConfig, type CertificateItem } from "@/data/site";
 import { getLenis } from "@/lib/dom";
+
+const SERIES_ARROW_BTN_CLS =
+  "voy-glass inline-flex h-9 w-9 items-center justify-center rounded-full text-[#e7e1d7]/80 hover:text-white hover:border-[#f34213]/60 active:scale-95 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:border-[#f34213]";
 
 interface CertificateArchiveRowProps {
   cert: CertificateItem;
@@ -60,8 +68,21 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
           }
         />
 
-        {hasSeries && series && activeLevel ? (
-          <div className="mt-4 flex flex-col items-center gap-2">
+        {hasSeries && series ? (
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              aria-label="Previous certificate in track"
+              onClick={() =>
+                setActiveSeriesIdx(
+                  (prev) => (prev - 1 + series.length) % series.length
+                )
+              }
+              className={SERIES_ARROW_BTN_CLS}
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
+
             <div
               role="tablist"
               aria-label={`${cert.title} certificates`}
@@ -93,10 +114,16 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
               })}
             </div>
 
-            <p className="text-[11.5px] uppercase tracking-[0.08em] tabular-nums text-[#e7e1d7]/60">
-              {activeLevel.label} · {activeLevel.level} ·{" "}
-              {activeSeriesIdx + 1} / {series.length}
-            </p>
+            <button
+              type="button"
+              aria-label="Next certificate in track"
+              onClick={() =>
+                setActiveSeriesIdx((prev) => (prev + 1) % series.length)
+              }
+              className={SERIES_ARROW_BTN_CLS}
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
         ) : null}
       </div>
@@ -116,17 +143,6 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
           <p className="mt-2 text-[13.5px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
             {cert.issuer}
           </p>
-          {hasSeries && series ? (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full bg-[#f34213]"
-              />
-              <span>
-                {series.length} Levels · {series.length} Certificates
-              </span>
-            </p>
-          ) : null}
         </div>
 
         <p className="text-[15px] sm:text-[16px] leading-[1.65] text-[#e7e1d7]/80">
@@ -138,27 +154,12 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
             <span className="text-[#e7e1d7]/45 shrink-0">ISSUED BY</span>
             <span className="text-right text-[#e7e1d7]">{cert.issuer}</span>
           </div>
-          {hasSeries && activeLevel ? (
-            <>
-              <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
-                <span className="text-[#e7e1d7]/45 shrink-0">TRACK</span>
-                <span className="text-right text-[#e7e1d7]">
-                  {cert.details}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
-                <span className="text-[#e7e1d7]/45 shrink-0">VIEWING</span>
-                <span className="text-right text-[#e7e1d7]">
-                  {activeLevel.label} · {activeLevel.details}
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
-              <span className="text-[#e7e1d7]/45 shrink-0">DETAILS</span>
-              <span className="text-right text-[#e7e1d7]">{cert.details}</span>
-            </div>
-          )}
+          <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
+            <span className="text-[#e7e1d7]/45 shrink-0">DETAILS</span>
+            <span className="text-right text-[#e7e1d7]">
+              {activeLevel ? activeLevel.details : cert.details}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 pt-1">

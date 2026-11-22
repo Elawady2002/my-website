@@ -75,9 +75,8 @@ export function FooterSection() {
             <div data-footer-obstacle="" className="pointer-events-auto space-y-5">
               <div
                 style={{ "--footer-delay": "80ms" } as React.CSSProperties}
-                className="footer-reveal-item flex items-center gap-3.5"
+                className="footer-reveal-item flex items-center gap-4"
               >
-                <WhatsAppQrBadge href={siteConfig.contactSection.whatsappHref} />
                 <div>
                   <p className="text-[12px] sm:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
                     <StylizedText text={siteConfig.contactSection.phoneLabel} />
@@ -94,6 +93,7 @@ export function FooterSection() {
                     )}
                   </button>
                 </div>
+                <WhatsAppQrBadge href={siteConfig.contactSection.whatsappHref} />
               </div>
 
               <div

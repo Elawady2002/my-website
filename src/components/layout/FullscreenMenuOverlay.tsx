@@ -146,9 +146,8 @@ export const FullscreenMenuOverlay = React.memo(function FullscreenMenuOverlay({
 
             <div
               style={{ transitionDelay: contentRevealed ? "265ms" : "0ms" }}
-              className={`flex items-center gap-3.5 ${revealBlockCls}`}
+              className={`flex items-center gap-4 ${revealBlockCls}`}
             >
-              <WhatsAppQrBadge href={siteConfig.contactSection.whatsappHref} />
               <div>
                 <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/50">
                   PH<span className="playfair-o">o</span>NE
@@ -165,6 +164,7 @@ export const FullscreenMenuOverlay = React.memo(function FullscreenMenuOverlay({
                   )}
                 </button>
               </div>
+              <WhatsAppQrBadge href={siteConfig.contactSection.whatsappHref} />
             </div>
 
             <div

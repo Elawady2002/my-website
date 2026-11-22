@@ -39,7 +39,7 @@ export function WhatsAppQrBadge({
 
       <div
         aria-hidden="true"
-        className="voy-popover-glass pointer-events-none hidden sm:flex absolute bottom-full left-0 mb-3 z-50 w-[168px] flex-col items-center gap-2 rounded-[16px] p-3 opacity-0 translate-y-2 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/qr:opacity-100 group-hover/qr:translate-y-0 group-focus-visible/qr:opacity-100 group-focus-visible/qr:translate-y-0"
+        className="voy-popover-glass pointer-events-none hidden sm:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 w-[168px] flex-col items-center gap-2 rounded-[16px] p-3 opacity-0 translate-y-2 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/qr:opacity-100 group-hover/qr:translate-y-0 group-focus-visible/qr:opacity-100 group-focus-visible/qr:translate-y-0"
       >
         <div className="rounded-[10px] bg-[#e7e1d7] p-1.5">
           <QrMatrixSvg className="block h-[132px] w-[132px] rounded-[6px]" />

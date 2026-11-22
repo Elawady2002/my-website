@@ -467,7 +467,7 @@ export const siteConfig = {
             label: "Dart 101",
             level: "Beginner",
             issuedDate: "MAY 20, 2024",
-            details: "Level 1 of 3 · Beginner · 2 Hours",
+            details: "Dart 101 · Beginner · 2 Hours",
             imageSrc: "/images/certificates/satr-dart-101.webp",
           },
           {
@@ -475,7 +475,7 @@ export const siteConfig = {
             label: "Dart 102",
             level: "Intermediate",
             issuedDate: "MAY 21, 2024",
-            details: "Level 2 of 3 · Intermediate · 2 Hours",
+            details: "Dart 102 · Intermediate · 2 Hours",
             imageSrc: "/images/certificates/satr-dart-102.webp",
           },
           {
@@ -483,7 +483,7 @@ export const siteConfig = {
             label: "Dart 103",
             level: "Intermediate",
             issuedDate: "MAY 21, 2024",
-            details: "Level 3 of 3 · Intermediate · 2 Hours",
+            details: "Dart 103 · Intermediate · 2 Hours",
             imageSrc: "/images/certificates/satr-dart-103.webp",
           },
         ],
