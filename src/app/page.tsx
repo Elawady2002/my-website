@@ -3,6 +3,7 @@ import { PreloaderIntro } from "@/components/PreloaderIntro";
 import { HeaderStage } from "@/components/HeaderStage";
 import { AboutSection } from "@/components/AboutSection";
 import { WorkSection } from "@/components/WorkSection";
+import { CertificatesSection } from "@/components/CertificatesSection";
 import { FooterSection } from "@/components/FooterSection";
 import { BottomNav } from "@/components/BottomNav";
 
@@ -14,6 +15,7 @@ export default function HomePage() {
         <HeaderStage />
         <AboutSection />
         <WorkSection />
+        <CertificatesSection />
         <FooterSection />
         <BottomNav />
       </main>

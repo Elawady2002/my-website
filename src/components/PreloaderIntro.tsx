@@ -202,8 +202,10 @@ function simulateTrajectory(
   };
 }
 
+let introPlayedInSpa = false;
+
 export function PreloaderIntro() {
-  const [unmounted, setUnmounted] = useState(false);
+  const [unmounted, setUnmounted] = useState(() => introPlayedInSpa);
   const chromeRef = useRef<HTMLDivElement | null>(null);
   const shadowRef = useRef<HTMLDivElement | null>(null);
   const ballRef = useRef<HTMLDivElement | null>(null);
@@ -211,6 +213,7 @@ export function PreloaderIntro() {
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    if (introPlayedInSpa) return;
     const root = document.documentElement;
     window.scrollTo(0, 0);
     const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
@@ -264,6 +267,7 @@ export function PreloaderIntro() {
     let finishTimer = 0;
 
     const finishIntro = () => {
+      introPlayedInSpa = true;
       uncoverAll();
       const activeLenis = (window as unknown as { __lenis?: Lenis }).__lenis;
       activeLenis?.start();

@@ -179,6 +179,32 @@ body {
   transform: translate3d(0, 0, 0);
 }
 
+/* Section 4b (#certificates) editorial 3D frame reveal */
+.cert-reveal-line {
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--cert-delay, 0ms);
+}
+
+.cert-reveal-item {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--cert-delay, 0ms);
+}
+
+#certificates[data-revealed="true"] .cert-reveal-line {
+  transform: scaleX(1);
+}
+
+#certificates[data-revealed="true"] .cert-reveal-item {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 /* Dual-layer cursor: Hero ribbon trail canvas + focal dot */
 [data-cursor-canvas] {
   filter: blur(2px);
