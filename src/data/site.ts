@@ -394,7 +394,7 @@ export const siteConfig = {
           "Completed 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig.",
         accentColor: "#0057A8",
         imageSrc: "/images/certificates/ideation-camp-creativa-tiec.webp",
-        programUrl: "https://creativa.gov.eg/",
+        programUrl: "https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr",
         programLabel: "Explore Creativa",
         featured: true,
       },
