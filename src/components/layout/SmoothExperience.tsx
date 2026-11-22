@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import Lenis from "lenis";
+import { prefersReducedMotion } from "@/lib/dom";
 
 const TRAIL_NODES = 22;
 
@@ -20,8 +21,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
     });
-
-    (window as unknown as { __lenis?: Lenis }).__lenis = lenis;
+    window.__lenis = lenis;
 
     let rafId = 0;
     let calmFrames = 0;
@@ -32,11 +32,10 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       if (disposed || document.hidden) return;
       lenis.raf(time);
 
-      if (lenis.isScrolling === "smooth" || lenis.isScrolling === true) {
-        calmFrames = 0;
-      } else {
-        calmFrames += 1;
-      }
+      calmFrames =
+        lenis.isScrolling === "smooth" || lenis.isScrolling === true
+          ? 0
+          : calmFrames + 1;
 
       if (calmFrames < 2) {
         rafId = window.requestAnimationFrame(raf);
@@ -47,7 +46,6 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       if (disposed || document.hidden || (lenis.isStopped && !forceWake)) return;
       calmFrames = 0;
       if (rafId !== 0) return;
-      // Reset internal clock before resuming so idle time never creates a large delta spike
       lenis.time = performance.now();
       rafId = window.requestAnimationFrame(raf);
     };
@@ -85,7 +83,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pageshow", handlePageShow);
       if (rafId !== 0) window.cancelAnimationFrame(rafId);
-      delete (window as unknown as { __lenis?: Lenis }).__lenis;
+      delete window.__lenis;
       lenis.destroy();
     };
   }, []);
@@ -93,11 +91,11 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const dotEl = dotRef.current;
-    if (!canvas || !dotEl) return;
-
     if (
+      !canvas ||
+      !dotEl ||
       window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      prefersReducedMotion()
     ) {
       return;
     }
@@ -116,7 +114,6 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     const resizeCanvas = () => {
       vw = window.innerWidth;
       vh = window.innerHeight;
-      // DPR=1 is sufficient here because [data-cursor-canvas] has CSS blur(2px)
       canvas.width = vw;
       canvas.height = vh;
       canvas.style.width = `${vw}px`;
@@ -124,7 +121,6 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       dirtyHasBox = false;
     };
-
     resizeCanvas();
 
     let mouseX = vw * 0.5;
@@ -157,9 +153,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
         const cy = Math.max(0, Math.floor(dirtyMinY));
         const cw = Math.min(vw, Math.ceil(dirtyMaxX)) - cx;
         const ch = Math.min(vh, Math.ceil(dirtyMaxY)) - cy;
-        if (cw > 0 && ch > 0) {
-          ctx.clearRect(cx, cy, cw, ch);
-        }
+        if (cw > 0 && ch > 0) ctx.clearRect(cx, cy, cw, ch);
         dirtyHasBox = false;
       } else {
         ctx.clearRect(0, 0, vw, vh);
@@ -307,7 +301,6 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
     const onMouseMove = (e: MouseEvent) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
-      const target = e.target as HTMLElement | null;
 
       if (!isVisible) {
         isVisible = true;
@@ -320,18 +313,16 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
         dotEl.style.opacity = "1";
       }
 
-      syncMode(target);
+      syncMode(e.target as HTMLElement | null);
       wakeCursor();
     };
 
     const runScrollHitTest = () => {
       if (!isVisible) return;
       lastScrollHitTestMs = performance.now();
-      const underPointer = document.elementFromPoint(
-        mouseX,
-        mouseY
-      ) as HTMLElement | null;
-      syncMode(underPointer);
+      syncMode(
+        document.elementFromPoint(mouseX, mouseY) as HTMLElement | null
+      );
     };
 
     const onScroll = () => {
@@ -344,8 +335,7 @@ export function SmoothExperience({ children }: { children: React.ReactNode }) {
         runScrollHitTest();
       }, 100);
 
-      const now = performance.now();
-      if (scrollRafId === 0 && now - lastScrollHitTestMs >= 80) {
+      if (scrollRafId === 0 && performance.now() - lastScrollHitTestMs >= 80) {
         scrollRafId = window.requestAnimationFrame(() => {
           scrollRafId = 0;
           runScrollHitTest();

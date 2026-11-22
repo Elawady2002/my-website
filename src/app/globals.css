@@ -76,53 +76,67 @@ body {
   }
 }
 
-/* Section 2 (#info) scroll-reveal choreography */
-.info-line {
+/* Shared section scroll-reveal lines & staggered items */
+.info-line,
+.about-reveal-line,
+.footer-reveal-line,
+.cert-reveal-line {
   transform-origin: left center;
   transform: scaleX(0);
-  transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--row-delay, 0ms);
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+.info-line {
+  transition-duration: 0.85s;
+  --reveal-delay: var(--row-delay, 0ms);
+}
+
+.cert-reveal-line {
+  --reveal-delay: var(--cert-delay, 0ms);
+}
+
+.info-row-content,
+.about-reveal-item,
+.footer-reveal-item,
+.cert-reveal-item {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-y, 18px), 0);
+  transition:
+    opacity var(--reveal-dur, 0.7s) cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    transform var(--reveal-dur, 0.7s) cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
 }
 
 .info-row-content {
-  opacity: 0;
-  transform: translate3d(0, 16px, 0);
-  transition:
-    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: calc(var(--row-delay, 0ms) + 80ms);
-}
-
-#info[data-revealed="true"] .info-line {
-  transform: scaleX(1);
-}
-
-#info[data-revealed="true"] .info-row-content {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
-
-/* Section 3 (#about) narrative 3/9 grid reveal */
-.about-reveal-line {
-  transform-origin: left center;
-  transform: scaleX(0);
-  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+  --reveal-y: 16px;
+  --reveal-dur: 0.65s;
+  --reveal-delay: calc(var(--row-delay, 0ms) + 80ms);
 }
 
 .about-reveal-item {
-  opacity: 0;
-  transform: translate3d(0, 20px, 0);
-  transition:
-    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--about-delay, 0ms);
+  --reveal-y: 20px;
+  --reveal-dur: 0.75s;
+  --reveal-delay: var(--about-delay, 0ms);
 }
 
-#about-narrative[data-revealed="true"] .about-reveal-line {
+.footer-reveal-item {
+  --reveal-delay: var(--footer-delay, 0ms);
+}
+
+.cert-reveal-item {
+  --reveal-delay: var(--cert-delay, 0ms);
+}
+
+#info[data-revealed="true"] .info-line,
+#about-narrative[data-revealed="true"] .about-reveal-line,
+#contact[data-revealed="true"] .footer-reveal-line,
+#certificates[data-revealed="true"] .cert-reveal-line {
   transform: scaleX(1);
 }
 
-#about-narrative[data-revealed="true"] .about-reveal-item {
+#info[data-revealed="true"] .info-row-content,
+#about-narrative[data-revealed="true"] .about-reveal-item,
+#contact[data-revealed="true"] .footer-reveal-item,
+#certificates[data-revealed="true"] .cert-reveal-item {
   opacity: 1;
   transform: translate3d(0, 0, 0);
 }
@@ -138,7 +152,7 @@ body {
   transform: translate3d(0, 0, 0);
 }
 
-/* Section 5 (#contact) footer marquee & reveal */
+/* Section 5 (#contact) footer marquee */
 @keyframes footerMarquee {
   0% {
     transform: translate3d(0%, 0, 0);
@@ -153,56 +167,6 @@ body {
   width: max-content;
   animation: footerMarquee 22s linear infinite;
   will-change: transform;
-}
-
-.footer-reveal-line {
-  transform-origin: left center;
-  transform: scaleX(0);
-  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.footer-reveal-item {
-  opacity: 0;
-  transform: translate3d(0, 18px, 0);
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--footer-delay, 0ms);
-}
-
-#contact[data-revealed="true"] .footer-reveal-line {
-  transform: scaleX(1);
-}
-
-#contact[data-revealed="true"] .footer-reveal-item {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
-
-/* Section 4b (#certificates) editorial 3D frame reveal */
-.cert-reveal-line {
-  transform-origin: left center;
-  transform: scaleX(0);
-  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--cert-delay, 0ms);
-}
-
-.cert-reveal-item {
-  opacity: 0;
-  transform: translate3d(0, 18px, 0);
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--cert-delay, 0ms);
-}
-
-#certificates[data-revealed="true"] .cert-reveal-line {
-  transform: scaleX(1);
-}
-
-#certificates[data-revealed="true"] .cert-reveal-item {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
 }
 
 /* Dual-layer cursor: Hero ribbon trail canvas + focal dot */
@@ -246,7 +210,7 @@ body {
 
 /* Seamless 4-edge alpha masks (split X/Y with no-repeat so downscaled GPU layers never wrap 1px at 0%) */
 .portrait-mask-x {
-  -webkit-mask-image: linear-gradient(
+  --portrait-mask: linear-gradient(
     90deg,
     transparent 0%,
     transparent 4.5%,
@@ -263,31 +227,10 @@ body {
     transparent 96%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 4.5%,
-    rgba(0, 0, 0, 0.08) 9%,
-    rgba(0, 0, 0, 0.28) 15%,
-    rgba(0, 0, 0, 0.62) 21.5%,
-    rgba(0, 0, 0, 0.88) 27%,
-    #000000 31.5%,
-    #000000 73.5%,
-    rgba(0, 0, 0, 0.88) 78%,
-    rgba(0, 0, 0, 0.6) 83.5%,
-    rgba(0, 0, 0, 0.28) 89%,
-    rgba(0, 0, 0, 0.08) 93%,
-    transparent 96%,
-    transparent 100%
-  );
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
 }
 
 .portrait-mask-y {
-  -webkit-mask-image: linear-gradient(
+  --portrait-mask: linear-gradient(
     180deg,
     transparent 0%,
     transparent 2.5%,
@@ -301,20 +244,12 @@ body {
     transparent 98%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    180deg,
-    transparent 0%,
-    transparent 2.5%,
-    rgba(0, 0, 0, 0.25) 7%,
-    rgba(0, 0, 0, 0.75) 15%,
-    #000000 23%,
-    #000000 68%,
-    rgba(0, 0, 0, 0.78) 79%,
-    rgba(0, 0, 0, 0.36) 89%,
-    rgba(0, 0, 0, 0.08) 95%,
-    transparent 98%,
-    transparent 100%
-  );
+}
+
+.portrait-mask-x,
+.portrait-mask-y {
+  -webkit-mask-image: var(--portrait-mask);
+  mask-image: var(--portrait-mask);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;

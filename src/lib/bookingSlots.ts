@@ -209,32 +209,6 @@ export function formatCairoClock12h(nowMs: number = Date.now()): string {
   }
 }
 
-export function formatMonthHeading(year: number, month: number): string {
-  return getCachedFormatter("monthHeading:UTC", {
-    timeZone: "UTC",
-    month: "long",
-    year: "numeric",
-  })
-    .format(new Date(Date.UTC(year, month - 1, 15)))
-    .toUpperCase();
-}
-
-export function formatDateHeading(
-  year: number,
-  month: number,
-  day: number
-): string {
-  return getCachedFormatter("dateHeading:UTC", {
-    timeZone: "UTC",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-    .format(new Date(Date.UTC(year, month - 1, day)))
-    .toUpperCase();
-}
-
 export function buildDaySlots({
   year,
   month,

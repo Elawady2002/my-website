@@ -378,7 +378,7 @@ export const siteConfig = {
         description:
           "Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture taught by Osama Eldrieny.",
         accentColor: "#00D084",
-        imageSrc: "/images/certificates/figma-variables-osama-eldrieny.jpg",
+        imageSrc: "/images/certificates/figma-variables-osama-eldrieny.webp",
         programUrl: "https://osamaeldrieny.com/course",
         programLabel: "Take This Course",
         featured: true,
@@ -393,7 +393,7 @@ export const siteConfig = {
         description:
           "Completed 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig.",
         accentColor: "#0057A8",
-        imageSrc: "/images/certificates/ideation-camp-creativa-tiec.jpg",
+        imageSrc: "/images/certificates/ideation-camp-creativa-tiec.webp",
         programUrl: "https://creativa.gov.eg/",
         programLabel: "Explore Creativa",
         featured: true,

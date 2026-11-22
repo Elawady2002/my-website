@@ -1,11 +1,11 @@
-import { SmoothExperience } from "@/components/SmoothExperience";
-import { PreloaderIntro } from "@/components/PreloaderIntro";
-import { HeaderStage } from "@/components/HeaderStage";
-import { AboutSection } from "@/components/AboutSection";
-import { WorkSection } from "@/components/WorkSection";
-import { CertificatesSection } from "@/components/CertificatesSection";
-import { FooterSection } from "@/components/FooterSection";
-import { BottomNav } from "@/components/BottomNav";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { PreloaderIntro } from "@/components/layout/PreloaderIntro";
+import { SmoothExperience } from "@/components/layout/SmoothExperience";
+import { AboutSection } from "@/components/sections/AboutSection";
+import { CertificatesSection } from "@/components/sections/CertificatesSection";
+import { FooterSection } from "@/components/sections/FooterSection";
+import { HeaderStage } from "@/components/sections/HeaderStage";
+import { WorkSection } from "@/components/sections/WorkSection";
 
 export default function HomePage() {
   return (

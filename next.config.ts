@@ -28,10 +28,13 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+    value:
+      "accelerometer=(), autoplay=(self), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), browsing-topics=()",
   },
   {
     key: "Strict-Transport-Security",
@@ -52,10 +55,13 @@ const IMMUTABLE_CACHE_HEADERS = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  reactCompiler: true,
   cacheComponents: true,
   partialPrefetching: true,
   experimental: {
     inlineCss: true,
+    turbopackRustReactCompiler: true,
+    optimizePackageImports: ["three"],
   },
   images: {
     formats: ["image/avif", "image/webp"],

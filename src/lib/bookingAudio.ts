@@ -1,19 +1,12 @@
+import { prefersReducedMotion } from "@/lib/dom";
+
 let sharedAudioCtx: AudioContext | null = null;
 let lastHoverTickMs = 0;
 
 function getAudioContext(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-  if (
-    window.matchMedia &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  ) {
-    return null;
-  }
+  if (typeof window === "undefined" || prefersReducedMotion()) return null;
 
-  const AudioCtx =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) return null;
 
   if (!sharedAudioCtx) {

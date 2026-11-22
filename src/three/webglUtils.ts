@@ -3,10 +3,83 @@ import {
   DirectionalLight,
   EquirectangularReflectionMapping,
   HemisphereLight,
+  NeutralToneMapping,
+  PMREMGenerator,
   Scene,
   SphereGeometry,
   SRGBColorSpace,
+  Texture,
+  WebGLRenderer,
 } from "three";
+
+export interface ManagedRendererOptions {
+  maxDpr: number;
+  className?: string;
+  touchAction?: string;
+  toneMappingExposure?: number;
+}
+
+export function createManagedRenderer(
+  container: HTMLElement,
+  {
+    maxDpr,
+    className = "block h-full w-full pointer-events-none",
+    touchAction,
+    toneMappingExposure,
+  }: ManagedRendererOptions
+): WebGLRenderer | null {
+  try {
+    const renderer = new WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
+    if (toneMappingExposure !== undefined) {
+      renderer.toneMapping = NeutralToneMapping;
+      renderer.toneMappingExposure = toneMappingExposure;
+    }
+    renderer.domElement.className = className;
+    if (touchAction) {
+      renderer.domElement.style.touchAction = touchAction;
+    }
+    container.appendChild(renderer.domElement);
+    return renderer;
+  } catch {
+    return null;
+  }
+}
+
+export function createPmremEnv(
+  renderer: WebGLRenderer,
+  rawEnvTex: Texture
+): { texture: Texture; dispose: () => void } {
+  const pmrem = new PMREMGenerator(renderer);
+  const envTarget = pmrem.fromEquirectangular(rawEnvTex);
+  return {
+    texture: envTarget.texture,
+    dispose: () => {
+      rawEnvTex.dispose();
+      envTarget.dispose();
+      pmrem.dispose();
+    },
+  };
+}
+
+export function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  width: number,
+  height: number
+): void {
+  const natW = img.naturalWidth || img.width;
+  const natH = img.naturalHeight || img.height;
+  if (natW <= 0 || natH <= 0) return;
+  const scale = Math.max(width / natW, height / natH);
+  const dw = natW * scale;
+  const dh = natH * scale;
+  ctx.drawImage(img, (width - dw) * 0.5, (height - dh) * 0.5, dw, dh);
+}
 
 export interface StudioEnvOptions {
   width?: number;
@@ -15,10 +88,6 @@ export interface StudioEnvOptions {
   keyMidStop?: string;
   rimStop?: string;
   floorStop?: string;
-}
-
-export function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
 }
 
 /**
@@ -130,7 +199,7 @@ export function createConformalSphereGeometry(
       const x = posAttr.getX(i);
       const y = posAttr.getY(i);
       const z = posAttr.getZ(i);
-      const absZ = clamp(Math.abs(z), 0, 1);
+      const absZ = Math.max(0, Math.min(1, Math.abs(z)));
       const theta = Math.acos(absZ);
       const rho = theta / (Math.PI * 0.5);
       const phi = Math.atan2(y, x);

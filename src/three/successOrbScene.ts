@@ -4,22 +4,21 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
-  NeutralToneMapping,
   PerspectiveCamera,
   PlaneGeometry,
-  PMREMGenerator,
   Scene,
   SRGBColorSpace,
-  WebGLRenderer,
 } from "three";
 import { getDevicePerfTier } from "@/lib/deviceTier";
+import { clamp, prefersReducedMotion } from "@/lib/dom";
 import {
   addStudioThreePointLights,
-  clamp,
   createConformalSphereGeometry,
+  createManagedRenderer,
+  createPmremEnv,
   createRadialShadowTexture,
   createStudioEnvTexture,
-} from "@/lib/threeOrbShared";
+} from "@/three/webglUtils";
 
 export interface SuccessOrbController {
   setHoverTilt: (nx: number, ny: number) => void;
@@ -32,10 +31,7 @@ function createEmeraldCheckTextures(
   maxAnisotropy: number,
   colorSize: number,
   bumpSize: number
-): {
-  colorTex: CanvasTexture;
-  bumpTex: CanvasTexture;
-} {
+): { colorTex: CanvasTexture; bumpTex: CanvasTexture } {
   const colorCanvas = document.createElement("canvas");
   colorCanvas.width = colorSize;
   colorCanvas.height = colorSize;
@@ -58,7 +54,6 @@ function createEmeraldCheckTextures(
     colorCtx.fillStyle = bgGrad;
     colorCtx.fillRect(0, 0, 1024, 1024);
 
-    // Bold optically centered checkmark (~52% of sphere width)
     colorCtx.strokeStyle = "#ffffff";
     colorCtx.lineWidth = 108;
     colorCtx.lineCap = "round";
@@ -121,24 +116,13 @@ export function mountSuccessOrbScene(
   { onTriggerChime }: { onTriggerChime?: () => void } = {}
 ): SuccessOrbController | null {
   const perf = getDevicePerfTier();
-  let renderer: WebGLRenderer | null = null;
-  try {
-    renderer = new WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-  } catch {
-    return null;
-  }
-
-  const activeRenderer = renderer;
-  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
-  activeRenderer.toneMapping = NeutralToneMapping;
-  activeRenderer.toneMappingExposure = 1.08;
-  activeRenderer.domElement.className =
-    "block h-full w-full cursor-grab active:cursor-grabbing touch-none select-none";
-  container.appendChild(activeRenderer.domElement);
+  const activeRenderer = createManagedRenderer(container, {
+    maxDpr: perf.maxDpr,
+    toneMappingExposure: 1.08,
+    className:
+      "block h-full w-full cursor-grab active:cursor-grabbing touch-none select-none",
+  });
+  if (!activeRenderer) return null;
 
   const width = container.clientWidth || 84;
   const height = container.clientHeight || 84;
@@ -154,15 +138,16 @@ export function mountSuccessOrbScene(
   camera.lookAt(0, -0.02, 0);
 
   const scene = new Scene();
-  const pmrem = new PMREMGenerator(activeRenderer);
-  const rawEnvTex = createStudioEnvTexture({
-    bg: "#0d110e",
-    keyMidStop: "rgba(255, 255, 255, 0.48)",
-    rimStop: "rgba(232, 245, 240, 0.42)",
-    floorStop: "rgba(220, 240, 228, 0.2)",
-  });
-  const envTarget = pmrem.fromEquirectangular(rawEnvTex);
-  scene.environment = envTarget.texture;
+  const env = createPmremEnv(
+    activeRenderer,
+    createStudioEnvTexture({
+      bg: "#0d110e",
+      keyMidStop: "rgba(255, 255, 255, 0.48)",
+      rimStop: "rgba(232, 245, 240, 0.42)",
+      floorStop: "rgba(220, 240, 228, 0.2)",
+    })
+  );
+  scene.environment = env.texture;
 
   const maxAniso = activeRenderer.capabilities.getMaxAnisotropy();
   const { colorTex, bumpTex } = createEmeraldCheckTextures(
@@ -191,7 +176,6 @@ export function mountSuccessOrbScene(
   const orbMesh = new Mesh(geometry, material);
   scene.add(orbMesh);
 
-  // Subtle grounded contact shadow beneath the 3D sphere
   const shadowGeo = new PlaneGeometry(2.5, 0.72);
   const shadowTex = createRadialShadowTexture(0.65, 0.26);
   const shadowMat = new MeshBasicMaterial({
@@ -206,9 +190,7 @@ export function mountSuccessOrbScene(
 
   addStudioThreePointLights(scene, 1, 0x121814);
 
-  const reducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  const reducedMotion = prefersReducedMotion();
 
   let scale = reducedMotion ? 1 : 0.3;
   let scaleVel = reducedMotion ? 0 : 7.2;
@@ -262,13 +244,10 @@ export function mountSuccessOrbScene(
     if (!dragging) {
       angleY += omegaY * dt;
       omegaY *= Math.exp(-2.8 * dt);
-
-      // Gentle magnetic settle toward nearest upright hemisphere (0, ±PI, ...)
       const nearestPi = Math.round(angleY / Math.PI) * Math.PI;
       if (Math.abs(omegaY) < 3.4) {
         omegaY += (nearestPi - angleY) * 14 * dt;
       }
-
       dragTiltX *= Math.exp(-9 * dt);
     }
 
@@ -304,15 +283,25 @@ export function mountSuccessOrbScene(
   };
 
   const canvasEl = activeRenderer.domElement;
+  let cachedRect: DOMRect | null = null;
+  const invalidateRect = () => {
+    cachedRect = null;
+  };
+  const readRect = () => {
+    if (!cachedRect) cachedRect = canvasEl.getBoundingClientRect();
+    return cachedRect;
+  };
 
   const onPointerEnter = () => {
     hoveredOrb = true;
+    cachedRect = canvasEl.getBoundingClientRect();
     wake();
   };
 
   const onPointerDown = (e: PointerEvent) => {
     dragging = true;
     dragPointerId = e.pointerId;
+    cachedRect = canvasEl.getBoundingClientRect();
     lastX = e.clientX;
     lastY = e.clientY;
     lastTime = performance.now();
@@ -324,10 +313,10 @@ export function mountSuccessOrbScene(
   };
 
   const onPointerMove = (e: PointerEvent) => {
-    const rect = canvasEl.getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
-    const ny = ((e.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
     if (!dragging) {
+      const rect = readRect();
+      const nx = ((e.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
+      const ny = ((e.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
       targetHoverY = clamp(nx * 0.34, -0.38, 0.38);
       targetHoverX = clamp(ny * 0.3, -0.34, 0.34);
       wake();
@@ -369,6 +358,7 @@ export function mountSuccessOrbScene(
 
   const onPointerLeave = () => {
     hoveredOrb = false;
+    cachedRect = null;
     if (!dragging) {
       targetHoverX = 0;
       targetHoverY = 0;
@@ -382,6 +372,8 @@ export function mountSuccessOrbScene(
   canvasEl.addEventListener("pointerup", finishDrag);
   canvasEl.addEventListener("pointercancel", finishDrag);
   canvasEl.addEventListener("pointerleave", onPointerLeave);
+  window.addEventListener("scroll", invalidateRect, { passive: true });
+  window.addEventListener("resize", invalidateRect, { passive: true });
 
   applyPose();
   activeRenderer.render(scene, camera);
@@ -405,6 +397,8 @@ export function mountSuccessOrbScene(
       canvasEl.removeEventListener("pointerup", finishDrag);
       canvasEl.removeEventListener("pointercancel", finishDrag);
       canvasEl.removeEventListener("pointerleave", onPointerLeave);
+      window.removeEventListener("scroll", invalidateRect);
+      window.removeEventListener("resize", invalidateRect);
 
       geometry.dispose();
       shadowGeo.dispose();
@@ -413,9 +407,7 @@ export function mountSuccessOrbScene(
       colorTex.dispose();
       bumpTex.dispose();
       shadowTex.dispose();
-      rawEnvTex.dispose();
-      envTarget.dispose();
-      pmrem.dispose();
+      env.dispose();
       activeRenderer.dispose();
       if (canvasEl.parentNode === container) {
         container.removeChild(canvasEl);

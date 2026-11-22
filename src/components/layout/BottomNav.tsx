@@ -1,28 +1,34 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import type Lenis from "lenis";
-import type { PopoverAnchorBox } from "@/components/BookingModal";
+import React, {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
+import type { PopoverAnchorBox } from "@/components/booking/BookingModal";
 import {
   FullscreenMenuOverlay,
   MENU_COLS,
   type MenuPhase,
-} from "@/components/FullscreenMenuOverlay";
+} from "@/components/layout/FullscreenMenuOverlay";
+import {
+  runCloseCurtainAnimation,
+  runOpenCurtainAnimation,
+} from "@/components/layout/menuCurtain";
 import { siteConfig } from "@/data/site";
+import { useMagneticHover } from "@/hooks/useMagneticHover";
+import { playModalClose, playModalOpen } from "@/lib/bookingAudio";
 import { prefetchBookingAvailability } from "@/lib/bookingAvailabilityClient";
 import { formatCairoClock12h } from "@/lib/bookingSlots";
-import { playModalClose, playModalOpen } from "@/lib/bookingAudio";
+import { getLenis, scheduleIdle, scrollToTarget } from "@/lib/dom";
 
 const LazyBookingModal = React.lazy(() =>
-  import("@/components/BookingModal").then((m) => ({
+  import("@/components/booking/BookingModal").then((m) => ({
     default: m.BookingModal,
   }))
 );
-
-function springEase(u: number): number {
-  const clamped = Math.max(0, Math.min(1, u));
-  return 1 - Math.pow(1 - clamped, 4.2);
-}
 
 export function BottomNav() {
   const [menuPhase, setMenuPhase] = useState<MenuPhase>("closed");
@@ -44,17 +50,22 @@ export function BottomNav() {
   const cairoTimeRef = useRef<HTMLSpanElement | null>(null);
   const leadColRefs = useRef<(HTMLDivElement | null)[]>([]);
   const mainColRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const magneticRectsRef = useRef<WeakMap<HTMLElement, DOMRect>>(new WeakMap());
 
   const leadScalesRef = useRef<number[]>(Array(MENU_COLS).fill(0));
   const mainScalesRef = useRef<number[]>(Array(MENU_COLS).fill(0));
-  const rafRef = useRef<number | null>(null);
+  const menuRafRef = useRef<number | null>(null);
   const isNavDockedRef = useRef(false);
   const menuPhaseRef = useRef<MenuPhase>("closed");
   const activeTabRef = useRef<string>("home");
   const scrollSpyLockedRef = useRef<boolean>(false);
   const scrollSpyTimerRef = useRef<number | null>(null);
   const syncOnScrollRef = useRef<() => void>(() => {});
+
+  const magnetic = useMagneticHover<HTMLButtonElement>({
+    xFactor: 0.22,
+    yFactor: 0.22,
+    scale: 1.04,
+  });
 
   const isOpen = menuPhase === "opening" || menuPhase === "open";
   const showMenuLayer = menuPhase !== "closed";
@@ -104,41 +115,43 @@ export function BottomNav() {
     };
     syncClock();
     const interval = window.setInterval(syncClock, 15000);
-    return () => {
-      window.clearInterval(interval);
-    };
+    return () => window.clearInterval(interval);
   }, [isOpen]);
 
+  const positionDotForTab = (tabId: string) => {
+    const dotEl = navDotRef.current;
+    if (!dotEl) return;
+    const idx = siteConfig.pillNavLinks.findIndex((item) => item.id === tabId);
+    const linkEl = pillLinkRefs.current[idx >= 0 ? idx : 0];
+    if (!linkEl) return;
+    const centerX = linkEl.offsetLeft + linkEl.offsetWidth * 0.5 - 2.5;
+    dotEl.style.transform = `translate3d(${centerX.toFixed(1)}px, 0, 0)`;
+    dotEl.style.opacity = "1";
+  };
+
   useEffect(() => {
-    const updateDot = (tabId: string) => {
-      const dotEl = navDotRef.current;
-      if (!dotEl) return;
-      const idx = siteConfig.pillNavLinks.findIndex((item) => item.id === tabId);
-      const linkEl = pillLinkRefs.current[idx >= 0 ? idx : 0];
-      if (!linkEl) return;
-      const centerX = linkEl.offsetLeft + linkEl.offsetWidth * 0.5 - 2.5;
-      dotEl.style.transform = `translate3d(${centerX.toFixed(1)}px, 0, 0)`;
-      dotEl.style.opacity = "1";
-    };
+    positionDotForTab(activeTab);
+  }, [activeTab]);
 
-    updateDot(activeTab);
+  const onSyncCurrentDot = useEffectEvent(() => {
+    positionDotForTab(activeTabRef.current);
+  });
 
+  useEffect(() => {
     let activeObserver: ResizeObserver | null = null;
     if (pillNavRef.current) {
-      activeObserver = new ResizeObserver(() => updateDot(activeTabRef.current));
+      activeObserver = new ResizeObserver(onSyncCurrentDot);
       activeObserver.observe(pillNavRef.current);
     }
-    const fontPromise = document.fonts?.ready;
     let cancelled = false;
-    fontPromise?.then(() => {
-      if (!cancelled) updateDot(activeTabRef.current);
+    document.fonts?.ready.then(() => {
+      if (!cancelled) onSyncCurrentDot();
     });
-
     return () => {
       cancelled = true;
       activeObserver?.disconnect();
     };
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,9 +166,7 @@ export function BottomNav() {
     };
 
     const syncOnScroll = () => {
-      magneticRectsRef.current = new WeakMap();
       const y = window.scrollY;
-
       const el = navBarRef.current;
       if (el) {
         const maxOffset = Math.max(0, metrics.vh - metrics.barHeight);
@@ -191,13 +202,11 @@ export function BottomNav() {
     };
 
     const measureLayout = () => {
-      magneticRectsRef.current = new WeakMap();
       const y = window.scrollY;
       const vh = window.innerHeight || 900;
       const docHeight = document.documentElement.scrollHeight;
-      const el = navBarRef.current;
       const barHeight =
-        el?.offsetHeight || (window.innerWidth >= 768 ? 102 : 76);
+        navBarRef.current?.offsetHeight || (window.innerWidth >= 768 ? 102 : 76);
 
       const contactEl = document.querySelector<HTMLElement>("#contact");
       const workIntroEl =
@@ -227,9 +236,7 @@ export function BottomNav() {
     const initTimer = window.setTimeout(measureLayout, 60);
     const resizeObserver = new ResizeObserver(measureLayout);
     resizeObserver.observe(document.documentElement);
-    if (navBarRef.current) {
-      resizeObserver.observe(navBarRef.current);
-    }
+    if (navBarRef.current) resizeObserver.observe(navBarRef.current);
 
     document.fonts?.ready.then(() => {
       if (!cancelled) measureLayout();
@@ -251,279 +258,33 @@ export function BottomNav() {
     };
   }, []);
 
-  const stopMenuRaf = () => {
-    if (rafRef.current !== null) {
-      window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+  const stopMenuRaf = useCallback(() => {
+    if (menuRafRef.current !== null) {
+      window.cancelAnimationFrame(menuRafRef.current);
+      menuRafRef.current = null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
       stopMenuRaf();
-      (window as unknown as { __lenis?: Lenis }).__lenis?.start();
+      getLenis()?.start();
     };
-  }, []);
+  }, [stopMenuRaf]);
 
-  const applyColumnScale = (idx: number, leadVal: number, mainVal: number) => {
-    leadScalesRef.current[idx] = leadVal;
-    mainScalesRef.current[idx] = mainVal;
-    const leadEl = leadColRefs.current[idx];
-    const mainEl = mainColRefs.current[idx];
-    if (leadEl) {
-      leadEl.style.transform = `scaleY(${leadVal.toFixed(4)})`;
-    }
-    if (mainEl) {
-      mainEl.style.transform = `scaleY(${mainVal.toFixed(4)})`;
-    }
-  };
+  const applyColumnScale = useCallback(
+    (idx: number, leadVal: number, mainVal: number) => {
+      leadScalesRef.current[idx] = leadVal;
+      mainScalesRef.current[idx] = mainVal;
+      const leadEl = leadColRefs.current[idx];
+      const mainEl = mainColRefs.current[idx];
+      if (leadEl) leadEl.style.transform = `scaleY(${leadVal.toFixed(4)})`;
+      if (mainEl) mainEl.style.transform = `scaleY(${mainVal.toFixed(4)})`;
+    },
+    []
+  );
 
-  const scrollToTarget = (selector: string | null) => {
-    const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
-    if (!selector) {
-      if (lenis) lenis.scrollTo(0, { duration: 1.2 });
-      else window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    const target = document.querySelector<HTMLElement>(selector);
-    if (target) {
-      if (lenis) lenis.scrollTo(target, { duration: 1.2 });
-      else target.scrollIntoView({ behavior: "smooth" });
-    } else if (lenis) {
-      lenis.scrollTo(0, { duration: 1.2 });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  const openMenu = () => {
-    stopMenuRaf();
-    setIsBookingOpen(false);
-    setHoveredIdx(null);
-    setContentRevealed(false);
-    setIsNavDocked(true);
-    setMenuPhase("opening");
-    (window as unknown as { __lenis?: Lenis }).__lenis?.stop();
-
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    if (reducedMotion) {
-      for (let i = 0; i < MENU_COLS; i += 1) {
-        applyColumnScale(i, 1, 1);
-      }
-      setContentRevealed(true);
-      setMenuPhase("open");
-      return;
-    }
-
-    const isDesktop = window.innerWidth >= 768;
-    const visibleCount = isDesktop ? MENU_COLS : 8;
-    const anchorCol = isDesktop ? 12 : 6;
-
-    const startLead = [...leadScalesRef.current];
-    const startMain = [...mainScalesRef.current];
-
-    const colTimings = Array.from({ length: MENU_COLS }, (_, idx) => {
-      const clampedIdx = Math.min(idx, visibleCount - 1);
-      const dist = Math.abs(clampedIdx - anchorCol);
-      return {
-        leadStart: dist * 16,
-        leadDur: 440,
-        mainStart: 65 + dist * 16,
-        mainDur: 480,
-      };
-    });
-
-    const contentRevealAt = 460;
-    const totalOpenMs = Math.max(
-      ...colTimings.slice(0, visibleCount).map((t) => t.mainStart + t.mainDur)
-    );
-
-    let revealedTriggered = false;
-    let startTime = 0;
-
-    const tick = (now: number) => {
-      if (!startTime) startTime = now;
-      const elapsed = now - startTime;
-
-      for (let i = 0; i < MENU_COLS; i += 1) {
-        const t = colTimings[i];
-        const lu = (elapsed - t.leadStart) / t.leadDur;
-        const mu = (elapsed - t.mainStart) / t.mainDur;
-        const leadS = startLead[i] + (1 - startLead[i]) * springEase(lu);
-        const mainS = startMain[i] + (1 - startMain[i]) * springEase(mu);
-        applyColumnScale(i, leadS, mainS);
-      }
-
-      if (!revealedTriggered && elapsed >= contentRevealAt) {
-        revealedTriggered = true;
-        setContentRevealed(true);
-      }
-
-      if (elapsed >= totalOpenMs) {
-        for (let i = 0; i < MENU_COLS; i += 1) {
-          applyColumnScale(i, 1, 1);
-        }
-        if (!revealedTriggered) {
-          setContentRevealed(true);
-        }
-        setMenuPhase("open");
-        rafRef.current = null;
-        return;
-      }
-
-      rafRef.current = window.requestAnimationFrame(tick);
-    };
-
-    rafRef.current = window.requestAnimationFrame(tick);
-  };
-
-  const closeMenu = (scrollTarget?: string | null) => {
-    stopMenuRaf();
-    setHoveredIdx(null);
-    setContentRevealed(false);
-    setMenuPhase("closing");
-    // Keep #nav docked at top during content fade + staircase retraction
-    setIsNavDocked(true);
-    (window as unknown as { __lenis?: Lenis }).__lenis?.start();
-
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    if (reducedMotion) {
-      for (let i = 0; i < MENU_COLS; i += 1) {
-        applyColumnScale(i, 0, 0);
-      }
-      setIsNavDocked(false);
-      setMenuPhase("closed");
-      if (scrollTarget !== undefined) scrollToTarget(scrollTarget);
-      return;
-    }
-
-    const isDesktop = window.innerWidth >= 768;
-    const visibleCount = isDesktop ? MENU_COLS : 8;
-    const anchorCol = isDesktop ? 12 : 6;
-    const maxDist = Math.max(anchorCol, visibleCount - 1 - anchorCol);
-
-    const startLead = [...leadScalesRef.current];
-    const startMain = [...mainScalesRef.current];
-
-    const colTimings = Array.from({ length: MENU_COLS }, (_, idx) => {
-      const clampedIdx = Math.min(idx, visibleCount - 1);
-      // Reverse inward wave: outermost column retracts first back to toggle column
-      const revDist = maxDist - Math.abs(clampedIdx - anchorCol);
-      return {
-        mainStart: 120 + revDist * 22,
-        mainDur: 460,
-        leadStart: 185 + revDist * 22,
-        leadDur: 440,
-      };
-    });
-
-    const scrollStartAt = 160;
-    const releaseNavAt = 540;
-    const totalCloseMs = Math.max(
-      ...colTimings.slice(0, visibleCount).map((t) => t.leadStart + t.leadDur)
-    );
-
-    let scrollTriggered = false;
-    let navReleased = false;
-    let startTime = 0;
-
-    const tick = (now: number) => {
-      if (!startTime) startTime = now;
-      const elapsed = now - startTime;
-
-      if (!scrollTriggered && elapsed >= scrollStartAt) {
-        scrollTriggered = true;
-        if (scrollTarget !== undefined) {
-          scrollToTarget(scrollTarget);
-        }
-      }
-
-      if (!navReleased && elapsed >= releaseNavAt) {
-        navReleased = true;
-        setIsNavDocked(false);
-      }
-
-      for (let i = 0; i < MENU_COLS; i += 1) {
-        const t = colTimings[i];
-        const mu = (elapsed - t.mainStart) / t.mainDur;
-        const lu = (elapsed - t.leadStart) / t.leadDur;
-        const mainS = startMain[i] * (1 - springEase(mu));
-        const leadS = startLead[i] * (1 - springEase(lu));
-        applyColumnScale(i, leadS, mainS);
-      }
-
-      if (elapsed >= totalCloseMs) {
-        for (let i = 0; i < MENU_COLS; i += 1) {
-          applyColumnScale(i, 0, 0);
-        }
-        if (!navReleased) {
-          setIsNavDocked(false);
-        }
-        setMenuPhase("closed");
-        rafRef.current = null;
-        return;
-      }
-
-      rafRef.current = window.requestAnimationFrame(tick);
-    };
-
-    rafRef.current = window.requestAnimationFrame(tick);
-  };
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "Escape" &&
-        (menuPhaseRef.current === "open" || menuPhaseRef.current === "opening")
-      ) {
-        closeMenu();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleMagneticEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const btn = e.currentTarget;
-    magneticRectsRef.current.set(btn, btn.getBoundingClientRect());
-  };
-
-  const handleMagneticMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const btn = e.currentTarget;
-    let rect = magneticRectsRef.current.get(btn);
-    if (!rect) {
-      rect = btn.getBoundingClientRect();
-      magneticRectsRef.current.set(btn, rect);
-    }
-    const dx = e.clientX - (rect.left + rect.width / 2);
-    const dy = e.clientY - (rect.top + rect.height / 2);
-    btn.style.transform = `translate3d(${(dx * 0.22).toFixed(1)}px, ${(
-      dy * 0.22
-    ).toFixed(1)}px, 0) scale(1.04)`;
-  };
-
-  const handleMagneticLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    magneticRectsRef.current.delete(e.currentTarget);
-    e.currentTarget.style.transform = "translate3d(0px, 0px, 0) scale(1)";
-  };
-
-  const handleTopClick = () => {
-    lockScrollSpy("home");
-    if (isOpen) {
-      closeMenu(null);
-    } else {
-      scrollToTarget(null);
-    }
-  };
-
-  const lockScrollSpy = (tabId: string) => {
+  const lockScrollSpy = useCallback((tabId: string) => {
     scrollSpyLockedRef.current = true;
     if (scrollSpyTimerRef.current !== null) {
       window.clearTimeout(scrollSpyTimerRef.current);
@@ -534,14 +295,70 @@ export function BottomNav() {
     }, 950);
     activeTabRef.current = tabId;
     setActiveTab(tabId);
-  };
+  }, []);
 
-  const closeMenuRef = useRef(closeMenu);
-  const lockScrollSpyRef = useRef(lockScrollSpy);
-  useEffect(() => {
-    closeMenuRef.current = closeMenu;
-    lockScrollSpyRef.current = lockScrollSpy;
+  const openMenu = useCallback(() => {
+    stopMenuRaf();
+    setIsBookingOpen(false);
+    setHoveredIdx(null);
+    setContentRevealed(false);
+    setIsNavDocked(true);
+    setMenuPhase("opening");
+    getLenis()?.stop();
+
+    runOpenCurtainAnimation({
+      rafRef: menuRafRef,
+      leadScales: leadScalesRef.current,
+      mainScales: mainScalesRef.current,
+      applyColumnScale,
+      onContentReveal: () => setContentRevealed(true),
+      onComplete: () => setMenuPhase("open"),
+    });
+  }, [applyColumnScale, stopMenuRaf]);
+
+  const closeMenu = useCallback(
+    (scrollTarget?: string | null) => {
+      stopMenuRaf();
+      setHoveredIdx(null);
+      setContentRevealed(false);
+      setMenuPhase("closing");
+      setIsNavDocked(true);
+      getLenis()?.start();
+
+      runCloseCurtainAnimation({
+        rafRef: menuRafRef,
+        leadScales: leadScalesRef.current,
+        mainScales: mainScalesRef.current,
+        applyColumnScale,
+        onScrollStart: () => {
+          if (scrollTarget !== undefined) scrollToTarget(scrollTarget);
+        },
+        onReleaseNav: () => setIsNavDocked(false),
+        onComplete: () => setMenuPhase("closed"),
+      });
+    },
+    [applyColumnScale, stopMenuRaf]
+  );
+
+  const onEscapeKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    if (
+      e.key === "Escape" &&
+      (menuPhaseRef.current === "open" || menuPhaseRef.current === "opening")
+    ) {
+      closeMenu();
+    }
   });
+
+  useEffect(() => {
+    window.addEventListener("keydown", onEscapeKeyDown);
+    return () => window.removeEventListener("keydown", onEscapeKeyDown);
+  }, []);
+
+  const handleTopClick = () => {
+    lockScrollSpy("home");
+    if (isOpen) closeMenu(null);
+    else scrollToTarget(null);
+  };
 
   const handleLeadColRef = useCallback(
     (idx: number, el: HTMLDivElement | null) => {
@@ -568,10 +385,10 @@ export function BottomNav() {
           : href === "#info" || href === "#about"
           ? "about"
           : "home";
-      lockScrollSpyRef.current(mappedTab);
-      closeMenuRef.current(href);
+      lockScrollSpy(mappedTab);
+      closeMenu(href);
     },
-    []
+    [closeMenu, lockScrollSpy]
   );
 
   const handlePillClick = (
@@ -585,39 +402,22 @@ export function BottomNav() {
   };
 
   useEffect(() => {
-    let idleId = 0;
+    let cancelIdle: (() => void) | null = null;
     const warmTimer = window.setTimeout(() => {
-      const winWithIdle = window as Window & {
-        requestIdleCallback?: (
-          cb: () => void,
-          opts?: { timeout: number }
-        ) => number;
-      };
-      if (typeof winWithIdle.requestIdleCallback === "function") {
-        idleId = winWithIdle.requestIdleCallback(
-          () => {
-            idleId = 0;
-            prefetchBookingAvailability();
-          },
-          { timeout: 1500 }
-        );
-      } else {
+      cancelIdle = scheduleIdle(() => {
+        cancelIdle = null;
         prefetchBookingAvailability();
-      }
+      }, 1500);
     }, 3200);
 
     return () => {
       window.clearTimeout(warmTimer);
-      if (idleId !== 0) {
-        (
-          window as Window & { cancelIdleCallback?: (id: number) => void }
-        ).cancelIdleCallback?.(idleId);
-      }
+      cancelIdle?.();
     };
   }, []);
 
   const preloadBooking = () => {
-    void import("@/components/BookingModal");
+    void import("@/components/booking/BookingModal");
     prefetchBookingAvailability();
   };
 
@@ -662,14 +462,13 @@ export function BottomNav() {
             : ""
         }`}
       >
-        {/* Left AE.S Studio Logo Button (Unified Translucent Glass) */}
         <div data-intro-fade="">
           <button
             type="button"
             onClick={handleTopClick}
-            onMouseEnter={handleMagneticEnter}
-            onMouseMove={handleMagneticMove}
-            onMouseLeave={handleMagneticLeave}
+            onMouseEnter={magnetic.onMouseEnter}
+            onMouseMove={magnetic.onMouseMove}
+            onMouseLeave={magnetic.onMouseLeave}
             aria-label="Abdullah Elawady Studio — Scroll to top"
             className="voy-glass group pointer-events-auto h-[44px] w-[44px] md:h-[54px] md:w-auto md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center text-[11.5px] md:text-[14.5px] font-medium uppercase tracking-[-0.02em] md:tracking-[0.04em] transition-transform duration-200 ease-out cursor-pointer select-none"
           >
@@ -679,7 +478,10 @@ export function BottomNav() {
                   <span className="text-[#e7e1d7]">AE</span>
                   <span className="text-[#f34213]">.S</span>
                 </span>
-                <span aria-hidden="true" className="block h-[1.25em] whitespace-nowrap">
+                <span
+                  aria-hidden="true"
+                  className="block h-[1.25em] whitespace-nowrap"
+                >
                   <span className="text-[#e7e1d7]">AE</span>
                   <span className="text-[#f34213]">.S</span>
                 </span>
@@ -688,7 +490,7 @@ export function BottomNav() {
           </button>
         </div>
 
-        {/* Center Floating Translucent Glass Pill Navbar + Standalone Calendar Circle (Visible when Menu is Closed) */}
+        {/* Center Floating Translucent Glass Pill Navbar + Standalone Calendar Circle */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <div
             ref={dockGroupRef}
@@ -728,7 +530,6 @@ export function BottomNav() {
                 );
               })}
 
-              {/* Single Sliding Vermilion Active Indicator Dot */}
               <span
                 ref={navDotRef}
                 data-nav-dot=""
@@ -738,7 +539,6 @@ export function BottomNav() {
               />
             </nav>
 
-            {/* Standalone Red Calendar Booking Circle Outside Navbar */}
             <button
               type="button"
               onPointerEnter={preloadBooking}
@@ -756,9 +556,9 @@ export function BottomNav() {
                   setIsBookingOpen(true);
                 }
               }}
-              onMouseEnter={handleMagneticEnter}
-              onMouseMove={handleMagneticMove}
-              onMouseLeave={handleMagneticLeave}
+              onMouseEnter={magnetic.onMouseEnter}
+              onMouseMove={magnetic.onMouseMove}
+              onMouseLeave={magnetic.onMouseLeave}
               aria-hidden={isOpen}
               aria-expanded={isBookingOpen && !isOpen}
               tabIndex={isOpen ? -1 : 0}
@@ -864,14 +664,14 @@ export function BottomNav() {
           </div>
         </div>
 
-        {/* Right MENU / CLOSE Toggle Button (Unified Translucent Glass) */}
+        {/* Right MENU / CLOSE Toggle Button */}
         <div data-intro-fade="">
           <button
             type="button"
             onClick={() => (isOpen ? closeMenu() : openMenu())}
-            onMouseEnter={handleMagneticEnter}
-            onMouseMove={handleMagneticMove}
-            onMouseLeave={handleMagneticLeave}
+            onMouseEnter={magnetic.onMouseEnter}
+            onMouseMove={magnetic.onMouseMove}
+            onMouseLeave={magnetic.onMouseLeave}
             aria-expanded={isOpen}
             aria-label={isOpen ? "Close menu" : "Open menu"}
             className="voy-glass group pointer-events-auto h-[44px] w-[44px] justify-center md:h-[54px] md:w-auto md:px-5 rounded-[12px] md:rounded-[14px] flex items-center gap-3 text-[13px] md:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7] transition-transform duration-200 ease-out cursor-pointer"

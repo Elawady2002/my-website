@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import type { CertificateFrameController } from "@/components/certificateFrameScene";
 import type { CertificateItem } from "@/data/site";
+import type { CertificateFrameController } from "@/three/certificateFrameScene";
 
 export interface CertificateFrame3DProps {
   certificate: CertificateItem;
@@ -43,8 +43,7 @@ export function CertificateFrame3D({
 
     const io = new IntersectionObserver(
       (entries) => {
-        const visible = entries.some((entry) => entry.isIntersecting);
-        setIsNearView(visible);
+        setIsNearView(entries.some((entry) => entry.isIntersecting));
       },
       { rootMargin: "320px 0px", threshold: 0 }
     );
@@ -65,17 +64,16 @@ export function CertificateFrame3D({
 
   useEffect(() => {
     if (!isNearView || webglFailed) return;
-    const host = canvasHostRef.current;
-    if (!host) return;
+    if (!canvasHostRef.current) return;
 
     let disposed = false;
 
-    import("./certificateFrameScene")
+    import("@/three/certificateFrameScene")
       .then(({ mountCertificateFrameScene }) => {
         if (disposed || !canvasHostRef.current) return;
         const currentCert = latestCertRef.current;
         lastAppliedIdRef.current = currentCert.id;
-        const ctrl = mountCertificateFrameScene({
+        ctrlRef.current = mountCertificateFrameScene({
           container: canvasHostRef.current,
           certificate: currentCert,
           allowWideOrbit,
@@ -86,7 +84,6 @@ export function CertificateFrame3D({
             }
           },
         });
-        ctrlRef.current = ctrl;
         setWebglReady(true);
       })
       .catch(() => {
@@ -105,9 +102,7 @@ export function CertificateFrame3D({
   }, [isNearView, webglFailed, allowWideOrbit]);
 
   const getRect = (el: HTMLElement) => {
-    if (!stageRectRef.current) {
-      stageRectRef.current = el.getBoundingClientRect();
-    }
+    if (!stageRectRef.current) stageRectRef.current = el.getBoundingClientRect();
     return stageRectRef.current;
   };
 
@@ -151,13 +146,7 @@ export function CertificateFrame3D({
 
   const handlePointerLeave = () => {
     stageRectRef.current = null;
-    if (!draggingRef.current) {
-      ctrlRef.current?.resetPose();
-    }
-  };
-
-  const handleDoubleClick = () => {
-    ctrlRef.current?.resetPose();
+    if (!draggingRef.current) ctrlRef.current?.resetPose();
   };
 
   return (
@@ -169,12 +158,11 @@ export function CertificateFrame3D({
       onPointerUp={finishDrag}
       onPointerCancel={finishDrag}
       onPointerLeave={handlePointerLeave}
-      onDoubleClick={handleDoubleClick}
+      onDoubleClick={() => ctrlRef.current?.resetPose()}
       className={`relative bg-transparent select-none touch-pan-y ${
         isDraggingUI ? "cursor-grabbing" : "cursor-grab"
       } ${className}`}
     >
-      {/* Borderless wooden & glass fallback preview while offscreen / WebGL unavailable */}
       {!webglReady ? (
         <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4 pointer-events-none">
           <div
@@ -186,13 +174,13 @@ export function CertificateFrame3D({
                 "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.55), 0 24px 48px rgba(0,0,0,0.55)",
             }}
           >
-            {/* Antique brass hairline directly framing full-bleed certificate */}
             <div className="relative h-full w-full overflow-hidden border border-[#c9a66b]/70 bg-[#181614] flex flex-col items-center justify-center text-center shadow-[inset_0_4px_14px_rgba(0,0,0,0.45)] ring-1 ring-inset ring-sky-100/10">
               {certificate.imageSrc ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={certificate.imageSrc}
                   alt={certificate.title}
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -216,7 +204,6 @@ export function CertificateFrame3D({
                   </div>
                 </div>
               )}
-              {/* Recessed wood rabbet edge shadow + soft studio softbox reflection overlay */}
               <div
                 className="pointer-events-none absolute inset-0 shadow-[inset_0_4px_14px_rgba(10,6,3,0.42)]"
                 style={{
@@ -229,7 +216,6 @@ export function CertificateFrame3D({
         </div>
       ) : null}
 
-      {/* Three.js WebGL Mount */}
       <div
         ref={canvasHostRef}
         className={`relative z-10 h-full w-full ${

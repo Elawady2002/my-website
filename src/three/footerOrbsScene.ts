@@ -3,25 +3,24 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
-  NeutralToneMapping,
   PerspectiveCamera,
   PlaneGeometry,
-  PMREMGenerator,
   Scene,
-  WebGLRenderer,
 } from "three";
+import { getDevicePerfTier } from "@/lib/deviceTier";
+import { clamp, prefersReducedMotion } from "@/lib/dom";
 import {
   FOOTER_ORB_BRANDS,
   createBrandOrbTextures,
-} from "./footerOrbBrands";
-import { getDevicePerfTier } from "@/lib/deviceTier";
+} from "@/three/footerOrbBrands";
 import {
   addStudioThreePointLights,
-  clamp,
   createConformalSphereGeometry,
+  createManagedRenderer,
+  createPmremEnv,
   createRadialShadowTexture,
   createStudioEnvTexture,
-} from "@/lib/threeOrbShared";
+} from "@/three/webglUtils";
 
 interface ObstacleBox {
   left: number;
@@ -58,28 +57,19 @@ const FOV_DEG = 18;
 
 export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   const perf = getDevicePerfTier();
-  let renderer: WebGLRenderer | null = null;
-  try {
-    renderer = new WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-  } catch {
-    return () => {};
-  }
-
-  const activeRenderer = renderer;
-  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
-  activeRenderer.toneMapping = NeutralToneMapping;
-  activeRenderer.toneMappingExposure = 1.08;
-  activeRenderer.domElement.className = "block h-full w-full cursor-pointer";
-  activeRenderer.domElement.style.touchAction = "pan-y";
-  container.appendChild(activeRenderer.domElement);
+  const activeRenderer = createManagedRenderer(container, {
+    maxDpr: perf.maxDpr,
+    toneMappingExposure: 1.08,
+    className: "block h-full w-full cursor-pointer",
+    touchAction: "pan-y",
+  });
+  if (!activeRenderer) return () => {};
 
   const scene = new Scene();
-  let width = container.clientWidth || container.getBoundingClientRect().width || 1280;
-  let height = container.clientHeight || container.getBoundingClientRect().height || 680;
+  let width =
+    container.clientWidth || container.getBoundingClientRect().width || 1280;
+  let height =
+    container.clientHeight || container.getBoundingClientRect().height || 680;
   const camera = new PerspectiveCamera(
     FOV_DEG,
     width / Math.max(1, height),
@@ -97,10 +87,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   };
   syncCamera();
 
-  const pmrem = new PMREMGenerator(activeRenderer);
-  const rawEnvTex = createStudioEnvTexture();
-  const envTarget = pmrem.fromEquirectangular(rawEnvTex);
-  scene.environment = envTarget.texture;
+  const env = createPmremEnv(activeRenderer, createStudioEnvTexture());
+  scene.environment = env.texture;
 
   let disposed = false;
   let notifyTextureReady = () => {};
@@ -181,9 +169,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     opacity: 0.6,
   });
 
-  const reducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  const reducedMotion = prefersReducedMotion();
 
   let floorY = Math.max(height * 0.66, height - 150);
   let obstacles: ObstacleBox[] = [];
@@ -206,32 +192,29 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       "[data-footer-divider]"
     );
     if (dividerEl) {
-      const dRect = dividerEl.getBoundingClientRect();
-      const relFloor = dRect.top - cRect.top;
-      if (relFloor > height * 0.45 && relFloor < height - 40) {
-        floorY = relFloor;
-      } else {
-        floorY = height * 0.78;
-      }
+      const relFloor = dividerEl.getBoundingClientRect().top - cRect.top;
+      floorY =
+        relFloor > height * 0.45 && relFloor < height - 40
+          ? relFloor
+          : height * 0.78;
     } else {
       floorY = height * 0.78;
     }
 
     const nextObstacles: ObstacleBox[] = [];
-    const obsEls = footerRoot?.querySelectorAll<HTMLElement>(
-      "[data-footer-obstacle]"
-    );
-    obsEls?.forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) {
-        nextObstacles.push({
-          left: r.left - cRect.left - 8,
-          top: r.top - cRect.top - 8,
-          right: r.right - cRect.left + 8,
-          bottom: r.bottom - cRect.top + 8,
-        });
-      }
-    });
+    footerRoot
+      ?.querySelectorAll<HTMLElement>("[data-footer-obstacle]")
+      .forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          nextObstacles.push({
+            left: r.left - cRect.left - 8,
+            top: r.top - cRect.top - 8,
+            right: r.right - cRect.left + 8,
+            bottom: r.bottom - cRect.top + 8,
+          });
+        }
+      });
     obstacles = nextObstacles;
   };
 
@@ -253,7 +236,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
     const shadowMesh = new Mesh(shadowGeo, shadowMat);
     shadowMesh.visible = false;
-
     scene.add(shadowMesh, mesh);
 
     const radius = baseRadius * (i % 3 === 0 ? 1.03 : i % 3 === 1 ? 0.97 : 1);
@@ -290,7 +272,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
   container.setAttribute("data-orbs-spawned", "0");
   container.setAttribute("data-orbs-active-motion", "0");
 
-  // Pointer / brush / drag / click state
   let pointerActive = false;
   let cursorX = -1000;
   let cursorY = -1000;
@@ -311,10 +292,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       containerTop = rect.top;
       rectDirty = false;
     }
-    return {
-      x: clientX - containerLeft,
-      y: clientY - containerTop,
-    };
+    return { x: clientX - containerLeft, y: clientY - containerTop };
   };
 
   const resolveStaticObstacles = (orb: OrbBody) => {
@@ -340,14 +318,12 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
           if (vn < 0) {
             orb.vx -= (1 + RESTITUTION_WALL) * vn * nx;
             orb.vy -= (1 + RESTITUTION_WALL) * vn * ny;
-            // Tangent floor roll friction on top of contact blocks
             if (ny < -0.5) {
               orb.vx *= 0.975;
               orb.omega += (orb.vx / r - orb.omega) * 0.2;
             }
           }
         } else {
-          // Inside AABB fallback: push up to top ledge
           orb.y = box.top - r;
           if (orb.vy > 0) orb.vy = -orb.vy * RESTITUTION_WALL;
         }
@@ -365,10 +341,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
         if (grabbedIdx === i && pointerActive) {
           const kSpring = 24;
-          const targetVx = (cursorX - orb.x) * kSpring;
-          const targetVy = (cursorY - orb.y) * kSpring;
-          orb.vx = clamp(targetVx, -1600, 1600);
-          orb.vy = clamp(targetVy, -1600, 1600);
+          orb.vx = clamp((cursorX - orb.x) * kSpring, -1600, 1600);
+          orb.vy = clamp((cursorY - orb.y) * kSpring, -1600, 1600);
           orb.x += orb.vx * subDt;
           orb.y += orb.vy * subDt;
           orb.omega = clamp(orb.vx / orb.radius, -14, 14);
@@ -400,11 +374,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
           orb.angle += orb.omega * subDt;
         }
 
-        if (!orb.entered && orb.y > orb.radius + 16) {
-          orb.entered = true;
-        }
+        if (!orb.entered && orb.y > orb.radius + 16) orb.entered = true;
 
-        // Arena perimeter boundaries
         const leftWall = 12 + orb.radius;
         const rightWall = Math.max(leftWall + 40, width - 12 - orb.radius);
         const floorLimit = floorY - orb.radius - 2;
@@ -436,7 +407,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
         resolveStaticObstacles(orb);
 
-        // Mouse brush kinematic repulsor collider (when not dragging an orb)
         if (pointerActive && grabbedIdx === null) {
           const brushR = orb.radius * 0.56;
           const dx = orb.x - cursorX;
@@ -449,7 +419,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
             const nx = dx / dist;
             const ny = dy / dist;
             const pen = minDist - dist;
-
             orb.x += nx * pen * 0.72;
             orb.y += ny * pen * 0.72;
 
@@ -462,7 +431,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
         }
       }
 
-      // Pairwise rigid-body circle-circle collisions
       for (let i = 0; i < orbs.length; i += 1) {
         const a = orbs[i];
         if (!a.spawned) continue;
@@ -542,7 +510,6 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       direct.omega += sideSign * (5.5 + Math.random() * 4);
     }
 
-    // Rank nearby spawned orbs so clicks also send playful chain bounces
     const ranked = orbs
       .map((orb, idx) => ({
         orb,
@@ -574,9 +541,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     for (let i = orbs.length - 1; i >= 0; i -= 1) {
       const orb = orbs[i];
       if (!orb.spawned) continue;
-      if (Math.hypot(orb.x - px, orb.y - py) <= orb.radius * 1.06) {
-        return i;
-      }
+      if (Math.hypot(orb.x - px, orb.y - py) <= orb.radius * 1.06) return i;
     }
     return null;
   };
@@ -599,10 +564,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       const orb = orbs[i];
       if (!orb.spawned) continue;
 
-      const targetTiltX =
-        orb.restTiltX + clamp(orb.vy * 0.00042, -0.42, 0.42);
-      const targetTiltY =
-        orb.restTiltY + clamp(orb.vx * 0.00042, -0.42, 0.42);
+      const targetTiltX = orb.restTiltX + clamp(orb.vy * 0.00042, -0.42, 0.42);
+      const targetTiltY = orb.restTiltY + clamp(orb.vx * 0.00042, -0.42, 0.42);
       maxTiltDelta = Math.max(
         maxTiltDelta,
         Math.abs(targetTiltX - orb.tiltX) + Math.abs(targetTiltY - orb.tiltY)
@@ -651,9 +614,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       orbs[i].mesh.visible = true;
       orbs[i].shadowMesh.visible = true;
     }
-    for (let step = 0; step < 30; step += 1) {
-      stepPhysics(0.016);
-    }
+    for (let step = 0; step < 30; step += 1) stepPhysics(0.016);
     container.setAttribute("data-orbs-spawned", String(orbs.length));
     syncMeshesAndRender();
   }
@@ -690,11 +651,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
       maxAngleError < 0.08 &&
       Math.hypot(cursorVx, cursorVy) < 2;
 
-    if (isCalm) {
-      calmFrames += 1;
-    } else {
-      calmFrames = 0;
-    }
+    calmFrames = isCalm ? calmFrames + 1 : 0;
 
     if (isInView && !document.hidden && calmFrames < 24) {
       rafId = window.requestAnimationFrame(tick);
@@ -718,11 +675,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
 
   notifyTextureReady = () => {
     if (disposed) return;
-    if (reducedMotion) {
-      syncMeshesAndRender();
-    } else {
-      wakeLoop();
-    }
+    if (reducedMotion) syncMeshesAndRender();
+    else wakeLoop();
   };
 
   const scheduleNextSpawn = () => {
@@ -792,9 +746,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     activeRenderer.domElement.style.cursor =
       findOrbAt(x, y) !== null ? "grab" : "pointer";
 
-    if (wasClick) {
-      bounceBurstAt(x, y, releasedOrb);
-    }
+    if (wasClick) bounceBurstAt(x, y, releasedOrb);
     wakeLoop();
   };
 
@@ -872,9 +824,7 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     wakeLoop();
   });
   resizeObserver.observe(container);
-  if (footerSection !== container) {
-    resizeObserver.observe(footerSection);
-  }
+  if (footerSection !== container) resizeObserver.observe(footerSection);
 
   return () => {
     disposed = true;
@@ -896,12 +846,8 @@ export function mountFooterOrbsScene(container: HTMLDivElement): () => void {
     shadowTex.dispose();
     materials.forEach((mat) => mat.dispose());
     brandTexturePairs.forEach((handle) => handle.dispose());
-    rawEnvTex.dispose();
-    envTarget.dispose();
-    pmrem.dispose();
+    env.dispose();
     activeRenderer.dispose();
-    if (domEl.parentNode === container) {
-      container.removeChild(domEl);
-    }
+    if (domEl.parentNode === container) container.removeChild(domEl);
   };
 }

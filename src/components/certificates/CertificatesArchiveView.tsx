@@ -2,11 +2,11 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
-import type Lenis from "lenis";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { CertificateFrame3D } from "@/components/CertificateFrame3D";
-import { StylizedText } from "@/components/StylizedText";
+import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
+import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
 import { siteConfig } from "@/data/site";
+import { getLenis } from "@/lib/dom";
 
 export function CertificatesArchiveView() {
   const { certificates } = siteConfig.certificatesSection;
@@ -14,23 +14,16 @@ export function CertificatesArchiveView() {
 
   useEffect(() => {
     const rawHash = window.location.hash.replace(/^#/, "").trim();
-    if (!rawHash) return;
+    if (!rawHash || !certificates.some((c) => c.id === rawHash)) return;
 
-    const match = certificates.some((c) => c.id === rawHash);
-    if (!match) return;
-
-    // Wait two frames so parent SmoothExperience finishes mounting Lenis and reset
     let timer = 0;
     const raf1 = window.requestAnimationFrame(() => {
       timer = window.setTimeout(() => {
         const target = document.getElementById(rawHash);
         if (!target) return;
-        const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
-        if (lenis) {
-          lenis.scrollTo(target, { offset: -96, duration: 1.0 });
-        } else {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
+        const lenis = getLenis();
+        if (lenis) lenis.scrollTo(target, { offset: -96, duration: 1.0 });
+        else target.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 60);
     });
 
@@ -42,7 +35,6 @@ export function CertificatesArchiveView() {
 
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-[#e7e1d7]">
-      {/* Floating Minimalist Glass Header */}
       <header className="fixed inset-x-0 top-0 z-50 px-3 pt-4 pb-8 md:px-6 md:pt-5 md:pb-10 flex items-center justify-between pointer-events-none bg-gradient-to-b from-[#0b0b0b] via-[#0b0b0b]/75 to-transparent">
         <Link
           href="/"
@@ -65,14 +57,15 @@ export function CertificatesArchiveView() {
       </header>
 
       <main className="px-4 sm:px-6 pt-28 sm:pt-36 pb-20 sm:pb-28 max-w-[1440px] mx-auto">
-        {/* Clean Editorial Hero */}
-        <section aria-label="Certificates archive header" className="pb-10 sm:pb-14">
+        <section
+          aria-label="Certificates archive header"
+          className="pb-10 sm:pb-14"
+        >
           <h1 className="text-[clamp(2.8rem,8.5vw,7.4rem)] leading-[0.88] tracking-[-0.04em] font-normal uppercase text-[#e7e1d7]">
             <StylizedText text="CERTIFICATES" />
           </h1>
         </section>
 
-        {/* Spacious Per-Certificate Editorial Stages */}
         <div>
           {certificates.map((cert) => (
             <article
@@ -80,7 +73,6 @@ export function CertificatesArchiveView() {
               id={cert.id}
               className="scroll-mt-24 py-14 sm:py-20 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center"
             >
-              {/* Left 7 Cols: Borderless Floating 3D Wooden & Glass Frame */}
               <div className="lg:col-span-7">
                 <CertificateFrame3D
                   certificate={cert}
@@ -89,9 +81,7 @@ export function CertificatesArchiveView() {
                 />
               </div>
 
-              {/* Right 5 Cols: Lean Editorial Details */}
               <div className="lg:col-span-5 flex flex-col gap-6">
-                {/* Index & Date */}
                 <div className="flex items-center justify-between gap-2 text-[12px] uppercase tracking-[0.08em]">
                   <span className="tabular-nums text-[#f34213]">
                     {cert.number} / {totalPadded}
@@ -99,29 +89,19 @@ export function CertificatesArchiveView() {
                   <span className="text-[#e7e1d7]/55">{cert.issuedDate}</span>
                 </div>
 
-                {/* Title & Issuer */}
                 <div>
                   <h2 className="text-[24px] sm:text-[30px] xl:text-[34px] leading-[1.08] tracking-[-0.025em] font-normal uppercase text-[#e7e1d7]">
-                    {cert.title.split(" ").map((word, wIdx) => (
-                      <React.Fragment key={wIdx}>
-                        {wIdx > 0 ? " " : null}
-                        <span className="inline-block whitespace-nowrap">
-                          <StylizedText text={word} />
-                        </span>
-                      </React.Fragment>
-                    ))}
+                    <StylizedWords text={cert.title} />
                   </h2>
                   <p className="mt-2 text-[13.5px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
                     {cert.issuer}
                   </p>
                 </div>
 
-                {/* Single Concise Description */}
                 <p className="text-[15px] sm:text-[16px] leading-[1.65] text-[#e7e1d7]/80">
                   {cert.description}
                 </p>
 
-                {/* Minimal 2-Row Metadata */}
                 <div className="border-t border-[#e7e1d7]/15 text-[12.5px] uppercase tracking-[0.05em]">
                   <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[#e7e1d7]/15">
                     <span className="text-[#e7e1d7]/45 shrink-0">
@@ -139,7 +119,6 @@ export function CertificatesArchiveView() {
                   </div>
                 </div>
 
-                {/* Clean Action Buttons */}
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
                   {cert.verifyUrl ? (
                     <a
@@ -167,20 +146,6 @@ export function CertificatesArchiveView() {
             </article>
           ))}
         </div>
-
-        {/* Minimal Closing Navigation Strip */}
-        <footer className="mt-8 pt-12 border-t border-[#e7e1d7]/20 flex justify-end">
-          <Link
-            href="/"
-            className="voy-glass group inline-flex h-12 items-center gap-3 rounded-full px-6 text-[13px] uppercase tracking-[0.06em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-all"
-          >
-            <ArrowLeft
-              className="h-4 w-4 text-[#f34213] transition-transform duration-200 group-hover:-translate-x-1"
-              aria-hidden="true"
-            />
-            <span>Back to Portfolio</span>
-          </Link>
-        </footer>
       </main>
     </div>
   );

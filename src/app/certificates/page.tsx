@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { CertificatesArchiveView } from "@/components/CertificatesArchiveView";
-import { SmoothExperience } from "@/components/SmoothExperience";
+import { CertificatesArchiveView } from "@/components/certificates/CertificatesArchiveView";
+import { SmoothExperience } from "@/components/layout/SmoothExperience";
 
 export const metadata: Metadata = {
   title: "Certificates — Abdullah Elawady Studio",

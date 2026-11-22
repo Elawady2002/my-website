@@ -7,22 +7,20 @@ import {
   Matrix4,
   Mesh,
   MeshPhysicalMaterial,
-  NeutralToneMapping,
   PerspectiveCamera,
-  PMREMGenerator,
   Quaternion,
   Scene,
   SphereGeometry,
   Vector3,
-  WebGLRenderer,
 } from "three";
 import { getDevicePerfTier } from "@/lib/deviceTier";
+import { BALL_BOX_SCALE } from "@/three/constants";
 import {
   addStudioThreePointLights,
+  createManagedRenderer,
+  createPmremEnv,
   createStudioEnvTexture,
-} from "@/lib/threeOrbShared";
-
-export const BALL_BOX_SCALE = 1.28;
+} from "@/three/webglUtils";
 
 export interface PreloaderFootballController {
   renderFrame: (spinAngle: number, squashX: number, squashY: number) => void;
@@ -31,12 +29,6 @@ export interface PreloaderFootballController {
 
 const FOV_DEG = 22;
 
-/**
- * Computes the 16 canonical outward face plane vectors (`n / d`) for an exact
- * truncated icosahedron (antipodal symmetry doubles them to 32 faces in-shader):
- * indices 0..5 are the 6 canonical pentagon pairs and indices 6..15 are the
- * 10 canonical hexagon pairs.
- */
 function buildFootballFacePlanes(): Vector3[] {
   const phi = (1 + Math.sqrt(5)) * 0.5;
 
@@ -114,24 +106,12 @@ export function mountPreloaderFootballScene(
   boxSizePx: number
 ): PreloaderFootballController | null {
   const perf = getDevicePerfTier();
-  let renderer: WebGLRenderer | null = null;
-  try {
-    renderer = new WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-  } catch {
-    return null;
-  }
-
-  const activeRenderer = renderer;
-  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
+  const activeRenderer = createManagedRenderer(container, {
+    maxDpr: perf.maxDpr,
+    toneMappingExposure: 1.08,
+  });
+  if (!activeRenderer) return null;
   activeRenderer.setSize(boxSizePx, boxSizePx, false);
-  activeRenderer.toneMapping = NeutralToneMapping;
-  activeRenderer.toneMappingExposure = 1.08;
-  activeRenderer.domElement.className = "block h-full w-full pointer-events-none";
-  container.appendChild(activeRenderer.domElement);
 
   const scene = new Scene();
 
@@ -145,15 +125,16 @@ export function mountPreloaderFootballScene(
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
 
-  const pmrem = new PMREMGenerator(activeRenderer);
-  const rawEnvTex = createStudioEnvTexture({
-    bg: "#101116",
-    keyMidStop: "rgba(255, 255, 255, 0.52)",
-    rimStop: "rgba(236, 240, 248, 0.44)",
-    floorStop: "rgba(243, 66, 19, 0.16)",
-  });
-  const envTarget = pmrem.fromEquirectangular(rawEnvTex);
-  scene.environment = envTarget.texture;
+  const env = createPmremEnv(
+    activeRenderer,
+    createStudioEnvTexture({
+      bg: "#101116",
+      keyMidStop: "rgba(255, 255, 255, 0.52)",
+      rimStop: "rgba(236, 240, 248, 0.44)",
+      floorStop: "rgba(243, 66, 19, 0.16)",
+    })
+  );
+  scene.environment = env.texture;
 
   addStudioThreePointLights(scene, 1, 0x1a1918);
 
@@ -415,9 +396,7 @@ reflectedLight.indirectSpecular *= fbSeamAO;
     disposed = true;
     geometry.dispose();
     material.dispose();
-    envTarget.dispose();
-    rawEnvTex.dispose();
-    pmrem.dispose();
+    env.dispose();
     activeRenderer.dispose();
     activeRenderer.domElement.remove();
   };

@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from "react";
-import { StylizedText } from "@/components/StylizedText";
+import { StylizedText } from "@/components/ui/StylizedText";
 import { siteConfig } from "@/data/site";
+import { useRevealOnView } from "@/hooks/useRevealOnView";
 
 interface WordToken {
   word: string;
   chars: { char: string; globalIndex: number; isO: boolean }[];
 }
+
+const ABOUT_REVEAL_OPTS = { threshold: 0.2 };
 
 export function AboutSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -15,6 +18,8 @@ export function AboutSection() {
   const charRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const narrativeRef = useRef<HTMLDivElement | null>(null);
   const isNearRef = useRef(false);
+
+  useRevealOnView(narrativeRef, ABOUT_REVEAL_OPTS);
 
   const { words, totalChars } = useMemo(() => {
     const rawWords = siteConfig.aboutSection.waveHeading.split(" ");
@@ -39,7 +44,6 @@ export function AboutSection() {
     let vh = window.innerHeight || 900;
     let headingPageTop = 0;
     let lastProgress = -1;
-    // 0 = uninitialized, 1 = dim, 2 = active wave, 3 = fully lit
     const charState = new Uint8Array(totalChars);
 
     const updateWave = () => {
@@ -59,8 +63,7 @@ export function AboutSection() {
         const el = charRefs.current[i];
         if (!el) continue;
 
-        const t = i / denom;
-        const delta = wavePos - t;
+        const delta = wavePos - i / denom;
 
         if (delta < -0.09) {
           if (charState[i] !== 1) {
@@ -89,12 +92,10 @@ export function AboutSection() {
           }
 
           el.style.transform = `translate3d(0, ${(-3 * bell).toFixed(2)}px, 0)`;
-        } else {
-          if (charState[i] !== 3) {
-            charState[i] = 3;
-            el.style.color = "#e7e1d7";
-            el.style.transform = "translate3d(0, 0px, 0)";
-          }
+        } else if (charState[i] !== 3) {
+          charState[i] = 3;
+          el.style.color = "#e7e1d7";
+          el.style.transform = "translate3d(0, 0px, 0)";
         }
       }
     };
@@ -115,9 +116,7 @@ export function AboutSection() {
         (entries) => {
           const near = entries.some((entry) => entry.isIntersecting);
           isNearRef.current = near;
-          if (near) {
-            measureHeading();
-          }
+          if (near) measureHeading();
         },
         { rootMargin: "250px 0px", threshold: 0 }
       );
@@ -142,32 +141,12 @@ export function AboutSection() {
     };
   }, [totalChars]);
 
-  useEffect(() => {
-    const el = narrativeRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            el.setAttribute("data-revealed", "true");
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-    observer.observe(el);
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <section
       id="about"
       ref={sectionRef}
       className="relative z-10 w-full bg-[#0b0b0b] px-4 sm:px-6 pt-32 sm:pt-44 pb-24 sm:pb-32"
     >
-      {/* Scroll-Scrubbed Gradient Wave Display Heading */}
       <h2
         ref={headingRef}
         aria-label={siteConfig.aboutSection.waveHeading}
@@ -186,9 +165,7 @@ export function AboutSection() {
                   charRefs.current[item.globalIndex] = el;
                 }}
                 style={{ color: "rgba(231, 225, 215, 0.18)" }}
-                className={`inline-block ${
-                  item.isO ? "playfair-o" : ""
-                }`}
+                className={`inline-block ${item.isO ? "playfair-o" : ""}`}
               >
                 {item.char}
               </span>
@@ -197,12 +174,10 @@ export function AboutSection() {
         ))}
       </h2>
 
-      {/* Two-Column 3/9 Narrative Grid */}
       <div id="about-narrative" ref={narrativeRef} className="mt-20 sm:mt-28">
         <div className="about-reveal-line h-px w-full bg-[#e7e1d7]/20" />
 
         <div className="pt-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-          {/* Left 3 Columns */}
           <div
             style={{ "--about-delay": "90ms" } as React.CSSProperties}
             className="about-reveal-item md:col-span-3"
@@ -212,7 +187,6 @@ export function AboutSection() {
             </h6>
           </div>
 
-          {/* Right 9 Columns */}
           <div className="md:col-span-9 max-w-[820px] space-y-6">
             {siteConfig.aboutSection.paragraphs.map((paragraph, pIdx) => (
               <p

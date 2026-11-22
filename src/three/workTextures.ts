@@ -6,6 +6,7 @@ import {
 } from "three";
 import type { WorkProjectItem } from "@/data/site";
 import { getDevicePerfTier } from "@/lib/deviceTier";
+import { drawCoverImage } from "@/three/webglUtils";
 
 export const WORK_PLANE_WIDTH = 4.52;
 export const WORK_PLANE_HEIGHT = 2.82;
@@ -40,21 +41,6 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-function drawCoverImage(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  width: number,
-  height: number
-): void {
-  const natW = img.naturalWidth || img.width;
-  const natH = img.naturalHeight || img.height;
-  if (natW <= 0 || natH <= 0) return;
-  const scale = Math.max(width / natW, height / natH);
-  const dw = natW * scale;
-  const dh = natH * scale;
-  ctx.drawImage(img, (width - dw) * 0.5, (height - dh) * 0.5, dw, dh);
-}
-
 function drawGlassRim(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -75,8 +61,7 @@ export interface ProjectTextureHandle {
 
 /**
  * Creates a lightweight solid-color placeholder texture immediately and defers
- * full-resolution image decoding, canvas compositing, and GPU upload until `startLoad()`
- * is called in priority order.
+ * full-resolution image decoding, canvas compositing, and GPU upload until `startLoad()`.
  */
 export function createProjectTexture(
   renderer: WebGLRenderer,
@@ -119,6 +104,17 @@ export function createProjectTexture(
     placeholderTex.dispose();
   };
 
+  const createCompositeCtx = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    return { canvas, ctx };
+  };
+
   const startLoad = () => {
     if (started || disposed) return;
     started = true;
@@ -129,14 +125,10 @@ export function createProjectTexture(
         loadImage(project.posterSrc),
       ]).then(([bgImg, posterImg]) => {
         if (disposed || !bgImg || !posterImg) return;
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        const surface = createCompositeCtx();
+        if (!surface) return;
+        const { canvas, ctx } = surface;
 
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
         drawCoverImage(ctx, bgImg, width, height);
 
         const ix = width * SHOWCASE_INNER_UV.left;
@@ -169,14 +161,10 @@ export function createProjectTexture(
       void Promise.all([bgPromise, screensPromise]).then(
         ([bgImg, screenImgs]) => {
           if (disposed) return;
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return;
+          const surface = createCompositeCtx();
+          if (!surface) return;
+          const { canvas, ctx } = surface;
 
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = "high";
           ctx.fillStyle = project.stageBg;
           ctx.fillRect(0, 0, width, height);
 
@@ -201,38 +189,13 @@ export function createProjectTexture(
           const slots =
             screenSrcs.length >= 3
               ? [
-                  {
-                    centerX: 418 * s,
-                    topY: 162 * s,
-                    height: 696 * s,
-                    drawOrder: 0,
-                  },
-                  {
-                    centerX: 800 * s,
-                    topY: 118 * s,
-                    height: 708 * s,
-                    drawOrder: 2,
-                  },
-                  {
-                    centerX: 1182 * s,
-                    topY: 162 * s,
-                    height: 696 * s,
-                    drawOrder: 1,
-                  },
+                  { centerX: 418 * s, topY: 162 * s, height: 696 * s, drawOrder: 0 },
+                  { centerX: 800 * s, topY: 118 * s, height: 708 * s, drawOrder: 2 },
+                  { centerX: 1182 * s, topY: 162 * s, height: 696 * s, drawOrder: 1 },
                 ]
               : [
-                  {
-                    centerX: 577.5 * s,
-                    topY: 114 * s,
-                    height: 760 * s,
-                    drawOrder: 0,
-                  },
-                  {
-                    centerX: 1022.5 * s,
-                    topY: 154 * s,
-                    height: 760 * s,
-                    drawOrder: 1,
-                  },
+                  { centerX: 577.5 * s, topY: 114 * s, height: 760 * s, drawOrder: 0 },
+                  { centerX: 1022.5 * s, topY: 154 * s, height: 760 * s, drawOrder: 1 },
                 ];
 
           const orderedIndices = Array.from(
@@ -275,14 +238,9 @@ export function createProjectTexture(
     if (project.imageSrc) {
       void loadImage(project.imageSrc).then((img) => {
         if (disposed || !img) return;
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
+        const surface = createCompositeCtx();
+        if (!surface) return;
+        const { canvas, ctx } = surface;
         drawCoverImage(ctx, img, width, height);
         drawGlassRim(ctx, width, height);
         commitCompositeCanvas(canvas);

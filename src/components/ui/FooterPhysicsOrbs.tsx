@@ -13,22 +13,17 @@ export function FooterPhysicsOrbs() {
     let started = false;
     let disposeScene: (() => void) | null = null;
 
-    const startMount = () => {
-      if (started || disposed) return;
-      started = true;
-      io.disconnect();
-
-      import("./footerOrbsScene").then(({ mountFooterOrbsScene }) => {
-        if (disposed || !containerRef.current) return;
-        disposeScene = mountFooterOrbsScene(containerRef.current);
-      });
-    };
-
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          startMount();
-        }
+        if (started || disposed) return;
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        started = true;
+        io.disconnect();
+
+        import("@/three/footerOrbsScene").then(({ mountFooterOrbsScene }) => {
+          if (disposed || !containerRef.current) return;
+          disposeScene = mountFooterOrbsScene(containerRef.current);
+        });
       },
       { rootMargin: "650px 0px", threshold: 0 }
     );

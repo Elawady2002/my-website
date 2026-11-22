@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CertificateFrame3D } from "@/components/CertificateFrame3D";
-import { StylizedText } from "@/components/StylizedText";
+import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
+import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
 import { siteConfig } from "@/data/site";
+import { useMagneticHover } from "@/hooks/useMagneticHover";
+import { useRevealOnView } from "@/hooks/useRevealOnView";
+
+const CERT_REVEAL_OPTS = { threshold: 0.14 };
 
 export function CertificatesSection() {
   const { heading, ctaLabel, ctaHref, certificates } =
@@ -17,59 +21,14 @@ export function CertificatesSection() {
 
   const [activeIdx, setActiveIdx] = useState(0);
   const sectionRef = useRef<HTMLElement | null>(null);
-  const ctaRectRef = useRef<DOMRect | null>(null);
+  const magnetic = useMagneticHover<HTMLAnchorElement>({
+    xFactor: 0.14,
+    yFactor: 0.18,
+  });
+
+  useRevealOnView(sectionRef, CERT_REVEAL_OPTS);
 
   const activeCert = featuredList[activeIdx] || featuredList[0];
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            el.setAttribute("data-revealed", "true");
-          }
-        });
-      },
-      { threshold: 0.14 }
-    );
-    observer.observe(el);
-
-    const invalidateRect = () => {
-      ctaRectRef.current = null;
-    };
-    window.addEventListener("scroll", invalidateRect, { passive: true });
-    window.addEventListener("resize", invalidateRect, { passive: true });
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("scroll", invalidateRect);
-      window.removeEventListener("resize", invalidateRect);
-    };
-  }, []);
-
-  const handleCtaEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    ctaRectRef.current = e.currentTarget.getBoundingClientRect();
-  };
-
-  const handleCtaMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    const el = e.currentTarget;
-    const rect = ctaRectRef.current || el.getBoundingClientRect();
-    ctaRectRef.current = rect;
-    const dx = e.clientX - (rect.left + rect.width * 0.5);
-    const dy = e.clientY - (rect.top + rect.height * 0.5);
-    el.style.transform = `translate3d(${(dx * 0.14).toFixed(1)}px, ${(
-      dy * 0.18
-    ).toFixed(1)}px, 0)`;
-  };
-
-  const handleCtaLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    ctaRectRef.current = null;
-    e.currentTarget.style.transform = "translate3d(0px, 0px, 0)";
-  };
-
   if (!activeCert) return null;
 
   return (
@@ -78,7 +37,6 @@ export function CertificatesSection() {
       ref={sectionRef}
       className="relative z-10 w-full bg-[#0b0b0b] px-4 sm:px-6 pt-24 sm:pt-32 pb-20 sm:pb-28"
     >
-      {/* Top Architectural Divider & Clean Display Heading */}
       <div className="cert-reveal-line h-px w-full bg-[#e7e1d7]/20" />
 
       <div
@@ -90,9 +48,7 @@ export function CertificatesSection() {
         </h2>
       </div>
 
-      {/* Minimalist 12-Column Split: 3 Featured Rows (Left) + Borderless 3D Frame (Right) */}
       <div className="mt-10 sm:mt-14 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-        {/* Left 5 Cols: 3 Clean Rows + View All CTA */}
         <div className="lg:col-span-5 flex flex-col">
           <div className="border-b border-[#e7e1d7]/15">
             {featuredList.map((cert, idx) => {
@@ -125,14 +81,7 @@ export function CertificatesSection() {
                             : "text-[#e7e1d7]/55 group-hover:text-[#e7e1d7]/85"
                         }`}
                       >
-                        {cert.title.split(" ").map((word, wIdx) => (
-                          <React.Fragment key={wIdx}>
-                            {wIdx > 0 ? " " : null}
-                            <span className="inline-block whitespace-nowrap">
-                              <StylizedText text={word} />
-                            </span>
-                          </React.Fragment>
-                        ))}
+                        <StylizedWords text={cert.title} />
                       </h3>
                       <p className="mt-1 text-[12px] uppercase tracking-[0.06em] text-[#e7e1d7]/45">
                         {cert.issuer} · {cert.issuedDate}
@@ -153,16 +102,15 @@ export function CertificatesSection() {
             })}
           </div>
 
-          {/* Signature Magnetic Pill CTA -> /certificates */}
           <div
             style={{ "--cert-delay": "360ms" } as React.CSSProperties}
             className="cert-reveal-item mt-9"
           >
             <Link
               href={ctaHref}
-              onMouseEnter={handleCtaEnter}
-              onMouseMove={handleCtaMove}
-              onMouseLeave={handleCtaLeave}
+              onMouseEnter={magnetic.onMouseEnter}
+              onMouseMove={magnetic.onMouseMove}
+              onMouseLeave={magnetic.onMouseLeave}
               className="group relative inline-flex h-[52px] items-center gap-3 overflow-hidden rounded-full border border-[#e7e1d7]/25 bg-white/[0.04] px-7 text-[13px] font-normal uppercase tracking-[0.06em] text-[#e7e1d7] backdrop-blur-xs transition-transform duration-200 ease-out"
             >
               <span
@@ -180,7 +128,6 @@ export function CertificatesSection() {
           </div>
         </div>
 
-        {/* Right 7 Cols: Pure Floating 3D Wooden & Glass Frame directly on #0b0b0b */}
         <div
           style={{ "--cert-delay": "200ms" } as React.CSSProperties}
           className="cert-reveal-item lg:col-span-7"

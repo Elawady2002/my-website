@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import type Lenis from "lenis";
-import type { PreloaderFootballController } from "./preloaderFootballScene";
+import { clamp, getLenis, prefersReducedMotion } from "@/lib/dom";
+import { BALL_BOX_SCALE } from "@/three/constants";
+import type { PreloaderFootballController } from "@/three/preloaderFootballScene";
 
 interface SimFrame {
   x: number;
@@ -25,31 +26,21 @@ interface TrajectoryResult {
 const TOTAL_COLS = 14;
 const SIM_HZ = 240;
 const SIM_DT = 1 / SIM_HZ;
-const BALL_BOX_SCALE = 1.28;
 
 let preloaderSceneModulePromise:
-  | Promise<typeof import("./preloaderFootballScene")>
+  | Promise<typeof import("@/three/preloaderFootballScene")>
   | null = null;
 
-function preloadFootballSceneModule(): Promise<
-  typeof import("./preloaderFootballScene")
-> | null {
-  if (typeof window === "undefined") return null;
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    return null;
-  }
+function preloadFootballSceneModule() {
+  if (typeof window === "undefined" || prefersReducedMotion()) return null;
   if (!preloaderSceneModulePromise) {
-    preloaderSceneModulePromise = import("./preloaderFootballScene");
+    preloaderSceneModulePromise = import("@/three/preloaderFootballScene");
   }
   return preloaderSceneModulePromise;
 }
 
 if (typeof window !== "undefined") {
   preloadFootballSceneModule();
-}
-
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
 }
 
 function simulateTrajectory(
@@ -72,7 +63,6 @@ function simulateTrajectory(
   let bestE = -1;
   let bestScore = Number.POSITIVE_INFINITY;
 
-  // Pass 1: evaluate candidate parameters with zero array/frame allocations
   for (const vxScale of vxScales) {
     for (const e of restitutions) {
       let x = x0;
@@ -107,9 +97,7 @@ function simulateTrajectory(
         }
 
         stepCount += 1;
-        if (x - radius > vw + 16) {
-          break;
-        }
+        if (x - radius > vw + 16) break;
       }
 
       if (x - radius <= vw + 16 || bounceCount === 0) continue;
@@ -128,7 +116,6 @@ function simulateTrajectory(
     }
   }
 
-  // Pass 2: record frames & bounce events only for the winning trajectory
   if (bestVxScale > 0) {
     let x = x0;
     let y = y0;
@@ -166,19 +153,12 @@ function simulateTrajectory(
       }
 
       frames.push({ x, y, rot, vy });
-      if (x - radius > vw + 16) {
-        break;
-      }
+      if (x - radius > vw + 16) break;
     }
 
-    return {
-      frames,
-      bounces,
-      duration: frames.length * SIM_DT,
-    };
+    return { frames, bounces, duration: frames.length * SIM_DT };
   }
 
-  // Deterministic drop-and-bounce fallback for extreme viewports
   const fallbackFrames: SimFrame[] = [];
   const duration = 2.35;
   const totalSteps = Math.round(duration * SIM_HZ);
@@ -187,9 +167,19 @@ function simulateTrajectory(
   for (let i = 0; i <= totalSteps; i += 1) {
     const p = i / totalSteps;
     const x = x0 + p * (vw + radius * 2.2 - x0);
-    const bouncePhase = p < 0.24 ? (p / 0.24) * (p / 0.24) : 1 - Math.abs(Math.sin(((p - 0.24) / 0.76) * Math.PI * 3.0)) * Math.pow(1 - (p - 0.24) / 0.76, 1.35) * 0.56;
-    const y = startY + bouncePhase * fallSpan;
-    fallbackFrames.push({ x, y, rot: p * Math.PI * 8.5, vy: 0 });
+    const bouncePhase =
+      p < 0.24
+        ? (p / 0.24) * (p / 0.24)
+        : 1 -
+          Math.abs(Math.sin(((p - 0.24) / 0.76) * Math.PI * 3.0)) *
+            Math.pow(1 - (p - 0.24) / 0.76, 1.35) *
+            0.56;
+    fallbackFrames.push({
+      x,
+      y: startY + bouncePhase * fallSpan,
+      rot: p * Math.PI * 8.5,
+      vy: 0,
+    });
   }
   return {
     frames: fallbackFrames,
@@ -216,14 +206,11 @@ export function PreloaderIntro() {
     if (introPlayedInSpa) return;
     const root = document.documentElement;
     window.scrollTo(0, 0);
-    const lenis = (window as unknown as { __lenis?: Lenis }).__lenis;
+    const lenis = getLenis();
     lenis?.scrollTo(0, { immediate: true, force: true });
     lenis?.stop();
 
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
+    const reducedMotion = prefersReducedMotion();
     const allIntroEls = Array.from(
       document.querySelectorAll<HTMLElement>(
         "[data-intro-char], [data-intro-fade], [data-intro-line], [data-intro-portrait]"
@@ -236,7 +223,7 @@ export function PreloaderIntro() {
     const vw = window.innerWidth || 1440;
     const vh = window.innerHeight || 900;
 
-    // Read all geometry before mutating root[data-intro-ready] to prevent a forced reflow
+    // Read all layout metrics before mutating root[data-intro-ready]
     const colBounds = activeCols.map((col) => {
       const r = col.getBoundingClientRect();
       return { left: r.left, right: r.right, mid: (r.left + r.right) * 0.5 };
@@ -259,21 +246,14 @@ export function PreloaderIntro() {
     root.removeAttribute("data-intro-done");
     root.setAttribute("data-intro-ready", "true");
 
-    const uncoverAll = () => {
-      allIntroEls.forEach((el) => el.setAttribute("data-uncovered", "true"));
-    };
-
     let footballCtrl: PreloaderFootballController | null = null;
     let finishTimer = 0;
 
     const finishIntro = () => {
       introPlayedInSpa = true;
-      uncoverAll();
-      const activeLenis = (window as unknown as { __lenis?: Lenis }).__lenis;
-      activeLenis?.start();
-      if (chromeRef.current) {
-        chromeRef.current.style.opacity = "0";
-      }
+      allIntroEls.forEach((el) => el.setAttribute("data-uncovered", "true"));
+      getLenis()?.start();
+      if (chromeRef.current) chromeRef.current.style.opacity = "0";
       finishTimer = window.setTimeout(() => {
         footballCtrl?.dispose();
         footballCtrl = null;
@@ -296,7 +276,7 @@ export function PreloaderIntro() {
         window.clearTimeout(timer);
         window.clearTimeout(finishTimer);
         root.removeAttribute("data-intro-ready");
-        (window as unknown as { __lenis?: Lenis }).__lenis?.start();
+        getLenis()?.start();
       };
     }
 
@@ -332,9 +312,7 @@ export function PreloaderIntro() {
       const hitIdx = sim.frames.findIndex(
         (f) => f.y >= radius * 0.45 && f.x >= b.mid
       );
-      if (hitIdx >= 0) {
-        return Math.max(0.06, hitIdx * SIM_DT);
-      }
+      if (hitIdx >= 0) return Math.max(0.06, hitIdx * SIM_DT);
       return Math.max(0.06, sim.duration * ((idx + 1) / activeCols.length));
     });
 
@@ -382,7 +360,7 @@ export function PreloaderIntro() {
       : Promise.resolve();
 
     const sceneModulePromise =
-      preloadFootballSceneModule() || import("./preloaderFootballScene");
+      preloadFootballSceneModule() || import("@/three/preloaderFootballScene");
     const sceneReadyPromise = Promise.race([
       sceneModulePromise
         .then(({ mountPreloaderFootballScene }) => {
@@ -400,10 +378,10 @@ export function PreloaderIntro() {
 
     Promise.all([fontGate, sceneReadyPromise]).then(() => {
       if (cancelled) return;
-      (window as unknown as { __lenis?: Lenis }).__lenis?.stop();
+      getLenis()?.stop();
       beatTimer = window.setTimeout(() => {
         if (cancelled) return;
-        (window as unknown as { __lenis?: Lenis }).__lenis?.stop();
+        getLenis()?.stop();
         startPerf = performance.now();
 
         if (ballRef.current) ballRef.current.style.opacity = "1";
@@ -484,11 +462,7 @@ export function PreloaderIntro() {
                 )}, ${squashY.toFixed(3)}) rotate(${f.rot.toFixed(3)}rad)`;
               }
 
-              const alt = clamp(
-                (floorY - f.y) / Math.max(vh * 0.85, 1),
-                0,
-                1
-              );
+              const alt = clamp((floorY - f.y) / Math.max(vh * 0.85, 1), 0, 1);
               const shadowOp = Math.exp(-4.2 * alt) * 0.74;
               const shadowScaleX = (0.78 + alt * 0.55) * squashX;
               const shadowScaleY = 0.72 + alt * 0.35;
@@ -543,7 +517,7 @@ export function PreloaderIntro() {
       window.removeEventListener("touchstart", handleSkip);
       window.removeEventListener("keydown", handleSkip);
       root.removeAttribute("data-intro-ready");
-      (window as unknown as { __lenis?: Lenis }).__lenis?.start();
+      getLenis()?.start();
     };
   }, []);
 
@@ -555,13 +529,11 @@ export function PreloaderIntro() {
       aria-hidden="true"
       className="fixed inset-0 z-[100] pointer-events-none overflow-clip"
     >
-      {/* Top 3px brand accent line synced with curtain */}
       <div
         ref={chromeRef}
         className="fixed top-0 inset-x-0 h-[3px] bg-[#f34213] transition-opacity duration-300 z-[102]"
       />
 
-      {/* 14-Column Vermilion Curtain (8 columns on mobile, 14 on desktop) */}
       <div className="grid h-full w-full grid-cols-[16px_repeat(6,minmax(0,1fr))_16px] md:grid-cols-[24px_repeat(12,minmax(0,1fr))_24px]">
         {Array.from({ length: TOTAL_COLS }).map((_, idx) => (
           <div
@@ -576,7 +548,6 @@ export function PreloaderIntro() {
         ))}
       </div>
 
-      {/* Ground Contact Shadow */}
       <div
         ref={shadowRef}
         className="pointer-events-none absolute left-0 top-0 rounded-full will-change-transform"
@@ -587,7 +558,6 @@ export function PreloaderIntro() {
         }}
       />
 
-      {/* 3D Classic Football Container (+ WebGL-disabled SVG fallback) */}
       <div
         ref={ballRef}
         className="pointer-events-none absolute left-0 top-0 flex items-center justify-center will-change-transform"

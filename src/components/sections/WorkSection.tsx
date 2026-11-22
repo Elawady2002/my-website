@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { StylizedText } from "@/components/StylizedText";
-import type { WorkCarouselController } from "@/components/workCarouselScene";
+import { StylizedText } from "@/components/ui/StylizedText";
 import { siteConfig, type WorkProjectLinkType } from "@/data/site";
+import { useRevealOnView } from "@/hooks/useRevealOnView";
+import { WORK_CARD_STRIDE } from "@/three/constants";
+import type { WorkCarouselController } from "@/three/workCarouselScene";
 
-const CARD_STRIDE = 5.02;
+const WORK_REVEAL_OPTS = { threshold: 0.18 };
 
 const LINK_LABELS: Record<WorkProjectLinkType, string> = {
   appStore: "App Store",
@@ -93,7 +95,6 @@ export function WorkSection() {
 
   const introRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const captionRef = useRef<HTMLDivElement | null>(null);
   const captionContentRef = useRef<HTMLDivElement | null>(null);
   const counterRef = useRef<HTMLDivElement | null>(null);
   const stageRectRef = useRef<{
@@ -125,24 +126,7 @@ export function WorkSection() {
   const sceneCtrlRef = useRef<WorkCarouselController | null>(null);
   const ensureSceneMountRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    const el = introRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            el.setAttribute("data-revealed", "true");
-          }
-        });
-      },
-      { threshold: 0.18 }
-    );
-    observer.observe(el);
-
-    return () => observer.disconnect();
-  }, []);
+  useRevealOnView(introRef, WORK_REVEAL_OPTS);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,7 +192,7 @@ export function WorkSection() {
       started = true;
       io.disconnect();
 
-      import("./workCarouselScene").then(({ mountWorkCarouselScene }) => {
+      import("@/three/workCarouselScene").then(({ mountWorkCarouselScene }) => {
         if (disposed || !stageRef.current) return;
         sceneCtrlRef.current = mountWorkCarouselScene({
           container: stageRef.current,
@@ -231,9 +215,7 @@ export function WorkSection() {
 
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          startMount();
-        }
+        if (entries.some((entry) => entry.isIntersecting)) startMount();
       },
       { rootMargin: "800px 0px", threshold: 0 }
     );
@@ -249,8 +231,9 @@ export function WorkSection() {
   }, [projects, webglReady]);
 
   const stepBy = (delta: number) => {
-    const snapped = Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
-    targetTrackRef.current = snapped - delta * CARD_STRIDE;
+    const snapped =
+      Math.round(targetTrackRef.current / WORK_CARD_STRIDE) * WORK_CARD_STRIDE;
+    targetTrackRef.current = snapped - delta * WORK_CARD_STRIDE;
     ensureSceneMountRef.current?.();
     sceneCtrlRef.current?.wake();
   };
@@ -335,31 +318,34 @@ export function WorkSection() {
     const totalDx = e.clientX - startXRef.current;
     const vx = pointerVxRef.current;
     const dragStartSnapped =
-      Math.round(dragStartTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+      Math.round(dragStartTrackRef.current / WORK_CARD_STRIDE) * WORK_CARD_STRIDE;
 
     if (Math.abs(totalDx) > 36 || Math.abs(vx) > 0.38) {
-      if (Math.abs(targetTrackRef.current - dragStartSnapped) > CARD_STRIDE * 0.65) {
+      if (
+        Math.abs(targetTrackRef.current - dragStartSnapped) >
+        WORK_CARD_STRIDE * 0.65
+      ) {
         targetTrackRef.current =
-          Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+          Math.round(targetTrackRef.current / WORK_CARD_STRIDE) *
+          WORK_CARD_STRIDE;
       } else {
         const dir = Math.abs(totalDx) >= 12 ? totalDx : vx;
         targetTrackRef.current =
-          dragStartSnapped + (dir < 0 ? -CARD_STRIDE : CARD_STRIDE);
+          dragStartSnapped + (dir < 0 ? -WORK_CARD_STRIDE : WORK_CARD_STRIDE);
       }
     } else if (Math.abs(totalDx) < 8) {
       const rect = getCachedStageRect(e.currentTarget);
       const relX = (e.clientX - rect.left) / Math.max(rect.width, 1);
-      if (relX < 0.2) {
-        stepBy(-1);
-      } else if (relX > 0.8) {
-        stepBy(1);
-      } else {
+      if (relX < 0.2) stepBy(-1);
+      else if (relX > 0.8) stepBy(1);
+      else {
         targetTrackRef.current =
-          Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+          Math.round(targetTrackRef.current / WORK_CARD_STRIDE) *
+          WORK_CARD_STRIDE;
       }
     } else {
       targetTrackRef.current =
-        Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+        Math.round(targetTrackRef.current / WORK_CARD_STRIDE) * WORK_CARD_STRIDE;
     }
     pointerVxRef.current = 0;
     sceneCtrlRef.current?.wake();
@@ -375,12 +361,7 @@ export function WorkSection() {
 
   return (
     <div className="relative z-10 w-full bg-[#0b0b0b]">
-      {/* Part A: Giant Staggered WORK Intro Heading */}
-      <div
-        id="work-intro"
-        ref={introRef}
-        className="px-4 sm:px-6 pt-16 sm:pt-24"
-      >
+      <div id="work-intro" ref={introRef} className="px-4 sm:px-6 pt-16 sm:pt-24">
         <h6 className="text-[13px] sm:text-[14px] font-normal uppercase tracking-[0.05em] text-[#e7e1d7]/80">
           <StylizedText text={siteConfig.workSection.eyebrow} />
         </h6>
@@ -394,9 +375,7 @@ export function WorkSection() {
             return (
               <span
                 key={idx}
-                style={
-                  { "--work-delay": `${idx * 70}ms` } as React.CSSProperties
-                }
+                style={{ "--work-delay": `${idx * 70}ms` } as React.CSSProperties}
                 className={`work-intro-char inline-block ${
                   isO ? "playfair-o" : ""
                 }`}
@@ -408,7 +387,6 @@ export function WorkSection() {
         </h2>
       </div>
 
-      {/* Part B: Interactive Three.js Rounded-Box 3D Glass Carousel */}
       <section
         id="work"
         aria-label="Selected projects carousel"
@@ -428,7 +406,6 @@ export function WorkSection() {
         tabIndex={0}
         className="relative w-full h-[100svh] min-h-[560px] sm:min-h-[820px] max-h-[1020px] overflow-hidden select-none cursor-grab active:cursor-grabbing focus:outline-none"
       >
-        {/* WebGL Three.js Canvas Mount (rendered before caption in DOM for clean layer order) */}
         {webglReady ? (
           <div ref={stageRef} className="absolute inset-0 z-10" />
         ) : (
@@ -452,9 +429,7 @@ export function WorkSection() {
           </div>
         )}
 
-        {/* Top-Center Floating Project Caption */}
         <div
-          ref={captionRef}
           aria-live="polite"
           className="pointer-events-none absolute top-[96px] sm:top-[102px] left-1/2 -translate-x-1/2 z-20 text-center w-[90vw] max-w-[760px]"
         >
@@ -468,7 +443,6 @@ export function WorkSection() {
           </div>
         </div>
 
-        {/* Hover-Reveal Project Action Dock (Store, Website & Figma Links) */}
         {projectLinks.length > 0 ? (
           <div
             data-project-links=""
@@ -512,7 +486,6 @@ export function WorkSection() {
           </div>
         ) : null}
 
-        {/* Bottom-Center Clean Counter */}
         <div
           ref={counterRef}
           data-work-counter=""

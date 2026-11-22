@@ -2,8 +2,8 @@
 
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
-import { StylizedText } from "@/components/StylizedText";
-import { InfoSection } from "@/components/InfoSection";
+import { InfoSection } from "@/components/sections/InfoSection";
+import { StylizedText } from "@/components/ui/StylizedText";
 import { siteConfig } from "@/data/site";
 
 function MaskedChars({
@@ -41,7 +41,6 @@ function MaskedChars({
 
 export function HeaderStage() {
   const headerRef = useRef<HTMLDivElement | null>(null);
-  const heroSectionRef = useRef<HTMLElement | null>(null);
   const portraitCardRef = useRef<HTMLDivElement | null>(null);
   const portraitInnerRef = useRef<HTMLDivElement | null>(null);
   const glowRef = useRef<HTMLDivElement | null>(null);
@@ -91,11 +90,7 @@ export function HeaderStage() {
         )}px, 0) scale(${scale.toFixed(4)})`;
       }
 
-      if (
-        isHeaderNearRef.current &&
-        y !== lastStarY &&
-        starScrollRef.current
-      ) {
+      if (isHeaderNearRef.current && y !== lastStarY && starScrollRef.current) {
         lastStarY = y;
         starScrollRef.current.style.transform = `rotate(${(y * 0.28).toFixed(
           1
@@ -255,20 +250,17 @@ export function HeaderStage() {
       data-in-view="true"
       className="relative w-full bg-[#0b0b0b] overflow-x-clip"
     >
-      {/* Shared Sticky Pinned Portrait Backdrop (-mb-[100svh] overlays Hero & Info cleanly) */}
+      {/* Shared Sticky Pinned Portrait Backdrop */}
       <div className="sticky top-0 h-svh w-full pointer-events-none z-0 -mb-[100svh] overflow-hidden">
         <div
           ref={portraitCardRef}
-          style={{
-            transformOrigin: "center top",
-          }}
+          style={{ transformOrigin: "center top" }}
           className="portrait-mask-x absolute top-6 bottom-0 left-1/2 -translate-x-1/2 md:left-[25.5%] md:translate-x-0 w-[84vw] max-w-[460px] md:max-w-[66svh] md:w-[31.5vw] md:min-w-[390px] max-h-[calc(84vw*1.75)] md:max-h-[calc(31.5vw*1.82)] overflow-hidden will-change-transform"
         >
           <div
             data-intro-portrait=""
             style={{
-              animation:
-                "portraitIntro 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
+              animation: "portraitIntro 1.1s cubic-bezier(0.16, 1, 0.3, 1) both",
             }}
             className="portrait-mask-y relative h-full w-full overflow-hidden"
           >
@@ -286,7 +278,6 @@ export function HeaderStage() {
                 sizes="(max-width: 768px) 84vw, (max-width: 1536px) 32vw, 600px"
                 className="object-cover object-[50%_14%]"
               />
-              {/* Cursor-reactive vermilion rim-light glow (GPU-composited layer) */}
               <div
                 ref={glowRef}
                 className="pointer-events-none absolute left-1/2 top-1/2 -ml-[340px] -mt-[340px] h-[680px] w-[680px] opacity-90 will-change-transform"
@@ -297,7 +288,6 @@ export function HeaderStage() {
               />
             </div>
 
-            {/* Stationary elliptical studio spotlight vignette outside tilting inner layer */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"
@@ -313,14 +303,12 @@ export function HeaderStage() {
 
       {/* SECTION 1: Hero Viewport */}
       <section
-        ref={heroSectionRef}
         data-hero-section=""
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="relative z-10 min-h-svh w-full px-4 sm:px-6 flex flex-col justify-between pb-28 sm:pb-28"
       >
-        {/* Top Metadata Row */}
         <div
           style={{
             animation:
@@ -336,9 +324,7 @@ export function HeaderStage() {
           </span>
         </div>
 
-        {/* Lower Hero Stack */}
         <div className="mt-auto pt-36 sm:pt-44">
-          {/* Subheader 3-Zone Row */}
           <div className="grid grid-cols-1 md:grid-cols-12 items-end gap-4 pb-5">
             <div
               data-intro-fade=""
@@ -353,7 +339,10 @@ export function HeaderStage() {
               </span>
             </div>
 
-            <div data-intro-fade="" className="md:col-span-3 flex items-center md:justify-center">
+            <div
+              data-intro-fade=""
+              className="md:col-span-3 flex items-center md:justify-center"
+            >
               <div ref={starScrollRef} className="will-change-transform">
                 <svg
                   data-hero-star=""
@@ -386,7 +375,6 @@ export function HeaderStage() {
             </div>
           </div>
 
-          {/* Full-Width Hairline Divider */}
           <div
             data-intro-line=""
             style={{
@@ -396,7 +384,6 @@ export function HeaderStage() {
             className="h-px w-full origin-left bg-[#e7e1d7]/20"
           />
 
-          {/* Giant 2-Line Character-Staggered Display Title with Counter-Parallax */}
           <div
             ref={titleWrapRef}
             className="pt-4 sm:pt-5 select-none will-change-transform"

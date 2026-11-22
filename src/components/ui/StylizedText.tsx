@@ -21,3 +21,22 @@ export const StylizedText = React.memo(function StylizedText({
     </span>
   );
 });
+
+export const StylizedWords = React.memo(function StylizedWords({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <>
+      {text.split(" ").map((word, idx) => (
+        <React.Fragment key={idx}>
+          {idx > 0 ? " " : null}
+          <span className="inline-block whitespace-nowrap">
+            <StylizedText text={word} />
+          </span>
+        </React.Fragment>
+      ))}
+    </>
+  );
+});

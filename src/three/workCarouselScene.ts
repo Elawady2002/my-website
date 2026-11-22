@@ -9,19 +9,20 @@ import {
   SRGBColorSpace,
   Vector4,
   VideoTexture,
-  WebGLRenderer,
 } from "three";
+import { getDevicePerfTier } from "@/lib/deviceTier";
+import { scheduleIdle } from "@/lib/dom";
+import type { WorkProjectItem } from "@/data/site";
+import { WORK_CARD_STRIDE } from "@/three/constants";
+import { createManagedRenderer } from "@/three/webglUtils";
 import {
   SHOWCASE_INNER_UV,
   WORK_PLANE_HEIGHT,
   WORK_PLANE_WIDTH,
   createProjectTexture,
   type ProjectTextureHandle,
-} from "@/components/workTextures";
-import type { WorkProjectItem } from "@/data/site";
-import { getDevicePerfTier } from "@/lib/deviceTier";
+} from "@/three/workTextures";
 
-export const CARD_STRIDE = 5.02;
 const PLANE_Y_OFFSET = -0.33;
 
 const VERTEX_SHADER = /* glsl */ `
@@ -72,7 +73,7 @@ const VERTEX_SHADER = /* glsl */ `
     wx += (uv.y - 0.5) * velShear;
     wz += sin(uv.x * 3.14159265) * sin(uv.y * 3.14159265) * clamp(abs(uVelocity) * 2.2, 0.0, 0.22);
 
-    // Architectural corner upward lift matching tomdekoning.work mid-drag silhouette
+    // Architectural corner upward lift during glide
     float wy = uPlaneY + position.y + 0.20 * (1.0 - cos(theta)) * (0.25 + 0.75 * uActivity);
 
     vCorner = clamp(theta / thetaMax, 0.0, 1.0);
@@ -123,9 +124,7 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 uvG = clamp(vUv, vec2(0.002), vec2(0.998));
     vec2 uvB = clamp(vUv - vec2(edge, 0.0), vec2(0.002), vec2(0.998));
 
-    // Sample all three channels unconditionally so texture2D(uMap, ...) never
-    // runs inside per-pixel divergent control flow (which breaks implicit
-    // dFdx/dFdy mipmap derivatives across 2x2 quads and produces a 1px seam).
+    // Unconditional sampling preserves 2x2 quad derivatives for mipmaps
     float r = sampleSlide(uvR, fw).r;
     float g = sampleSlide(uvG, fw).g;
     float b = sampleSlide(uvB, fw).b;
@@ -150,13 +149,13 @@ export interface WorkCarouselMountOptions {
   container: HTMLDivElement;
   projects: readonly WorkProjectItem[];
   captionContentRef: React.RefObject<HTMLDivElement | null>;
-  targetTrackRef: React.MutableRefObject<number>;
-  currentTrackRef: React.MutableRefObject<number>;
-  smoothVelRef: React.MutableRefObject<number>;
-  activityRef: React.MutableRefObject<number>;
-  isDraggingRef: React.MutableRefObject<boolean>;
-  wheelSnapTimerRef: React.MutableRefObject<number | null>;
-  activeIdxRef: React.MutableRefObject<number>;
+  targetTrackRef: React.RefObject<number>;
+  currentTrackRef: React.RefObject<number>;
+  smoothVelRef: React.RefObject<number>;
+  activityRef: React.RefObject<number>;
+  isDraggingRef: React.RefObject<boolean>;
+  wheelSnapTimerRef: React.RefObject<number | null>;
+  activeIdxRef: React.RefObject<number>;
   onActiveIdxChange: (idx: number) => void;
   onWebglFailed: () => void;
 }
@@ -205,30 +204,18 @@ export function mountWorkCarouselScene({
   onWebglFailed,
 }: WorkCarouselMountOptions): WorkCarouselController {
   const count = projects.length;
-  const totalSpan = count * CARD_STRIDE;
-
-  let renderer: WebGLRenderer | null = null;
-  try {
-    renderer = new WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-  } catch {
-    queueMicrotask(onWebglFailed);
-    return {
-      wake: () => {},
-      kickAllVideos: () => {},
-      dispose: () => {},
-    };
-  }
-
-  const activeRenderer = renderer;
+  const totalSpan = count * WORK_CARD_STRIDE;
   const perf = getDevicePerfTier();
-  activeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
-  activeRenderer.domElement.className = "block h-full w-full";
-  activeRenderer.domElement.style.touchAction = "pan-y pinch-zoom";
-  container.appendChild(activeRenderer.domElement);
+
+  const activeRenderer = createManagedRenderer(container, {
+    maxDpr: perf.maxDpr,
+    className: "block h-full w-full",
+    touchAction: "pan-y pinch-zoom",
+  });
+  if (!activeRenderer) {
+    queueMicrotask(onWebglFailed);
+    return { wake: () => {}, kickAllVideos: () => {}, dispose: () => {} };
+  }
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(38, 16 / 9, 0.1, 60);
@@ -257,11 +244,8 @@ export function mountWorkCarouselScene({
   const wake = () => {
     if (disposed) return;
     needsForcedRender = true;
-    if (isInView) {
-      scheduleLoop();
-    } else {
-      renderFrame();
-    }
+    if (isInView) scheduleLoop();
+    else renderFrame();
   };
 
   const materials: ShaderMaterial[] = [];
@@ -316,8 +300,8 @@ export function mountWorkCarouselScene({
       video,
       texture: videoTex,
       isVisible:
-        Math.abs(wrapTrackOffset(idx * CARD_STRIDE, totalSpan)) <=
-        CARD_STRIDE * 1.35,
+        Math.abs(wrapTrackOffset(idx * WORK_CARD_STRIDE, totalSpan)) <=
+        WORK_CARD_STRIDE * 1.35,
       rvfcId: null,
       hasNewFrame: false,
       lastRenderedTime: -1,
@@ -345,9 +329,7 @@ export function mountWorkCarouselScene({
           entry.hasNewFrame = true;
           if (isInView && !document.hidden && entry.isVisible) {
             scheduleLoop();
-            if (!video.paused) {
-              entry.armFrameCallback();
-            }
+            if (!video.paused) entry.armFrameCallback();
           }
         });
       },
@@ -357,17 +339,12 @@ export function mountWorkCarouselScene({
           video.preload = "auto";
           video.load();
         }
-        if (isInView && entry.isVisible) {
-          entry.tryPlay();
-        }
+        if (isInView && entry.isVisible) entry.tryPlay();
       },
       tryPlay: () => {
         if (!hasLoaded || !isInView || !entry.isVisible) return;
-        if (video.paused) {
-          video.play().catch(() => {});
-        } else {
-          entry.armFrameCallback();
-        }
+        if (video.paused) video.play().catch(() => {});
+        else entry.armFrameCallback();
       },
       onCanPlay: () => {
         entry.hasNewFrame = true;
@@ -404,7 +381,7 @@ export function mountWorkCarouselScene({
         },
         uHasVideo: { value: 0 },
         uInnerRect: { value: innerRectVec },
-        uOffset: { value: i * CARD_STRIDE },
+        uOffset: { value: i * WORK_CARD_STRIDE },
         uActivity: { value: 0 },
         uVelocity: { value: 0 },
         uPlaneY: { value: PLANE_Y_OFFSET },
@@ -419,8 +396,6 @@ export function mountWorkCarouselScene({
     meshes.push(mesh);
   }
 
-  // Priority-staggered slide texture loading: immediate for visible center & neighbors,
-  // then one idle frame at a time for offscreen slides.
   const immediateTextureSet = new Set<number>();
   [0, 1, count - 1].forEach((idx) => {
     if (idx >= 0 && idx < count && !immediateTextureSet.has(idx)) {
@@ -431,55 +406,42 @@ export function mountWorkCarouselScene({
 
   const deferredIndices: number[] = [];
   for (let i = 0; i < count; i += 1) {
-    if (!immediateTextureSet.has(i)) {
-      deferredIndices.push(i);
-    }
+    if (!immediateTextureSet.has(i)) deferredIndices.push(i);
   }
 
   let deferredCursor = 0;
-  let deferredIdleId = 0;
-  let deferredTimeoutId = 0;
+  let cancelDeferredLoad: (() => void) | null = null;
 
   const scheduleNextTextureLoad = () => {
     if (disposed || deferredCursor >= deferredIndices.length) return;
-    const runNext = () => {
-      deferredIdleId = 0;
-      deferredTimeoutId = 0;
-      if (disposed || deferredCursor >= deferredIndices.length) return;
-      const idx = deferredIndices[deferredCursor];
-      deferredCursor += 1;
-      textureHandles[idx].startLoad();
-      scheduleNextTextureLoad();
-    };
-    const winWithIdle = window as Window & {
-      requestIdleCallback?: (
-        cb: () => void,
-        opts?: { timeout: number }
-      ) => number;
-    };
-    if (typeof winWithIdle.requestIdleCallback === "function") {
-      deferredIdleId = winWithIdle.requestIdleCallback(runNext, {
-        timeout: 120,
-      });
-    } else {
-      deferredTimeoutId = window.setTimeout(runNext, 45);
-    }
+    cancelDeferredLoad = scheduleIdle(
+      () => {
+        cancelDeferredLoad = null;
+        if (disposed || deferredCursor >= deferredIndices.length) return;
+        const idx = deferredIndices[deferredCursor];
+        deferredCursor += 1;
+        textureHandles[idx].startLoad();
+        scheduleNextTextureLoad();
+      },
+      120,
+      45
+    );
   };
   scheduleNextTextureLoad();
 
   const videoLoadRadius = perf.isLowTier
-    ? CARD_STRIDE * 0.65
-    : CARD_STRIDE * 1.35;
+    ? WORK_CARD_STRIDE * 0.65
+    : WORK_CARD_STRIDE * 1.35;
 
   const isCenterVideoBlocking = () =>
     videoEntries.some((entry, idx) => {
       if (!entry) return false;
       const wrapped = wrapTrackOffset(
-        idx * CARD_STRIDE + currentTrackRef.current,
+        idx * WORK_CARD_STRIDE + currentTrackRef.current,
         totalSpan
       );
       return (
-        Math.abs(wrapped) <= CARD_STRIDE * 0.65 && entry.video.readyState < 2
+        Math.abs(wrapped) <= WORK_CARD_STRIDE * 0.65 && entry.video.readyState < 2
       );
     });
 
@@ -490,12 +452,12 @@ export function mountWorkCarouselScene({
       const entry = videoEntries[i];
       if (!entry) continue;
       const wrapped = wrapTrackOffset(
-        i * CARD_STRIDE + currentTrackRef.current,
+        i * WORK_CARD_STRIDE + currentTrackRef.current,
         totalSpan
       );
       const absWrapped = Math.abs(wrapped);
       if (
-        absWrapped <= CARD_STRIDE * 0.65 ||
+        absWrapped <= WORK_CARD_STRIDE * 0.65 ||
         (!centerBlocking && absWrapped <= videoLoadRadius)
       ) {
         entry.startLoad();
@@ -508,6 +470,14 @@ export function mountWorkCarouselScene({
     syncNearbyVideos();
     videoEntries.forEach((entry) => entry?.tryPlay());
     wake();
+  };
+
+  const pauseAllVideos = () => {
+    videoEntries.forEach((entry) => {
+      if (!entry) return;
+      if (!entry.video.paused) entry.video.pause();
+      entry.cancelFrameCallback();
+    });
   };
 
   const renderFrame = (): boolean => {
@@ -525,16 +495,11 @@ export function mountWorkCarouselScene({
     const actRate = wantActivity > activityRef.current ? 0.14 : 0.075;
     activityRef.current += (wantActivity - activityRef.current) * actRate;
 
-    const trackDelta = Math.abs(
-      targetTrackRef.current - currentTrackRef.current
-    );
-    const velAbs = Math.abs(smoothVelRef.current);
-    const actAbs = Math.abs(activityRef.current);
     const motionSettled =
       !isDraggingRef.current &&
-      trackDelta < 0.0002 &&
-      velAbs < 0.0002 &&
-      actAbs < 0.0008;
+      Math.abs(targetTrackRef.current - currentTrackRef.current) < 0.0002 &&
+      Math.abs(smoothVelRef.current) < 0.0002 &&
+      Math.abs(activityRef.current) < 0.0008;
 
     if (motionSettled) {
       currentTrackRef.current = targetTrackRef.current;
@@ -548,13 +513,15 @@ export function mountWorkCarouselScene({
     let anyVideoHasNewFrame = false;
 
     for (let i = 0; i < count; i += 1) {
-      const rawPos = i * CARD_STRIDE + currentTrackRef.current;
-      const wrapped = wrapTrackOffset(rawPos, totalSpan);
+      const wrapped = wrapTrackOffset(
+        i * WORK_CARD_STRIDE + currentTrackRef.current,
+        totalSpan
+      );
       const absWrapped = Math.abs(wrapped);
-      const visible = absWrapped <= CARD_STRIDE * 1.75;
-      const playEligible = visible && absWrapped <= CARD_STRIDE * 1.35;
+      const visible = absWrapped <= WORK_CARD_STRIDE * 1.75;
+      const playEligible = visible && absWrapped <= WORK_CARD_STRIDE * 1.35;
 
-      if (absWrapped <= CARD_STRIDE * 2.1) {
+      if (absWrapped <= WORK_CARD_STRIDE * 2.1) {
         textureHandles[i].startLoad();
       }
 
@@ -569,7 +536,7 @@ export function mountWorkCarouselScene({
         if (
           videoPreloadArmed &&
           isInView &&
-          (absWrapped <= CARD_STRIDE * 0.65 ||
+          (absWrapped <= WORK_CARD_STRIDE * 0.65 ||
             (!centerBlocking && absWrapped <= videoLoadRadius))
         ) {
           videoEntry.startLoad();
@@ -577,9 +544,7 @@ export function mountWorkCarouselScene({
         const hasReadyVideo = videoEntry.video.readyState >= 2;
         materials[i].uniforms.uHasVideo.value = hasReadyVideo ? 1.0 : 0.0;
         if (isInView && !document.hidden && playEligible) {
-          if (videoEntry.video.paused && hasReadyVideo) {
-            videoEntry.tryPlay();
-          }
+          if (videoEntry.video.paused && hasReadyVideo) videoEntry.tryPlay();
           if (!videoEntry.video.paused && hasReadyVideo) {
             hasVisiblePlayingVideo = true;
             videoEntry.armFrameCallback();
@@ -592,15 +557,13 @@ export function mountWorkCarouselScene({
             }
           }
         } else {
-          if (!videoEntry.video.paused) {
-            videoEntry.video.pause();
-          }
+          if (!videoEntry.video.paused) videoEntry.video.pause();
           videoEntry.cancelFrameCallback();
         }
       }
     }
 
-    const rawIdx = Math.round(-currentTrackRef.current / CARD_STRIDE);
+    const rawIdx = Math.round(-currentTrackRef.current / WORK_CARD_STRIDE);
     const nextIdx = ((rawIdx % count) + count) % count;
     if (nextIdx !== activeIdxRef.current) {
       activeIdxRef.current = nextIdx;
@@ -609,12 +572,12 @@ export function mountWorkCarouselScene({
 
     if (captionContentRef.current) {
       const activeWrapped = wrapTrackOffset(
-        nextIdx * CARD_STRIDE + currentTrackRef.current,
+        nextIdx * WORK_CARD_STRIDE + currentTrackRef.current,
         totalSpan
       );
       const distNorm = Math.min(
         1,
-        Math.abs(activeWrapped) / (CARD_STRIDE * 0.48)
+        Math.abs(activeWrapped) / (WORK_CARD_STRIDE * 0.48)
       );
       const opacity = Math.max(0.18, 1 - distNorm * 0.84);
       const shiftY = distNorm * 16;
@@ -647,7 +610,6 @@ export function mountWorkCarouselScene({
     if (supportsRVFC) {
       return motionSettled && wheelSnapTimerRef.current === null;
     }
-
     return (
       motionSettled &&
       !hasVisiblePlayingVideo &&
@@ -658,10 +620,7 @@ export function mountWorkCarouselScene({
   function tick() {
     rafId = 0;
     if (disposed || !isInView || document.hidden) return;
-    const isSettled = renderFrame();
-    if (!isSettled) {
-      rafId = window.requestAnimationFrame(tick);
-    }
+    if (!renderFrame()) rafId = window.requestAnimationFrame(tick);
   }
 
   const handleResize = () => {
@@ -687,7 +646,6 @@ export function mountWorkCarouselScene({
 
   const resizeObserver = new ResizeObserver(handleResize);
   resizeObserver.observe(container);
-
   container.addEventListener("pointerdown", kickAllVideos);
 
   const handleWheel = (e: WheelEvent) => {
@@ -702,7 +660,7 @@ export function mountWorkCarouselScene({
       }
       wheelSnapTimerRef.current = window.setTimeout(() => {
         targetTrackRef.current =
-          Math.round(targetTrackRef.current / CARD_STRIDE) * CARD_STRIDE;
+          Math.round(targetTrackRef.current / WORK_CARD_STRIDE) * WORK_CARD_STRIDE;
         wheelSnapTimerRef.current = null;
         wake();
       }, 150);
@@ -717,12 +675,7 @@ export function mountWorkCarouselScene({
         window.cancelAnimationFrame(rafId);
         rafId = 0;
       }
-      videoEntries.forEach((entry) => {
-        if (entry) {
-          if (!entry.video.paused) entry.video.pause();
-          entry.cancelFrameCallback();
-        }
-      });
+      pauseAllVideos();
     } else if (isInView) {
       syncNearbyVideos();
       videoEntries.forEach((entry) => entry?.tryPlay());
@@ -757,12 +710,7 @@ export function mountWorkCarouselScene({
           window.cancelAnimationFrame(rafId);
           rafId = 0;
         }
-        videoEntries.forEach((entry) => {
-          if (entry) {
-            if (!entry.video.paused) entry.video.pause();
-            entry.cancelFrameCallback();
-          }
-        });
+        pauseAllVideos();
       }
     },
     { rootMargin: "300px 0px", threshold: 0 }
@@ -779,16 +727,8 @@ export function mountWorkCarouselScene({
         window.cancelAnimationFrame(rafId);
         rafId = 0;
       }
-      if (deferredIdleId !== 0) {
-        (
-          window as Window & { cancelIdleCallback?: (id: number) => void }
-        ).cancelIdleCallback?.(deferredIdleId);
-        deferredIdleId = 0;
-      }
-      if (deferredTimeoutId !== 0) {
-        window.clearTimeout(deferredTimeoutId);
-        deferredTimeoutId = 0;
-      }
+      cancelDeferredLoad?.();
+      cancelDeferredLoad = null;
       if (wheelSnapTimerRef.current !== null) {
         window.clearTimeout(wheelSnapTimerRef.current);
         wheelSnapTimerRef.current = null;

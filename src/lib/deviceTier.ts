@@ -30,8 +30,7 @@ export function getDevicePerfTier(): DevicePerfTier {
 
   const isMobile = window.innerWidth < 768;
   const cores = navigator.hardwareConcurrency || 8;
-  const mem =
-    (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 8;
+  const mem = navigator.deviceMemory || 8;
   const isWeakHardware = cores <= 4 || mem <= 4;
   const isLowTier = isMobile || isWeakHardware;
 
