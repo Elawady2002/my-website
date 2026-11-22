@@ -2,6 +2,7 @@
 
 import React from "react";
 import { StylizedText } from "@/components/ui/StylizedText";
+import { WhatsAppQrBadge } from "@/components/ui/WhatsAppQrBadge";
 import { siteConfig } from "@/data/site";
 import { useClipboardCopy } from "@/hooks/useClipboardCopy";
 
@@ -145,22 +146,25 @@ export const FullscreenMenuOverlay = React.memo(function FullscreenMenuOverlay({
 
             <div
               style={{ transitionDelay: contentRevealed ? "265ms" : "0ms" }}
-              className={revealBlockCls}
+              className={`flex items-center gap-3.5 ${revealBlockCls}`}
             >
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/50">
-                PH<span className="playfair-o">o</span>NE
-              </p>
-              <button
-                type="button"
-                onClick={() => copy(siteConfig.contactSection.phoneValue)}
-                className="mt-1.5 inline-block text-[15px] lg:text-[18px] tracking-[-0.02em] text-[#e7e1d7] hover:text-[#f34213] transition-colors cursor-pointer text-left"
-              >
-                {phoneCopied ? (
-                  <span className="text-[#f34213]">COPIED TO CLIPBOARD</span>
-                ) : (
-                  siteConfig.contactSection.phoneValue
-                )}
-              </button>
+              <WhatsAppQrBadge href={siteConfig.contactSection.whatsappHref} />
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/50">
+                  PH<span className="playfair-o">o</span>NE
+                </p>
+                <button
+                  type="button"
+                  onClick={() => copy(siteConfig.contactSection.phoneValue)}
+                  className="mt-1.5 inline-block text-[15px] lg:text-[18px] tracking-[-0.02em] text-[#e7e1d7] hover:text-[#f34213] transition-colors cursor-pointer text-left"
+                >
+                  {phoneCopied ? (
+                    <span className="text-[#f34213]">COPIED TO CLIPBOARD</span>
+                  ) : (
+                    siteConfig.contactSection.phoneValue
+                  )}
+                </button>
+              </div>
             </div>
 
             <div

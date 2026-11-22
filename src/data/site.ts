@@ -404,6 +404,7 @@ export const siteConfig = {
     phoneLabel: "PHONE",
     phoneValue: "+20 103 319 0408",
     phoneHref: "tel:+201033190408",
+    whatsappHref: "https://wa.me/201033190408",
     mailLabel: "MAIL",
     mailValue: "ABDULLAHELAWADY68@GMAIL.COM",
     mailHref: "mailto:abdullahelawady68@gmail.com",

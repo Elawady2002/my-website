@@ -3,6 +3,7 @@
 import React, { useRef } from "react";
 import { FooterPhysicsOrbs } from "@/components/ui/FooterPhysicsOrbs";
 import { StylizedText } from "@/components/ui/StylizedText";
+import { WhatsAppQrBadge } from "@/components/ui/WhatsAppQrBadge";
 import { siteConfig } from "@/data/site";
 import { useClipboardCopy } from "@/hooks/useClipboardCopy";
 import { useRevealOnView } from "@/hooks/useRevealOnView";
@@ -74,22 +75,25 @@ export function FooterSection() {
             <div data-footer-obstacle="" className="pointer-events-auto space-y-5">
               <div
                 style={{ "--footer-delay": "80ms" } as React.CSSProperties}
-                className="footer-reveal-item"
+                className="footer-reveal-item flex items-center gap-3.5"
               >
-                <p className="text-[12px] sm:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
-                  <StylizedText text={siteConfig.contactSection.phoneLabel} />
-                </p>
-                <button
-                  type="button"
-                  onClick={() => copy(siteConfig.contactSection.phoneValue)}
-                  className="mt-1 inline-block text-[14px] sm:text-[16px] uppercase tracking-[0.04em] text-[#e7e1d7] hover:text-[#f34213] hover:translate-x-1 transition-all duration-200 cursor-pointer text-left"
-                >
-                  {phoneCopied ? (
-                    <span className="text-[#f34213]">COPIED!</span>
-                  ) : (
-                    <StylizedText text={siteConfig.contactSection.phoneValue} />
-                  )}
-                </button>
+                <WhatsAppQrBadge href={siteConfig.contactSection.whatsappHref} />
+                <div>
+                  <p className="text-[12px] sm:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
+                    <StylizedText text={siteConfig.contactSection.phoneLabel} />
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => copy(siteConfig.contactSection.phoneValue)}
+                    className="mt-1 inline-block text-[14px] sm:text-[16px] uppercase tracking-[0.04em] text-[#e7e1d7] hover:text-[#f34213] hover:translate-x-1 transition-all duration-200 cursor-pointer text-left"
+                  >
+                    {phoneCopied ? (
+                      <span className="text-[#f34213]">COPIED!</span>
+                    ) : (
+                      <StylizedText text={siteConfig.contactSection.phoneValue} />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div
