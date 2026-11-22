@@ -379,7 +379,7 @@ export const siteConfig = {
           "Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture taught by Osama Eldrieny.",
         accentColor: "#00D084",
         imageSrc: "/images/certificates/figma-variables-osama-eldrieny.webp",
-        programUrl: "https://osamaeldrieny.com/course",
+        programUrl: "https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft",
         programLabel: "Take This Course",
         featured: true,
       },
