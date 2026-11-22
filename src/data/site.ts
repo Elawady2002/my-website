@@ -335,8 +335,8 @@ export const siteConfig = {
     phoneValue: "+20 103 319 0408",
     phoneHref: "tel:+201033190408",
     mailLabel: "MAIL",
-    mailValue: "ABDULLAHELAWDY68@GMAIL.COM",
-    mailHref: "mailto:abdullahelawdy68@gmail.com",
+    mailValue: "ABDULLAHELAWADY68@GMAIL.COM",
+    mailHref: "mailto:abdullahelawady68@gmail.com",
     socials: [
       {
         label: "LINKEDIN",
