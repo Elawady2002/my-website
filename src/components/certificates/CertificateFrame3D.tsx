@@ -2,8 +2,14 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import type { CertificateItem } from "@/data/site";
+import type { CertificateFrameFormat, CertificateItem } from "@/data/site";
 import type { CertificateFrameController } from "@/three/certificateFrameScene";
+
+const FALLBACK_FRAME_CLASSES: Record<CertificateFrameFormat, string> = {
+  landscape: "w-full max-w-[480px] aspect-[3.59/2.66]",
+  "landscape-4x3": "w-full max-w-[460px] aspect-[3.4/2.66]",
+  portrait: "h-full max-h-[500px] w-auto max-w-full aspect-[2.66/3.59]",
+};
 
 export interface CertificateFrame3DProps {
   certificate: CertificateItem;
@@ -167,7 +173,9 @@ export function CertificateFrame3D({
       {!webglReady ? (
         <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4 pointer-events-none">
           <div
-            className="relative w-full max-w-[480px] aspect-[3.59/2.66] rounded-[4px] p-[14px] sm:p-[18px]"
+            className={`relative rounded-[4px] p-[14px] sm:p-[18px] ${
+              FALLBACK_FRAME_CLASSES[certificate.frameFormat ?? "landscape"]
+            }`}
             style={{
               background:
                 "linear-gradient(135deg, #4b2f1d 0%, #2b180d 52%, #3f2617 100%)",

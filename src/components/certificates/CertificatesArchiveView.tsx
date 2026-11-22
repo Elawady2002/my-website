@@ -77,7 +77,11 @@ export function CertificatesArchiveView() {
                 <CertificateFrame3D
                   certificate={cert}
                   allowWideOrbit
-                  className="h-[340px] sm:h-[430px] lg:h-[480px] w-full"
+                  className={
+                    cert.frameFormat === "portrait"
+                      ? "h-[420px] sm:h-[520px] lg:h-[580px] w-full"
+                      : "h-[340px] sm:h-[430px] lg:h-[480px] w-full"
+                  }
                 />
               </div>
 

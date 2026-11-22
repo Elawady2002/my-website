@@ -21,7 +21,7 @@ import {
   SRGBColorSpace,
   Vector2,
 } from "three";
-import type { CertificateItem } from "@/data/site";
+import type { CertificateFrameFormat, CertificateItem } from "@/data/site";
 import { getDevicePerfTier } from "@/lib/deviceTier";
 import { clamp } from "@/lib/dom";
 import {
@@ -49,21 +49,51 @@ export interface CertificateFrameMountOptions {
 }
 
 const FOV_DEG = 32;
-const OUTER_W = 3.59;
-const OUTER_H = 2.66;
 const RAIL_W = 0.2;
 const FRAME_DEPTH = 0.16;
 const BEVEL_SIZE = 0.018;
 const BEVEL_THICKNESS = 0.022;
-
-const HW = OUTER_W * 0.5;
-const HH = OUTER_H * 0.5;
-const IHW = HW - RAIL_W;
-const IHH = HH - RAIL_W;
-
 const FILLET_W = 0.015;
-const ART_W = (IHW - FILLET_W) * 2;
-const ART_H = (IHH - FILLET_W) * 2;
+
+interface FrameSpec {
+  outerW: number;
+  outerH: number;
+  canvasW: number;
+  canvasH: number;
+  fitW: number;
+  fitH: number;
+  isPortrait: boolean;
+}
+
+const FRAME_SPECS: Record<CertificateFrameFormat, FrameSpec> = {
+  landscape: {
+    outerW: 3.59,
+    outerH: 2.66,
+    canvasW: 1600,
+    canvasH: 1128,
+    fitW: 3.95,
+    fitH: 2.98,
+    isPortrait: false,
+  },
+  "landscape-4x3": {
+    outerW: 3.4,
+    outerH: 2.66,
+    canvasW: 1600,
+    canvasH: 1200,
+    fitW: 3.76,
+    fitH: 2.98,
+    isPortrait: false,
+  },
+  portrait: {
+    outerW: 2.66,
+    outerH: 3.59,
+    canvasW: 1128,
+    canvasH: 1600,
+    fitW: 3.04,
+    fitH: 3.98,
+    isPortrait: true,
+  },
+};
 
 const GLASS_GLARE_VERTEX = /* glsl */ `
   varying vec2 vUv;
@@ -147,7 +177,8 @@ const GLASS_GLARE_FRAGMENT = /* glsl */ `
 let cachedWoodColorCanvas: HTMLCanvasElement | null = null;
 let cachedWoodBumpCanvas: HTMLCanvasElement | null = null;
 let cachedEnvCanvas: HTMLCanvasElement | null = null;
-let cachedBackboardCanvas: HTMLCanvasElement | null = null;
+let cachedBackboardLandscape: HTMLCanvasElement | null = null;
+let cachedBackboardPortrait: HTMLCanvasElement | null = null;
 
 function pseudoNoise(x: number, y: number): number {
   const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
@@ -289,11 +320,12 @@ function getGalleryEnvCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
-function getBackboardCanvas(): HTMLCanvasElement {
-  if (cachedBackboardCanvas) return cachedBackboardCanvas;
+function getBackboardCanvas(isPortrait: boolean): HTMLCanvasElement {
+  if (isPortrait && cachedBackboardPortrait) return cachedBackboardPortrait;
+  if (!isPortrait && cachedBackboardLandscape) return cachedBackboardLandscape;
 
-  const width = 512;
-  const height = 384;
+  const width = isPortrait ? 384 : 512;
+  const height = isPortrait ? 512 : 384;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -319,7 +351,8 @@ function getBackboardCanvas(): HTMLCanvasElement {
     ctx.fillText("ARCHIVAL CREDENTIAL EDITION", width * 0.5, height * 0.55);
   }
 
-  cachedBackboardCanvas = canvas;
+  if (isPortrait) cachedBackboardPortrait = canvas;
+  else cachedBackboardLandscape = canvas;
   return canvas;
 }
 
@@ -360,31 +393,29 @@ function drawFallbackCertificatePlate(
 
   const width = canvas.width;
   const height = canvas.height;
+  const scale = width / 1600;
+  const inset = Math.round(56 * scale);
   ctx.fillStyle = "#f5efe3";
   ctx.fillRect(0, 0, width, height);
   ctx.strokeStyle = "#b5904c";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(56, 56, width - 112, height - 112);
+  ctx.lineWidth = Math.max(2, Math.round(3 * scale));
+  ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#5c5246";
-  ctx.font =
-    '600 22px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  ctx.font = `600 ${Math.round(22 * scale)}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillText(cert.issuer.toUpperCase(), width * 0.5, height * 0.28);
 
   ctx.fillStyle = "#171412";
-  ctx.font =
-    '700 52px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  ctx.font = `700 ${Math.round(52 * scale)}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillText("ABDULLAH ELAWADY", width * 0.5, height * 0.44);
 
-  ctx.font =
-    '600 42px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  ctx.font = `600 ${Math.round(42 * scale)}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillText(cert.title, width * 0.5, height * 0.58);
 
   ctx.fillStyle = "#7a6f63";
-  ctx.font =
-    '500 20px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  ctx.font = `500 ${Math.round(20 * scale)}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillText(
     `${cert.issuedDate.toUpperCase()} · ${cert.details.toUpperCase()}`,
     width * 0.5,
@@ -412,42 +443,46 @@ function drawScannedCertificateImage(
 }
 
 function createMiterRailGeometry(
-  side: "top" | "bottom" | "left" | "right"
+  side: "top" | "bottom" | "left" | "right",
+  hw: number,
+  hh: number
 ): ExtrudeGeometry {
+  const ihw = hw - RAIL_W;
+  const ihh = hh - RAIL_W;
   const b = BEVEL_SIZE;
   const eps = 0.0008;
   const diag = (b + eps) * Math.SQRT2;
-  const miterDelta = HW - HH;
+  const miterDelta = hw - hh;
 
   const shape = new Shape();
 
   if (side === "top") {
-    const y0 = IHH + b;
-    const y1 = HH - b;
+    const y0 = ihh + b;
+    const y1 = hh - b;
     shape.moveTo(-miterDelta + diag - y1, y1);
     shape.lineTo(-miterDelta + diag - y0, y0);
     shape.lineTo(miterDelta - diag + y0, y0);
     shape.lineTo(miterDelta - diag + y1, y1);
     shape.closePath();
   } else if (side === "bottom") {
-    const y0 = -IHH - b;
-    const y1 = -HH + b;
+    const y0 = -ihh - b;
+    const y1 = -hh + b;
     shape.moveTo(-miterDelta + diag + y0, y0);
     shape.lineTo(-miterDelta + diag + y1, y1);
     shape.lineTo(miterDelta - diag - y1, y1);
     shape.lineTo(miterDelta - diag - y0, y0);
     shape.closePath();
   } else if (side === "left") {
-    const x0 = -HW + b;
-    const x1 = -IHW - b;
+    const x0 = -hw + b;
+    const x1 = -ihw - b;
     shape.moveTo(x0, -miterDelta - diag - x0);
     shape.lineTo(x0, miterDelta + diag + x0);
     shape.lineTo(x1, miterDelta + diag + x1);
     shape.lineTo(x1, -miterDelta - diag - x1);
     shape.closePath();
   } else {
-    const x0 = IHW + b;
-    const x1 = HW - b;
+    const x0 = ihw + b;
+    const x1 = hw - b;
     shape.moveTo(x0, x0 - miterDelta - diag);
     shape.lineTo(x0, -(x0 - miterDelta - diag));
     shape.lineTo(x1, -(x1 - miterDelta - diag));
@@ -479,6 +514,26 @@ function createMiterRailGeometry(
   }
 
   return geo;
+}
+
+function createCertCanvasTexture(
+  canvas: HTMLCanvasElement,
+  maxAniso: number
+): CanvasTexture {
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.anisotropy = Math.min(8, maxAniso);
+  tex.generateMipmaps = true;
+  tex.minFilter = LinearMipmapLinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function createBackboardTexture(isPortrait: boolean): CanvasTexture {
+  const tex = new CanvasTexture(getBackboardCanvas(isPortrait));
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 export function mountCertificateFrameScene({
@@ -561,9 +616,13 @@ export function mountCertificateFrameScene({
     envMapIntensity: 1.35,
   });
 
+  let currentFormat: CertificateFrameFormat =
+    certificate.frameFormat ?? "landscape";
+  let activeSpec = FRAME_SPECS[currentFormat];
+
   const certCanvas = document.createElement("canvas");
-  certCanvas.width = 1600;
-  certCanvas.height = 1128;
+  certCanvas.width = activeSpec.canvasW;
+  certCanvas.height = activeSpec.canvasH;
   if (certificate.imageSrc) {
     const cCtx = certCanvas.getContext("2d");
     if (cCtx) {
@@ -574,12 +633,7 @@ export function mountCertificateFrameScene({
     drawFallbackCertificatePlate(certCanvas, certificate);
   }
 
-  const certTex = new CanvasTexture(certCanvas);
-  certTex.colorSpace = SRGBColorSpace;
-  certTex.anisotropy = Math.min(8, maxAniso);
-  certTex.generateMipmaps = true;
-  certTex.minFilter = LinearMipmapLinearFilter;
-  certTex.needsUpdate = true;
+  let certTex = createCertCanvasTexture(certCanvas, maxAniso);
 
   const artMaterial = new MeshStandardMaterial({
     map: certTex,
@@ -613,9 +667,7 @@ export function mountCertificateFrameScene({
     depthWrite: false,
   });
 
-  const backboardTex = new CanvasTexture(getBackboardCanvas());
-  backboardTex.colorSpace = SRGBColorSpace;
-  backboardTex.needsUpdate = true;
+  let backboardTex = createBackboardTexture(activeSpec.isPortrait);
 
   const backboardEdgeMaterial = new MeshStandardMaterial({
     color: new Color(0x161412),
@@ -637,73 +689,124 @@ export function mountCertificateFrameScene({
     depthWrite: false,
   });
 
-  const geometries: Array<{ dispose: () => void }> = [];
+  let geometries: Array<{ dispose: () => void }> = [];
   const frameGroup = new Group();
   scene.add(frameGroup);
 
-  (["top", "bottom", "left", "right"] as const).forEach((side) => {
-    const geo = createMiterRailGeometry(side);
-    geometries.push(geo);
-    frameGroup.add(new Mesh(geo, woodMaterial));
-  });
-
-  const filletW = FILLET_W;
-  const filletDepth = 0.088;
-  const filletZ = -0.008;
-  const topBotFilletGeo = new BoxGeometry(IHW * 2, filletW, filletDepth);
-  const sideFilletGeo = new BoxGeometry(
-    filletW,
-    (IHH - filletW) * 2,
-    filletDepth
-  );
-  geometries.push(topBotFilletGeo, sideFilletGeo);
-
-  [
-    [topBotFilletGeo, 0, IHH - filletW * 0.5],
-    [topBotFilletGeo, 0, -(IHH - filletW * 0.5)],
-    [sideFilletGeo, -(IHW - filletW * 0.5), 0],
-    [sideFilletGeo, IHW - filletW * 0.5, 0],
-  ].forEach(([geo, x, y]) => {
-    const m = new Mesh(geo as BoxGeometry, brassMaterial);
-    m.position.set(x as number, y as number, filletZ);
-    frameGroup.add(m);
-  });
-
-  const artGeo = new PlaneGeometry(ART_W + 0.024, ART_H + 0.024);
-  geometries.push(artGeo);
-  const artMesh = new Mesh(artGeo, artMaterial);
-  artMesh.position.z = -0.052;
-  frameGroup.add(artMesh);
-
-  const glassGeo = new PlaneGeometry(IHW * 2 - 0.004, IHH * 2 - 0.004);
-  geometries.push(glassGeo);
-  const glassMesh = new Mesh(glassGeo, glassMaterial);
-  glassMesh.position.z = 0.044;
-  glassMesh.renderOrder = 2;
-  frameGroup.add(glassMesh);
-
-  const glareGeo = new PlaneGeometry(IHW * 2 - 0.006, IHH * 2 - 0.006);
-  geometries.push(glareGeo);
-  const glareMesh = new Mesh(glareGeo, glareMaterial);
-  glareMesh.position.z = 0.048;
-  glareMesh.renderOrder = 3;
-  frameGroup.add(glareMesh);
-
-  const backBoxGeo = new BoxGeometry(OUTER_W - 0.08, OUTER_H - 0.08, 0.028);
-  const backStampGeo = new PlaneGeometry(OUTER_W - 0.1, OUTER_H - 0.1);
-  geometries.push(backBoxGeo, backStampGeo);
-  const backBoxMesh = new Mesh(backBoxGeo, backboardEdgeMaterial);
-  backBoxMesh.position.z = -0.092;
-  const backStampMesh = new Mesh(backStampGeo, backboardFrontMaterial);
-  backStampMesh.position.z = -0.108;
-  backStampMesh.rotation.y = Math.PI;
-  frameGroup.add(backBoxMesh, backStampMesh);
-
-  const shadowGeo = new PlaneGeometry(4.6, 3.6);
-  geometries.push(shadowGeo);
-  const shadowMesh = new Mesh(shadowGeo, shadowMat);
+  const initialShadowGeo = new PlaneGeometry(1, 1);
+  geometries.push(initialShadowGeo);
+  const shadowMesh = new Mesh(initialShadowGeo, shadowMat);
   shadowMesh.position.set(0.06, -0.08, -0.45);
   scene.add(shadowMesh);
+
+  const rebuildFrameGeometry = (format: CertificateFrameFormat) => {
+    const spec = FRAME_SPECS[format];
+    const prevIsPortrait = activeSpec.isPortrait;
+    currentFormat = format;
+    activeSpec = spec;
+
+    geometries.forEach((g) => g.dispose());
+    geometries = [];
+    frameGroup.clear();
+
+    const hw = spec.outerW * 0.5;
+    const hh = spec.outerH * 0.5;
+    const ihw = hw - RAIL_W;
+    const ihh = hh - RAIL_W;
+    const artW = (ihw - FILLET_W) * 2;
+    const artH = (ihh - FILLET_W) * 2;
+
+    (["top", "bottom", "left", "right"] as const).forEach((side) => {
+      const geo = createMiterRailGeometry(side, hw, hh);
+      geometries.push(geo);
+      frameGroup.add(new Mesh(geo, woodMaterial));
+    });
+
+    const filletDepth = 0.088;
+    const filletZ = -0.008;
+    const topBotFilletGeo = new BoxGeometry(ihw * 2, FILLET_W, filletDepth);
+    const sideFilletGeo = new BoxGeometry(
+      FILLET_W,
+      (ihh - FILLET_W) * 2,
+      filletDepth
+    );
+    geometries.push(topBotFilletGeo, sideFilletGeo);
+
+    [
+      [topBotFilletGeo, 0, ihh - FILLET_W * 0.5],
+      [topBotFilletGeo, 0, -(ihh - FILLET_W * 0.5)],
+      [sideFilletGeo, -(ihw - FILLET_W * 0.5), 0],
+      [sideFilletGeo, ihw - FILLET_W * 0.5, 0],
+    ].forEach(([geo, x, y]) => {
+      const m = new Mesh(geo as BoxGeometry, brassMaterial);
+      m.position.set(x as number, y as number, filletZ);
+      frameGroup.add(m);
+    });
+
+    const artGeo = new PlaneGeometry(artW + 0.024, artH + 0.024);
+    geometries.push(artGeo);
+    const artMesh = new Mesh(artGeo, artMaterial);
+    artMesh.position.z = -0.052;
+    frameGroup.add(artMesh);
+
+    const glassGeo = new PlaneGeometry(ihw * 2 - 0.004, ihh * 2 - 0.004);
+    geometries.push(glassGeo);
+    const glassMesh = new Mesh(glassGeo, glassMaterial);
+    glassMesh.position.z = 0.044;
+    glassMesh.renderOrder = 2;
+    frameGroup.add(glassMesh);
+
+    const glareGeo = new PlaneGeometry(ihw * 2 - 0.006, ihh * 2 - 0.006);
+    geometries.push(glareGeo);
+    const glareMesh = new Mesh(glareGeo, glareMaterial);
+    glareMesh.position.z = 0.048;
+    glareMesh.renderOrder = 3;
+    frameGroup.add(glareMesh);
+
+    const backBoxGeo = new BoxGeometry(
+      spec.outerW - 0.08,
+      spec.outerH - 0.08,
+      0.028
+    );
+    const backStampGeo = new PlaneGeometry(
+      spec.outerW - 0.1,
+      spec.outerH - 0.1
+    );
+    geometries.push(backBoxGeo, backStampGeo);
+    const backBoxMesh = new Mesh(backBoxGeo, backboardEdgeMaterial);
+    backBoxMesh.position.z = -0.092;
+    const backStampMesh = new Mesh(backStampGeo, backboardFrontMaterial);
+    backStampMesh.position.z = -0.108;
+    backStampMesh.rotation.y = Math.PI;
+    frameGroup.add(backBoxMesh, backStampMesh);
+
+    const shadowGeo = new PlaneGeometry(spec.outerW + 1.0, spec.outerH + 0.94);
+    geometries.push(shadowGeo);
+    shadowMesh.geometry = shadowGeo;
+
+    if (certCanvas.width !== spec.canvasW || certCanvas.height !== spec.canvasH) {
+      certCanvas.width = spec.canvasW;
+      certCanvas.height = spec.canvasH;
+      const cCtx = certCanvas.getContext("2d");
+      if (cCtx) {
+        cCtx.fillStyle = "#181614";
+        cCtx.fillRect(0, 0, certCanvas.width, certCanvas.height);
+      }
+      certTex.dispose();
+      certTex = createCertCanvasTexture(certCanvas, maxAniso);
+      artMaterial.map = certTex;
+      artMaterial.needsUpdate = true;
+    }
+
+    if (spec.isPortrait !== prevIsPortrait) {
+      backboardTex.dispose();
+      backboardTex = createBackboardTexture(spec.isPortrait);
+      backboardFrontMaterial.map = backboardTex;
+      backboardFrontMaterial.needsUpdate = true;
+    }
+  };
+
+  rebuildFrameGeometry(currentFormat);
 
   let curRotX = 0.1;
   let curRotY = 0.24;
@@ -816,8 +919,8 @@ export function mountCertificateFrameScene({
     const h = Math.max(container.clientHeight, 160);
     const aspect = w / h;
     const halfTan = Math.tan((FOV_DEG * Math.PI) / 360);
-    const camZHeight = (2.98 * 0.5) / halfTan;
-    const camZWidth = (3.95 * 0.5) / (halfTan * aspect);
+    const camZHeight = (activeSpec.fitH * 0.5) / halfTan;
+    const camZWidth = (activeSpec.fitW * 0.5) / (halfTan * aspect);
     const camZ = Math.max(5.15, camZHeight, camZWidth);
 
     activeRenderer.setSize(w, h, false);
@@ -859,6 +962,12 @@ export function mountCertificateFrameScene({
   return {
     setCertificate: (nextCert) => {
       if (disposed) return;
+      const nextFormat: CertificateFrameFormat =
+        nextCert.frameFormat ?? "landscape";
+      if (nextFormat !== currentFormat) {
+        rebuildFrameGeometry(nextFormat);
+        handleResize();
+      }
       curRotY += curRotY >= 0 ? -0.34 : 0.34;
       if (!pointerActive && !isDragging) {
         targetRotX = 0.045;

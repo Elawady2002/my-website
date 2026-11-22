@@ -44,6 +44,8 @@ export interface WorkProjectItem {
  * 2. Set `imageSrc: "/images/certificates/<file>.jpg"` on the item below.
  * 3. Optionally set `verifyUrl` if the issuer provides an online verification URL.
  */
+export type CertificateFrameFormat = "landscape" | "landscape-4x3" | "portrait";
+
 export interface CertificateItem {
   id: string;
   number: string;
@@ -53,6 +55,7 @@ export interface CertificateItem {
   details: string;
   description: string;
   accentColor: string;
+  frameFormat?: CertificateFrameFormat;
   imageSrc?: string;
   verifyUrl?: string;
   programUrl: string;
@@ -397,6 +400,40 @@ export const siteConfig = {
         programUrl: "https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr",
         programLabel: "Explore Creativa",
         featured: true,
+      },
+      {
+        id: "create-apps-championship",
+        number: "03",
+        title: "CREATE APPS CHAMPIONSHIP",
+        issuer: "Dubai Chamber of Digital Economy",
+        issuedDate: "2025–26",
+        details: "Create Apps in Dubai · Certificate of Participation",
+        description:
+          "Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative by Dubai Chamber of Digital Economy.",
+        accentColor: "#1E7CC6",
+        frameFormat: "landscape-4x3",
+        imageSrc: "/images/certificates/create-apps-championship-dubai.webp",
+        programUrl: "https://createapps.ae/",
+        programLabel: "Explore Create Apps",
+        featured: true,
+      },
+      {
+        id: "busuu-english-a1",
+        number: "04",
+        title: "ENGLISH LEVEL A1",
+        issuer: "Busuu",
+        issuedDate: "JAN 2023",
+        details: "January 9, 2023 · Grade B (86%) · CEFR A1",
+        description:
+          "Successfully completed the CEFR Level A1 English language certification on Busuu with a Grade B (86%), covering foundational everyday communication and structured expression.",
+        accentColor: "#117AF2",
+        frameFormat: "portrait",
+        imageSrc: "/images/certificates/busuu-english-a1.webp",
+        verifyUrl:
+          "https://api.busuu.com/anon/certificates/f851ec37c745e20ebe70bbb5807a32e7",
+        programUrl: "https://www.busuu.com/en/course/learn-english-online",
+        programLabel: "Explore Busuu",
+        featured: false,
       },
     ] as CertificateItem[],
   },
