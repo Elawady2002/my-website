@@ -418,8 +418,25 @@ export const siteConfig = {
         featured: true,
       },
       {
-        id: "busuu-english-a1",
+        id: "gdg-on-campus-uiux-core-team",
         number: "04",
+        title: "GDG ON CAMPUS · UI/UX CORE TEAM",
+        issuer: "Google Developer Groups on Campus · Zagazig",
+        issuedDate: "2024–25",
+        details: "2024–2025 Academic Year · Certificate of Completion",
+        description:
+          "Recognized for serving as a UI/UX Core Team member at Google Developer Groups on Campus — Zagazig University during the 2024–2025 academic year, contributing to design workshops and student tech community initiatives.",
+        accentColor: "#F9AB00",
+        frameFormat: "landscape",
+        imageSrc: "/images/certificates/gdg-on-campus-uiux-core-team.webp",
+        programUrl:
+          "https://gdg.community.dev/gdg-on-campus-zagazig-university-zagazig-egypt/",
+        programLabel: "Explore GDG Zagazig",
+        featured: false,
+      },
+      {
+        id: "busuu-english-a1",
+        number: "05",
         title: "ENGLISH LEVEL A1",
         issuer: "Busuu",
         issuedDate: "JAN 2023",

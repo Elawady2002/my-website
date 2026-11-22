@@ -24,6 +24,7 @@
 - **Figma Variables** (Osama Eldrieny · Oct 2025): Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture. [Course Playlist](https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft)
 - **Ideation Camp** (ITIDA · TIEC · Creativa Zagazig · Nov 2026): 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig. [Creativa Zagazig](https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr)
 - **Create Apps Championship** (Dubai Chamber of Digital Economy · 2025–26): Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative. [Create Apps in Dubai](https://createapps.ae/)
+- **GDG on Campus · UI/UX Core Team** (Google Developer Groups on Campus · Zagazig · 2024–25): Served as a UI/UX Core Team member during the 2024–2025 academic year, contributing to design workshops and student tech community initiatives. [GDG Zagazig](https://gdg.community.dev/gdg-on-campus-zagazig-university-zagazig-egypt/)
 - **English Level A1** (Busuu · Jan 2023): Completed CEFR Level A1 English language certification on Busuu with Grade B (86%). [Verify Certificate](https://api.busuu.com/anon/certificates/f851ec37c745e20ebe70bbb5807a32e7)
 
 ## Contact
