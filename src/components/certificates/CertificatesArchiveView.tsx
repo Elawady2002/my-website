@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
@@ -17,10 +17,43 @@ interface CertificateArchiveRowProps {
 function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps) {
   const series = cert.series;
   const hasSeries = Boolean(series && series.length > 1);
-  const [activeSeriesIdx, setActiveSeriesIdx] = useState(0);
+  const [seriesState, setSeriesState] = useState<{
+    idx: number;
+    dir: 1 | -1 | 0;
+  }>({ idx: 0, dir: 0 });
+
+  const stepSeries = useCallback(
+    (delta: 1 | -1) => {
+      if (!series || series.length < 2) return;
+      setSeriesState((prev) => ({
+        idx: (prev.idx + delta + series.length) % series.length,
+        dir: delta,
+      }));
+    },
+    [series]
+  );
+
+  const selectSeries = useCallback(
+    (targetIdx: number) => {
+      if (!series || series.length < 2) return;
+      setSeriesState((prev) => {
+        if (targetIdx === prev.idx) return prev;
+        return {
+          idx: targetIdx,
+          dir: targetIdx > prev.idx ? 1 : -1,
+        };
+      });
+    },
+    [series]
+  );
+
+  const preloadSrcs = useMemo(
+    () => (series ? series.map((level) => level.imageSrc) : undefined),
+    [series]
+  );
 
   const activeLevel =
-    hasSeries && series ? (series[activeSeriesIdx] ?? series[0]) : undefined;
+    hasSeries && series ? (series[seriesState.idx] ?? series[0]) : undefined;
 
   const displayCert: CertificateItem = activeLevel
     ? {
@@ -45,6 +78,9 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
         <CertificateFrame3D
           certificate={displayCert}
           allowWideOrbit
+          transitionDirection={seriesState.dir}
+          preloadSrcs={preloadSrcs}
+          onSeriesStep={hasSeries ? stepSeries : undefined}
           className={
             displayCert.frameFormat === "portrait"
               ? "h-[420px] sm:h-[520px] lg:h-[580px] w-full"
@@ -55,8 +91,9 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
         {hasSeries && series ? (
           <CertificateSeriesControls
             series={series}
-            activeIndex={activeSeriesIdx}
-            onSelect={setActiveSeriesIdx}
+            activeIndex={seriesState.idx}
+            onSelect={selectSeries}
+            onStep={stepSeries}
             ariaLabel={`${cert.title} certificates`}
             className="mt-4"
           />

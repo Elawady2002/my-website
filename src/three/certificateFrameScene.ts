@@ -32,7 +32,9 @@ import {
 } from "@/three/webglUtils";
 
 export interface CertificateFrameController {
-  setCertificate: (cert: CertificateItem) => void;
+  setCertificate: (cert: CertificateItem, direction?: 1 | -1 | 0) => void;
+  preloadImages: (srcs: readonly string[]) => void;
+  setSwipeOffset: (pxOffset: number) => void;
   setPointerNormalized: (nx: number, ny: number) => void;
   resetPose: () => void;
   setDraggingDelta: (dxPx: number, dyPx: number) => void;
@@ -384,9 +386,57 @@ function drawRecessedFrameShadow(
   });
 }
 
+const loadedCertImages = new Map<string, HTMLImageElement>();
+const inFlightCertCallbacks = new Map<
+  string,
+  Set<(img: HTMLImageElement | null) => void>
+>();
+
+function loadCachedImage(
+  src: string,
+  onDone?: (img: HTMLImageElement | null) => void
+): void {
+  const cached = loadedCertImages.get(src);
+  if (cached) {
+    onDone?.(cached);
+    return;
+  }
+
+  let listeners = inFlightCertCallbacks.get(src);
+  if (listeners) {
+    if (onDone) listeners.add(onDone);
+    return;
+  }
+
+  listeners = new Set();
+  if (onDone) listeners.add(onDone);
+  inFlightCertCallbacks.set(src, listeners);
+
+  const img = new window.Image();
+  img.crossOrigin = "anonymous";
+  img.decoding = "async";
+  img.onload = () => {
+    img.onload = null;
+    img.onerror = null;
+    loadedCertImages.set(src, img);
+    const cbs = inFlightCertCallbacks.get(src);
+    inFlightCertCallbacks.delete(src);
+    cbs?.forEach((cb) => cb(img));
+  };
+  img.onerror = () => {
+    img.onload = null;
+    img.onerror = null;
+    const cbs = inFlightCertCallbacks.get(src);
+    inFlightCertCallbacks.delete(src);
+    cbs?.forEach((cb) => cb(null));
+  };
+  img.src = src;
+}
+
 function drawFallbackCertificatePlate(
   canvas: HTMLCanvasElement,
-  cert: CertificateItem
+  cert: CertificateItem,
+  withShadow = true
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -422,12 +472,13 @@ function drawFallbackCertificatePlate(
     height * 0.72
   );
 
-  drawRecessedFrameShadow(ctx, width, height);
+  if (withShadow) drawRecessedFrameShadow(ctx, width, height);
 }
 
 function drawScannedCertificateImage(
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement
+  img: HTMLImageElement,
+  withShadow = true
 ): void {
   const width = canvas.width;
   const height = canvas.height;
@@ -439,7 +490,7 @@ function drawScannedCertificateImage(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   drawCoverImage(ctx, img, width, height);
-  drawRecessedFrameShadow(ctx, width, height);
+  if (withShadow) drawRecessedFrameShadow(ctx, width, height);
 }
 
 function createMiterRailGeometry(
@@ -551,6 +602,8 @@ export function mountCertificateFrameScene({
     if (onWebglFailed) queueMicrotask(onWebglFailed);
     return {
       setCertificate: () => {},
+      preloadImages: () => {},
+      setSwipeOffset: () => {},
       setPointerNormalized: () => {},
       resetPose: () => {},
       setDraggingDelta: () => {},
@@ -623,6 +676,14 @@ export function mountCertificateFrameScene({
   const certCanvas = document.createElement("canvas");
   certCanvas.width = activeSpec.canvasW;
   certCanvas.height = activeSpec.canvasH;
+  const prevArtCanvas = document.createElement("canvas");
+  prevArtCanvas.width = activeSpec.canvasW;
+  prevArtCanvas.height = activeSpec.canvasH;
+  const nextArtCanvas = document.createElement("canvas");
+  nextArtCanvas.width = activeSpec.canvasW;
+  nextArtCanvas.height = activeSpec.canvasH;
+
+  let hasRenderedArt = false;
   if (certificate.imageSrc) {
     const cCtx = certCanvas.getContext("2d");
     if (cCtx) {
@@ -630,7 +691,13 @@ export function mountCertificateFrameScene({
       cCtx.fillRect(0, 0, certCanvas.width, certCanvas.height);
     }
   } else {
-    drawFallbackCertificatePlate(certCanvas, certificate);
+    drawFallbackCertificatePlate(nextArtCanvas, certificate, false);
+    const cCtx = certCanvas.getContext("2d");
+    if (cCtx) {
+      cCtx.drawImage(nextArtCanvas, 0, 0);
+      drawRecessedFrameShadow(cCtx, certCanvas.width, certCanvas.height);
+    }
+    hasRenderedArt = true;
   }
 
   let certTex = createCertCanvasTexture(certCanvas, maxAniso);
@@ -787,6 +854,10 @@ export function mountCertificateFrameScene({
     if (certCanvas.width !== spec.canvasW || certCanvas.height !== spec.canvasH) {
       certCanvas.width = spec.canvasW;
       certCanvas.height = spec.canvasH;
+      prevArtCanvas.width = spec.canvasW;
+      prevArtCanvas.height = spec.canvasH;
+      nextArtCanvas.width = spec.canvasW;
+      nextArtCanvas.height = spec.canvasH;
       const cCtx = certCanvas.getContext("2d");
       if (cCtx) {
         cCtx.fillStyle = "#181614";
@@ -816,6 +887,13 @@ export function mountCertificateFrameScene({
   let dragRotY = 0;
   let isDragging = false;
   let pointerActive = false;
+  let curSwipeNorm = 0;
+  let targetSwipeNorm = 0;
+
+  let isTransitioning = false;
+  let transitionStartTime = 0;
+  let transitionDurationMs = 340;
+  let transitionDir: 1 | -1 | 0 = 0;
 
   frameGroup.rotation.set(curRotX, curRotY, 0);
 
@@ -825,12 +903,49 @@ export function mountCertificateFrameScene({
   let needsForcedRender = true;
   let certLoadSeq = 0;
 
+  const compositeTransitionFrame = (progress: number, withShadow = true) => {
+    const ctx = certCanvas.getContext("2d");
+    if (!ctx) return;
+    const w = certCanvas.width;
+    const h = certCanvas.height;
+    const shift = transitionDir === 0 ? 0 : w * 0.065;
+
+    ctx.fillStyle = "#181614";
+    ctx.fillRect(0, 0, w, h);
+
+    if (1 - progress > 0.005) {
+      ctx.globalAlpha = 1 - progress;
+      ctx.drawImage(prevArtCanvas, -transitionDir * shift * progress, 0);
+    }
+    ctx.globalAlpha = progress;
+    ctx.drawImage(nextArtCanvas, transitionDir * shift * (1 - progress), 0);
+    ctx.globalAlpha = 1;
+
+    if (withShadow) drawRecessedFrameShadow(ctx, w, h);
+    certTex.needsUpdate = true;
+  };
+
   const scheduleLoop = () => {
     if (disposed || !isInView || document.hidden || rafId !== 0) return;
     rafId = window.requestAnimationFrame(tick);
   };
 
   const renderFrame = (): boolean => {
+    let transitionYaw = 0;
+    let transitionPosX = 0;
+    if (isTransitioning) {
+      const elapsed = performance.now() - transitionStartTime;
+      const t = clamp(elapsed / transitionDurationMs, 0, 1);
+      const e = 1 - Math.pow(1 - t, 3);
+      compositeTransitionFrame(e, true);
+      const pulse = Math.sin(t * Math.PI);
+      transitionYaw = -transitionDir * 0.14 * pulse;
+      transitionPosX = -transitionDir * 0.08 * pulse;
+      if (t >= 1) {
+        isTransitioning = false;
+      }
+    }
+
     const goalX = isDragging ? clamp(dragRotX, -0.55, 0.55) : targetRotX;
     const maxYaw = allowWideOrbit ? Math.PI : 0.95;
     const goalY = isDragging ? clamp(dragRotY, -maxYaw, maxYaw) : targetRotY;
@@ -839,23 +954,36 @@ export function mountCertificateFrameScene({
     curRotX += (goalX - curRotX) * lerp;
     curRotY += (goalY - curRotY) * lerp;
 
+    const swipeLerp = Math.abs(targetSwipeNorm) > 0.001 ? 0.28 : 0.14;
+    curSwipeNorm += (targetSwipeNorm - curSwipeNorm) * swipeLerp;
+    if (Math.abs(targetSwipeNorm - curSwipeNorm) < 0.001) {
+      curSwipeNorm = targetSwipeNorm;
+    }
+
     const settled =
       !isDragging &&
+      !isTransitioning &&
       Math.abs(goalX - curRotX) < 0.0005 &&
-      Math.abs(goalY - curRotY) < 0.0005;
+      Math.abs(goalY - curRotY) < 0.0005 &&
+      Math.abs(targetSwipeNorm - curSwipeNorm) < 0.001;
 
     if (settled) {
       curRotX = goalX;
       curRotY = goalY;
     }
 
-    frameGroup.rotation.set(curRotX, curRotY, 0);
+    const finalRotX = curRotX;
+    const finalRotY = curRotY + curSwipeNorm * 0.22 + transitionYaw;
+    const finalPosX = curSwipeNorm * 0.28 + transitionPosX;
+
+    frameGroup.rotation.set(finalRotX, finalRotY, 0);
+    frameGroup.position.x = finalPosX;
     shadowMesh.position.set(
-      0.06 - curRotY * 0.35,
-      -0.08 + curRotX * 0.28,
+      0.06 + finalPosX - finalRotY * 0.35,
+      -0.08 + finalRotX * 0.28,
       -0.45
     );
-    glareMaterial.uniforms.uTilt.value.set(curRotX, curRotY);
+    glareMaterial.uniforms.uTilt.value.set(finalRotX, finalRotY);
 
     if (!settled || needsForcedRender) {
       activeRenderer.render(scene, camera);
@@ -878,40 +1006,76 @@ export function mountCertificateFrameScene({
     else activeRenderer.render(scene, camera);
   };
 
-  const loadCertificateArtwork = (cert: CertificateItem) => {
-    certLoadSeq += 1;
-    const seq = certLoadSeq;
+  const commitArtworkBuffer = (
+    drawIntoNext: () => void,
+    direction: 1 | -1 | 0
+  ) => {
+    if (hasRenderedArt) {
+      if (isTransitioning) {
+        const elapsed = performance.now() - transitionStartTime;
+        const t = clamp(elapsed / transitionDurationMs, 0, 1);
+        const e = 1 - Math.pow(1 - t, 3);
+        compositeTransitionFrame(e, false);
+        const pCtx = prevArtCanvas.getContext("2d");
+        if (pCtx) pCtx.drawImage(certCanvas, 0, 0);
+      } else {
+        const pCtx = prevArtCanvas.getContext("2d");
+        if (pCtx) pCtx.drawImage(nextArtCanvas, 0, 0);
+      }
 
-    if (!cert.imageSrc) {
-      drawFallbackCertificatePlate(certCanvas, cert);
-      certTex.needsUpdate = true;
+      drawIntoNext();
+      transitionDir = direction;
+      transitionDurationMs = direction === 0 ? 260 : 340;
+      transitionStartTime = performance.now();
+      isTransitioning = true;
+      compositeTransitionFrame(0, true);
       wake();
       return;
     }
 
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.decoding = "async";
-    img.onload = () => {
-      img.onload = null;
-      img.onerror = null;
-      if (disposed || seq !== certLoadSeq) return;
-      drawScannedCertificateImage(certCanvas, img);
-      certTex.needsUpdate = true;
-      wake();
-    };
-    img.onerror = () => {
-      img.onload = null;
-      img.onerror = null;
-      if (disposed || seq !== certLoadSeq) return;
-      drawFallbackCertificatePlate(certCanvas, cert);
-      certTex.needsUpdate = true;
-      wake();
-    };
-    img.src = cert.imageSrc;
+    drawIntoNext();
+    const ctx = certCanvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(nextArtCanvas, 0, 0);
+      drawRecessedFrameShadow(ctx, certCanvas.width, certCanvas.height);
+    }
+    certTex.needsUpdate = true;
+    hasRenderedArt = true;
+    wake();
   };
 
-  if (certificate.imageSrc) loadCertificateArtwork(certificate);
+  const loadCertificateArtwork = (
+    cert: CertificateItem,
+    direction: 1 | -1 | 0 = 0
+  ) => {
+    certLoadSeq += 1;
+    const seq = certLoadSeq;
+
+    if (!cert.imageSrc) {
+      commitArtworkBuffer(
+        () => drawFallbackCertificatePlate(nextArtCanvas, cert, false),
+        direction
+      );
+      return;
+    }
+
+    loadCachedImage(cert.imageSrc, (img) => {
+      if (disposed || seq !== certLoadSeq) return;
+      if (img) {
+        commitArtworkBuffer(
+          () => drawScannedCertificateImage(nextArtCanvas, img, false),
+          direction
+        );
+      } else {
+        commitArtworkBuffer(
+          () => drawFallbackCertificatePlate(nextArtCanvas, cert, false),
+          direction
+        );
+      }
+    });
+  };
+
+  if (certificate.imageSrc) loadCertificateArtwork(certificate, 0);
 
   const handleResize = () => {
     if (disposed || !container) return;
@@ -960,20 +1124,32 @@ export function mountCertificateFrameScene({
   document.addEventListener("visibilitychange", handleVisibility);
 
   return {
-    setCertificate: (nextCert) => {
+    setCertificate: (nextCert, direction = 0) => {
       if (disposed) return;
       const nextFormat: CertificateFrameFormat =
         nextCert.frameFormat ?? "landscape";
       if (nextFormat !== currentFormat) {
+        isTransitioning = false;
+        hasRenderedArt = false;
         rebuildFrameGeometry(nextFormat);
         handleResize();
       }
-      curRotY += curRotY >= 0 ? -0.34 : 0.34;
       if (!pointerActive && !isDragging) {
         targetRotX = 0.045;
         targetRotY = -0.085;
       }
-      loadCertificateArtwork(nextCert);
+      loadCertificateArtwork(nextCert, direction);
+    },
+    preloadImages: (srcs) => {
+      if (disposed) return;
+      for (const src of srcs) {
+        if (src) loadCachedImage(src);
+      }
+    },
+    setSwipeOffset: (pxOffset) => {
+      if (disposed) return;
+      targetSwipeNorm = Math.tanh(pxOffset / 240);
+      wake();
     },
     setPointerNormalized: (nx, ny) => {
       if (disposed || isDragging) return;

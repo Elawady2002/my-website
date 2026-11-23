@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
 import { CertificateSeriesControls } from "@/components/certificates/CertificateSeriesControls";
@@ -20,8 +20,24 @@ export function CertificatesSection() {
     return (flagged.length > 0 ? flagged : certificates).slice(0, 3);
   }, [certificates]);
 
+  const preloadSrcs = useMemo(() => {
+    const srcs: string[] = [];
+    for (const c of featuredList) {
+      if (c.imageSrc) srcs.push(c.imageSrc);
+      if (c.series) {
+        for (const s of c.series) {
+          if (s.imageSrc) srcs.push(s.imageSrc);
+        }
+      }
+    }
+    return Array.from(new Set(srcs));
+  }, [featuredList]);
+
   const [activeIdx, setActiveIdx] = useState(0);
-  const [activeSeriesIdx, setActiveSeriesIdx] = useState(0);
+  const [seriesState, setSeriesState] = useState<{
+    idx: number;
+    dir: 1 | -1 | 0;
+  }>({ idx: 0, dir: 0 });
   const sectionRef = useRef<HTMLElement | null>(null);
   const magnetic = useMagneticHover<HTMLAnchorElement>({
     xFactor: 0.14,
@@ -31,12 +47,38 @@ export function CertificatesSection() {
   useRevealOnView(sectionRef, CERT_REVEAL_OPTS);
 
   const activeCert = featuredList[activeIdx] || featuredList[0];
+  const series = activeCert?.series;
+  const hasSeries = Boolean(series && series.length > 1);
+
+  const stepSeries = useCallback(
+    (delta: 1 | -1) => {
+      if (!series || series.length < 2) return;
+      setSeriesState((prev) => ({
+        idx: (prev.idx + delta + series.length) % series.length,
+        dir: delta,
+      }));
+    },
+    [series]
+  );
+
+  const selectSeries = useCallback(
+    (targetIdx: number) => {
+      if (!series || series.length < 2) return;
+      setSeriesState((prev) => {
+        if (targetIdx === prev.idx) return prev;
+        return {
+          idx: targetIdx,
+          dir: targetIdx > prev.idx ? 1 : -1,
+        };
+      });
+    },
+    [series]
+  );
+
   if (!activeCert) return null;
 
-  const series = activeCert.series;
-  const hasSeries = Boolean(series && series.length > 1);
   const activeLevel =
-    hasSeries && series ? (series[activeSeriesIdx] ?? series[0]) : undefined;
+    hasSeries && series ? (series[seriesState.idx] ?? series[0]) : undefined;
 
   const displayCert: CertificateItem = activeLevel
     ? {
@@ -54,7 +96,7 @@ export function CertificatesSection() {
   const selectCertificate = (idx: number) => {
     if (idx === activeIdx) return;
     setActiveIdx(idx);
-    setActiveSeriesIdx(0);
+    setSeriesState({ idx: 0, dir: 0 });
   };
 
   return (
@@ -160,6 +202,9 @@ export function CertificatesSection() {
         >
           <CertificateFrame3D
             certificate={displayCert}
+            transitionDirection={seriesState.dir}
+            preloadSrcs={preloadSrcs}
+            onSeriesStep={hasSeries ? stepSeries : undefined}
             className="h-[340px] sm:h-[420px] lg:h-[480px] w-full"
           />
 
@@ -168,8 +213,9 @@ export function CertificatesSection() {
               {hasSeries && series ? (
                 <CertificateSeriesControls
                   series={series}
-                  activeIndex={activeSeriesIdx}
-                  onSelect={setActiveSeriesIdx}
+                  activeIndex={seriesState.idx}
+                  onSelect={selectSeries}
+                  onStep={stepSeries}
                   ariaLabel={`${activeCert.title} certificates`}
                 />
               ) : null}

@@ -15,34 +15,58 @@ export interface CertificateFrame3DProps {
   certificate: CertificateItem;
   className?: string;
   allowWideOrbit?: boolean;
+  transitionDirection?: 1 | -1 | 0;
+  preloadSrcs?: readonly string[];
+  onSeriesStep?: (delta: 1 | -1) => void;
 }
 
 export function CertificateFrame3D({
   certificate,
   className = "",
   allowWideOrbit = false,
+  transitionDirection = 0,
+  preloadSrcs,
+  onSeriesStep,
 }: CertificateFrame3DProps) {
   const outerRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const ctrlRef = useRef<CertificateFrameController | null>(null);
   const latestCertRef = useRef(certificate);
   const lastAppliedIdRef = useRef(certificate.id);
+  const preloadSrcsRef = useRef(preloadSrcs);
+  const onSeriesStepRef = useRef(onSeriesStep);
   const stageRectRef = useRef<DOMRect | null>(null);
   const draggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const swipeStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const axisLockRef = useRef<"x" | "y" | null>(null);
 
   const [isNearView, setIsNearView] = useState(false);
   const [webglReady, setWebglReady] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
   const [isDraggingUI, setIsDraggingUI] = useState(false);
 
+  const hasSeriesSwipe = Boolean(onSeriesStep);
+
+  useEffect(() => {
+    onSeriesStepRef.current = onSeriesStep;
+    if (!onSeriesStep) ctrlRef.current?.setSwipeOffset(0);
+  }, [onSeriesStep]);
+
+  useEffect(() => {
+    preloadSrcsRef.current = preloadSrcs;
+    if (webglReady && preloadSrcs?.length) {
+      ctrlRef.current?.preloadImages(preloadSrcs);
+    }
+  }, [webglReady, preloadSrcs]);
+
   useEffect(() => {
     latestCertRef.current = certificate;
     if (ctrlRef.current && lastAppliedIdRef.current !== certificate.id) {
       lastAppliedIdRef.current = certificate.id;
-      ctrlRef.current.setCertificate(certificate);
+      ctrlRef.current.setCertificate(certificate, transitionDirection);
     }
-  }, [certificate]);
+  }, [certificate, transitionDirection]);
 
   useEffect(() => {
     const el = outerRef.current;
@@ -91,6 +115,9 @@ export function CertificateFrame3D({
             }
           },
         });
+        if (preloadSrcsRef.current?.length) {
+          ctrlRef.current.preloadImages(preloadSrcsRef.current);
+        }
         setWebglReady(true);
       })
       .catch(() => {
@@ -108,6 +135,46 @@ export function CertificateFrame3D({
     };
   }, [isNearView, webglFailed, allowWideOrbit]);
 
+  useEffect(() => {
+    if (!hasSeriesSwipe) return;
+    const el = outerRef.current;
+    if (!el) return;
+
+    let accumX = 0;
+    let resetTimer = 0;
+    let cooldownUntil = 0;
+
+    const handleWheel = (e: WheelEvent) => {
+      const absX = Math.abs(e.deltaX);
+      const absY = Math.abs(e.deltaY);
+      if (absX <= absY * 1.15 || absX <= 3) return;
+
+      e.preventDefault();
+
+      const now = performance.now();
+      if (now < cooldownUntil) return;
+
+      accumX += e.deltaX;
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => {
+        accumX = 0;
+      }, 140);
+
+      if (Math.abs(accumX) >= 38) {
+        const step: 1 | -1 = accumX > 0 ? 1 : -1;
+        accumX = 0;
+        cooldownUntil = now + 460;
+        onSeriesStepRef.current?.(step);
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.clearTimeout(resetTimer);
+      el.removeEventListener("wheel", handleWheel);
+    };
+  }, [hasSeriesSwipe]);
+
   const getRect = (el: HTMLElement) => {
     if (!stageRectRef.current) stageRectRef.current = el.getBoundingClientRect();
     return stageRectRef.current;
@@ -119,13 +186,43 @@ export function CertificateFrame3D({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     draggingRef.current = true;
-    setIsDraggingUI(true);
     lastPosRef.current = { x: e.clientX, y: e.clientY };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    swipeStartRef.current = { x: e.clientX, y: e.clientY, time: performance.now() };
+    axisLockRef.current = null;
+    if (!hasSeriesSwipe) {
+      setIsDraggingUI(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } else if (e.pointerType !== "touch") {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (draggingRef.current) {
+      if (hasSeriesSwipe) {
+        const dx = e.clientX - swipeStartRef.current.x;
+        const dy = e.clientY - swipeStartRef.current.y;
+        if (axisLockRef.current === null) {
+          if (Math.hypot(dx, dy) < 6) return;
+          if (Math.abs(dx) >= Math.abs(dy) * 0.85) {
+            axisLockRef.current = "x";
+            setIsDraggingUI(true);
+            if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }
+          } else {
+            axisLockRef.current = "y";
+            draggingRef.current = false;
+            ctrlRef.current?.setSwipeOffset(0);
+            return;
+          }
+        }
+        if (axisLockRef.current === "x") {
+          ctrlRef.current?.setSwipeOffset(dx);
+        }
+        return;
+      }
+
       const dx = e.clientX - lastPosRef.current.x;
       const dy = e.clientY - lastPosRef.current.y;
       lastPosRef.current = { x: e.clientX, y: e.clientY };
@@ -148,6 +245,21 @@ export function CertificateFrame3D({
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
+
+    if (hasSeriesSwipe) {
+      ctrlRef.current?.setSwipeOffset(0);
+      if (axisLockRef.current === "x") {
+        const dx = e.clientX - swipeStartRef.current.x;
+        const dt = Math.max(performance.now() - swipeStartRef.current.time, 1);
+        const velocity = Math.abs(dx) / dt;
+        if (Math.abs(dx) >= 48 || (Math.abs(dx) >= 24 && velocity >= 0.35)) {
+          onSeriesStepRef.current?.(dx < 0 ? 1 : -1);
+        }
+      }
+      axisLockRef.current = null;
+      return;
+    }
+
     ctrlRef.current?.endDrag();
   };
 
