@@ -64,7 +64,7 @@ const FRAME_DEPTH = 0.16;
 const BEVEL_SIZE = 0.018;
 const BEVEL_THICKNESS = 0.022;
 const FILLET_W = 0.015;
-const SHUFFLE_DURATION_MS = 520;
+const SHUFFLE_DURATION_MS = 320;
 
 interface FrameSpec {
   outerW: number;
@@ -80,8 +80,8 @@ const FRAME_SPECS: Record<CertificateFrameFormat, FrameSpec> = {
   landscape: {
     outerW: 3.59,
     outerH: 2.66,
-    canvasW: 1600,
-    canvasH: 1128,
+    canvasW: 1200,
+    canvasH: 846,
     fitW: 3.95,
     fitH: 2.98,
     isPortrait: false,
@@ -89,8 +89,8 @@ const FRAME_SPECS: Record<CertificateFrameFormat, FrameSpec> = {
   "landscape-4x3": {
     outerW: 3.4,
     outerH: 2.66,
-    canvasW: 1600,
-    canvasH: 1200,
+    canvasW: 1200,
+    canvasH: 900,
     fitW: 3.76,
     fitH: 2.98,
     isPortrait: false,
@@ -98,8 +98,8 @@ const FRAME_SPECS: Record<CertificateFrameFormat, FrameSpec> = {
   portrait: {
     outerW: 2.66,
     outerH: 3.59,
-    canvasW: 1128,
-    canvasH: 1600,
+    canvasW: 846,
+    canvasH: 1200,
     fitW: 3.04,
     fitH: 3.98,
     isPortrait: true,
@@ -127,8 +127,8 @@ interface CardUnit {
   artMat: MeshStandardMaterial;
   glassMat: MeshPhysicalMaterial;
   glareMat: ShaderMaterial;
-  backEdgeMat: MeshStandardMaterial;
-  backFrontMat: MeshStandardMaterial;
+  backEdgeMat: MeshStandardMaterial | null;
+  backFrontMat: MeshStandardMaterial | null;
   opaqueMeshes: Mesh[];
   glassMesh: Mesh;
   glareMesh: Mesh;
@@ -243,7 +243,7 @@ function getWoodCanvases(): {
     };
   }
 
-  const size = 512;
+  const size = 256;
   const colorCanvas = document.createElement("canvas");
   colorCanvas.width = size;
   colorCanvas.height = size;
@@ -749,8 +749,8 @@ function applyCardOpacityAndBrightness(
     card.woodMat,
     card.brassMat,
     card.artMat,
-    card.backEdgeMat,
-    card.backFrontMat,
+    ...(card.backEdgeMat ? [card.backEdgeMat] : []),
+    ...(card.backFrontMat ? [card.backFrontMat] : []),
   ];
   opaqueMats.forEach((mat) => {
     if (mat.transparent !== isTranslucent) {
@@ -1016,8 +1016,8 @@ export function mountCertificateFrameScene({
       card.artMat.dispose();
       card.glassMat.dispose();
       card.glareMat.dispose();
-      card.backEdgeMat.dispose();
-      card.backFrontMat.dispose();
+      card.backEdgeMat?.dispose();
+      card.backFrontMat?.dispose();
       card.artTex.dispose();
     });
     cards = [];
@@ -1026,7 +1026,8 @@ export function mountCertificateFrameScene({
 
   const createCardUnit = (
     cert: CertificateItem,
-    spec: FrameSpec
+    spec: FrameSpec,
+    isDeck: boolean
   ): CardUnit => {
     const hw = spec.outerW * 0.5;
     const hh = spec.outerH * 0.5;
@@ -1101,17 +1102,21 @@ export function mountCertificateFrameScene({
       depthWrite: false,
     });
 
-    const backEdgeMat = new MeshStandardMaterial({
-      color: new Color(0x161412),
-      roughness: 0.85,
-      metalness: 0.05,
-    });
+    const backEdgeMat = !isDeck
+      ? new MeshStandardMaterial({
+          color: new Color(0x161412),
+          roughness: 0.85,
+          metalness: 0.05,
+        })
+      : null;
 
-    const backFrontMat = new MeshStandardMaterial({
-      map: backboardTex,
-      roughness: 0.82,
-      metalness: 0.04,
-    });
+    const backFrontMat = !isDeck
+      ? new MeshStandardMaterial({
+          map: backboardTex,
+          roughness: 0.82,
+          metalness: 0.04,
+        })
+      : null;
 
     const group = new Group();
     const opaqueMeshes: Mesh[] = [];
@@ -1152,7 +1157,7 @@ export function mountCertificateFrameScene({
     glareMesh.position.z = 0.048;
     group.add(glareMesh);
 
-    if (sharedBackBoxGeo && sharedBackStampGeo) {
+    if (!isDeck && backEdgeMat && backFrontMat && sharedBackBoxGeo && sharedBackStampGeo) {
       const backBoxMesh = new Mesh(sharedBackBoxGeo, backEdgeMat);
       backBoxMesh.position.z = -0.092;
       const backStampMesh = new Mesh(sharedBackStampGeo, backFrontMat);
@@ -1233,7 +1238,7 @@ export function mountCertificateFrameScene({
     deckSignature = items.map((c) => c.id).join("|");
 
     cards = items.map((cert, i) => {
-      const card = createCardUnit(cert, activeSpec);
+      const card = createCardUnit(cert, activeSpec, isDeck);
       const slot = (i - safeIdx + items.length) % items.length;
       const pose = getSlotPose(slot, items.length);
       card.fromSlot = slot;
@@ -1321,21 +1326,30 @@ export function mountCertificateFrameScene({
 
     // Backward (Prev): incoming front card swoops in from the left
     if (card.toSlot === 0) {
-      if (t < 0.2) {
-        const u = t / 0.2;
-        return {
-          ...card.startPose,
-          z: card.startPose.z - 0.24 * u,
-          opacity: card.startPose.opacity * (1 - u),
-        };
+      if (card.startPose.opacity > 0.05 && card.startPose.x >= -0.2) {
+        if (t < 0.14) {
+          const u = t / 0.14;
+          return {
+            ...card.startPose,
+            z: card.startPose.z - 0.24 * u,
+            opacity: card.startPose.opacity * (1 - u),
+          };
+        }
+        const u = clamp((t - 0.14) / 0.86, 0, 1);
+        const e = easeOutQuart(u);
+        const pose = lerpPose(SWEEP_PEAK_POSE, toPose, e);
+        pose.opacity = clamp(u / 0.36, 0, 1);
+        return pose;
       }
-      if (t < 0.22) {
-        return { ...SWEEP_PEAK_POSE, opacity: 0 };
-      }
-      const u = clamp((t - 0.22) / 0.78, 0, 1);
+
+      const fromPose =
+        card.startPose.x < -0.2
+          ? card.startPose
+          : { ...SWEEP_PEAK_POSE, opacity: 0 };
+      const u = clamp(t, 0, 1);
       const e = easeOutQuart(u);
-      const pose = lerpPose(SWEEP_PEAK_POSE, toPose, e);
-      pose.opacity = clamp(u / 0.42, 0, 1);
+      const pose = lerpPose(fromPose, toPose, e);
+      pose.opacity = clamp(Math.max(fromPose.opacity, u / 0.38), 0, 1);
       return pose;
     }
 
@@ -1393,6 +1407,7 @@ export function mountCertificateFrameScene({
       }
     } else if (isDeck) {
       const pull = Math.abs(curSwipeNorm);
+      const frontPose = getSlotPose(0, total);
       cards.forEach((card, i) => {
         const slot = (i - currentActiveIdx + total) % total;
         const basePose = getSlotPose(slot, total);
@@ -1407,9 +1422,16 @@ export function mountCertificateFrameScene({
             brightness: 1,
             opacity: 1,
           });
-        } else if (slot === 1 && pull > 0.0005) {
-          const frontPose = getSlotPose(0, total);
+        } else if (slot === 1 && curSwipeNorm < -0.0005) {
           applyCardPose(card, lerpPose(basePose, frontPose, pull * 0.28));
+        } else if (slot === total - 1 && curSwipeNorm > 0.0005) {
+          if (basePose.opacity <= 0.05) {
+            const peekPose = lerpPose(SWEEP_PEAK_POSE, frontPose, pull * 0.28);
+            peekPose.opacity = clamp(pull * 1.15, 0, 0.9);
+            applyCardPose(card, peekPose);
+          } else {
+            applyCardPose(card, lerpPose(basePose, frontPose, pull * 0.22));
+          }
         } else {
           applyCardPose(card, basePose);
         }
@@ -1550,16 +1572,16 @@ export function mountCertificateFrameScene({
     // Choose collision-free direction; absorb any active swipe offset seamlessly
     const isOneStepBack = (currentActiveIdx - 1 + total) % total === safeIdx;
     const isOneStepForward = (currentActiveIdx + 1) % total === safeIdx;
-    const effectiveDir: 1 | -1 =
-      total === 2
-        ? direction < 0
-          ? -1
-          : 1
-        : isOneStepBack && !isOneStepForward
-          ? -1
-          : direction < 0
-            ? -1
-            : 1;
+    let effectiveDir: 1 | -1;
+    if (total === 2) {
+      effectiveDir = direction < 0 ? -1 : 1;
+    } else if (isOneStepForward && !isOneStepBack) {
+      effectiveDir = 1;
+    } else if (isOneStepBack && !isOneStepForward) {
+      effectiveDir = -1;
+    } else {
+      effectiveDir = direction < 0 ? -1 : 1;
+    }
 
     cards.forEach((card, i) => {
       card.startPose = readCardLivePose(card);
@@ -1589,6 +1611,16 @@ export function mountCertificateFrameScene({
     },
     setSwipeOffset: (pxOffset) => {
       if (disposed) return;
+      if (isShuffling && Math.abs(pxOffset) > 0.5) {
+        isShuffling = false;
+        const total = cards.length;
+        cards.forEach((card) => {
+          const finalPose = getSlotPose(card.toSlot, total);
+          card.fromSlot = card.toSlot;
+          card.startPose = finalPose;
+          applyCardPose(card, finalPose);
+        });
+      }
       targetSwipeNorm = Math.tanh(pxOffset / 220);
       wake();
     },

@@ -91,9 +91,12 @@ export function CertificateFrame3D({
 
     const io = new IntersectionObserver(
       (entries) => {
-        setIsNearView(entries.some((entry) => entry.isIntersecting));
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsNearView(true);
+          io.disconnect();
+        }
       },
-      { rootMargin: "320px 0px", threshold: 0 }
+      { rootMargin: "900px 0px", threshold: 0 }
     );
     io.observe(el);
 
@@ -184,10 +187,10 @@ export function CertificateFrame3D({
         accumX = 0;
       }, 140);
 
-      if (Math.abs(accumX) >= 38) {
+      if (Math.abs(accumX) >= 24) {
         const step: 1 | -1 = accumX > 0 ? 1 : -1;
         accumX = 0;
-        cooldownUntil = now + 460;
+        cooldownUntil = now + 260;
         onSeriesStepRef.current?.(step);
       }
     };
@@ -234,18 +237,31 @@ export function CertificateFrame3D({
         const dx = e.clientX - swipeStartRef.current.x;
         const dy = e.clientY - swipeStartRef.current.y;
         if (axisLockRef.current === null) {
-          if (Math.hypot(dx, dy) < 6) return;
-          if (Math.abs(dx) >= Math.abs(dy) * 0.85) {
+          if (e.pointerType !== "touch") {
+            if (Math.abs(dx) < 3) return;
             axisLockRef.current = "x";
             setIsDraggingUI(true);
             if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
               e.currentTarget.setPointerCapture(e.pointerId);
             }
           } else {
-            axisLockRef.current = "y";
-            draggingRef.current = false;
-            ctrlRef.current?.setSwipeOffset(0);
-            return;
+            if (Math.hypot(dx, dy) < 6) return;
+            if (Math.abs(dx) >= Math.abs(dy) * 0.72) {
+              axisLockRef.current = "x";
+              setIsDraggingUI(true);
+              if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }
+            } else {
+              axisLockRef.current = "y";
+              draggingRef.current = false;
+              setIsDraggingUI(false);
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+              ctrlRef.current?.setSwipeOffset(0);
+              return;
+            }
           }
         }
         if (axisLockRef.current === "x") {
@@ -283,7 +299,7 @@ export function CertificateFrame3D({
         const dx = e.clientX - swipeStartRef.current.x;
         const dt = Math.max(performance.now() - swipeStartRef.current.time, 1);
         const velocity = Math.abs(dx) / dt;
-        if (Math.abs(dx) >= 48 || (Math.abs(dx) >= 24 && velocity >= 0.35)) {
+        if (Math.abs(dx) >= 30 || (Math.abs(dx) >= 16 && velocity >= 0.25)) {
           triggered = true;
           onSeriesStepRef.current?.(dx < 0 ? 1 : -1);
         }
@@ -311,6 +327,7 @@ export function CertificateFrame3D({
       onPointerMove={handlePointerMove}
       onPointerUp={finishDrag}
       onPointerCancel={finishDrag}
+      onLostPointerCapture={finishDrag}
       onPointerLeave={handlePointerLeave}
       onDoubleClick={() => ctrlRef.current?.resetPose()}
       className={`relative bg-transparent select-none touch-pan-y ${
