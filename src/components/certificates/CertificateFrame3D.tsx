@@ -200,6 +200,13 @@ export function CertificateFrame3D({
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (draggingRef.current) {
       if (hasSeriesSwipe) {
+        if (e.pointerType !== "touch" && ctrlRef.current) {
+          const rect = getRect(e.currentTarget);
+          const nx = ((e.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
+          const ny = ((e.clientY - rect.top) / Math.max(rect.height, 1)) * 2 - 1;
+          ctrlRef.current.setPointerNormalized(nx, ny);
+        }
+
         const dx = e.clientX - swipeStartRef.current.x;
         const dy = e.clientY - swipeStartRef.current.y;
         if (axisLockRef.current === null) {

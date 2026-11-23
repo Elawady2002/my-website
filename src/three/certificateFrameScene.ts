@@ -886,7 +886,6 @@ export function mountCertificateFrameScene({
   let dragRotX = 0;
   let dragRotY = 0;
   let isDragging = false;
-  let pointerActive = false;
   let curSwipeNorm = 0;
   let targetSwipeNorm = 0;
 
@@ -908,7 +907,7 @@ export function mountCertificateFrameScene({
     if (!ctx) return;
     const w = certCanvas.width;
     const h = certCanvas.height;
-    const shift = transitionDir === 0 ? 0 : w * 0.065;
+    const shift = transitionDir === 0 ? 0 : w * 0.08;
 
     ctx.fillStyle = "#181614";
     ctx.fillRect(0, 0, w, h);
@@ -931,16 +930,11 @@ export function mountCertificateFrameScene({
   };
 
   const renderFrame = (): boolean => {
-    let transitionYaw = 0;
-    let transitionPosX = 0;
     if (isTransitioning) {
       const elapsed = performance.now() - transitionStartTime;
       const t = clamp(elapsed / transitionDurationMs, 0, 1);
       const e = 1 - Math.pow(1 - t, 3);
       compositeTransitionFrame(e, true);
-      const pulse = Math.sin(t * Math.PI);
-      transitionYaw = -transitionDir * 0.14 * pulse;
-      transitionPosX = -transitionDir * 0.08 * pulse;
       if (t >= 1) {
         isTransitioning = false;
       }
@@ -950,11 +944,11 @@ export function mountCertificateFrameScene({
     const maxYaw = allowWideOrbit ? Math.PI : 0.95;
     const goalY = isDragging ? clamp(dragRotY, -maxYaw, maxYaw) : targetRotY;
 
-    const lerp = isDragging ? 0.24 : 0.095;
+    const lerp = isDragging ? 0.24 : 0.075;
     curRotX += (goalX - curRotX) * lerp;
     curRotY += (goalY - curRotY) * lerp;
 
-    const swipeLerp = Math.abs(targetSwipeNorm) > 0.001 ? 0.28 : 0.14;
+    const swipeLerp = Math.abs(targetSwipeNorm) > 0.001 ? 0.24 : 0.12;
     curSwipeNorm += (targetSwipeNorm - curSwipeNorm) * swipeLerp;
     if (Math.abs(targetSwipeNorm - curSwipeNorm) < 0.001) {
       curSwipeNorm = targetSwipeNorm;
@@ -973,8 +967,8 @@ export function mountCertificateFrameScene({
     }
 
     const finalRotX = curRotX;
-    const finalRotY = curRotY + curSwipeNorm * 0.22 + transitionYaw;
-    const finalPosX = curSwipeNorm * 0.28 + transitionPosX;
+    const finalRotY = curRotY;
+    const finalPosX = curSwipeNorm * 0.16;
 
     frameGroup.rotation.set(finalRotX, finalRotY, 0);
     frameGroup.position.x = finalPosX;
@@ -1025,7 +1019,7 @@ export function mountCertificateFrameScene({
 
       drawIntoNext();
       transitionDir = direction;
-      transitionDurationMs = direction === 0 ? 260 : 340;
+      transitionDurationMs = direction === 0 ? 260 : 320;
       transitionStartTime = performance.now();
       isTransitioning = true;
       compositeTransitionFrame(0, true);
@@ -1134,10 +1128,6 @@ export function mountCertificateFrameScene({
         rebuildFrameGeometry(nextFormat);
         handleResize();
       }
-      if (!pointerActive && !isDragging) {
-        targetRotX = 0.045;
-        targetRotY = -0.085;
-      }
       loadCertificateArtwork(nextCert, direction);
     },
     preloadImages: (srcs) => {
@@ -1153,14 +1143,12 @@ export function mountCertificateFrameScene({
     },
     setPointerNormalized: (nx, ny) => {
       if (disposed || isDragging) return;
-      pointerActive = true;
       targetRotY = clamp(nx, -1, 1) * 0.28;
       targetRotX = clamp(-ny, -1, 1) * 0.18;
       wake();
     },
     resetPose: () => {
       if (disposed) return;
-      pointerActive = false;
       isDragging = false;
       targetRotX = 0.045;
       targetRotY = -0.085;
