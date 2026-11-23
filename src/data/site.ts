@@ -384,8 +384,26 @@ export const siteConfig = {
      */
     certificates: [
       {
-        id: "figma-variables",
+        id: "manara-next-gen-devs-ai",
         number: "01",
+        title: "NEXT-GEN DEVS: AI TOOLS FOR SOFTWARE ENGINEERS",
+        issuer: "Manara",
+        issuedDate: "NOV 2026",
+        details: "November 23, 2026 · Official Certificate of Completion",
+        description:
+          "Completed the Manara course on modern AI-assisted software engineering workflows, covering AI coding assistants, rapid prototyping tools, and evaluating AI-generated code for production-grade applications.",
+        accentColor: "#F26532",
+        frameFormat: "landscape",
+        imageSrc: "/images/certificates/manara-next-gen-devs-ai.webp",
+        verifyUrl:
+          "https://app.manara.tech/verify-certificate?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjZXJ0aWZpY2F0ZUlkIjo0Nzg2NiwiaWF0IjoxNzk1NDQ1ODQzfQ.fNLIvWrmUsJ2qH6k3Nwv7TNL9RHcMdum1q66EZe_wH4",
+        programUrl: "https://manara.tech/",
+        programLabel: "Explore Manara",
+        featured: true,
+      },
+      {
+        id: "figma-variables",
+        number: "02",
         title: "FIGMA VARIABLES",
         issuer: "Osama Eldrieny",
         issuedDate: "OCT 2025",
@@ -396,21 +414,6 @@ export const siteConfig = {
         imageSrc: "/images/certificates/figma-variables-osama-eldrieny.webp",
         programUrl: "https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft",
         programLabel: "Take This Course",
-        featured: true,
-      },
-      {
-        id: "ideation-camp",
-        number: "02",
-        title: "IDEATION CAMP",
-        issuer: "ITIDA · TIEC · Creativa Zagazig",
-        issuedDate: "NOV 2026",
-        details: "28 Hours Intensive Training · E.Spaces",
-        description:
-          "Completed 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig.",
-        accentColor: "#0057A8",
-        imageSrc: "/images/certificates/ideation-camp-creativa-tiec.webp",
-        programUrl: "https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr",
-        programLabel: "Explore Creativa",
         featured: true,
       },
       {
@@ -430,8 +433,23 @@ export const siteConfig = {
         featured: true,
       },
       {
-        id: "gdg-on-campus-uiux-core-team",
+        id: "ideation-camp",
         number: "04",
+        title: "IDEATION CAMP",
+        issuer: "ITIDA · TIEC · Creativa Zagazig",
+        issuedDate: "NOV 2026",
+        details: "28 Hours Intensive Training · E.Spaces",
+        description:
+          "Completed 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig.",
+        accentColor: "#0057A8",
+        imageSrc: "/images/certificates/ideation-camp-creativa-tiec.webp",
+        programUrl: "https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr",
+        programLabel: "Explore Creativa",
+        featured: false,
+      },
+      {
+        id: "gdg-on-campus-uiux-core-team",
+        number: "05",
         title: "GDG ON CAMPUS · UI/UX CORE TEAM",
         issuer: "Google Developer Groups on Campus · Zagazig",
         issuedDate: "2024–25",
@@ -448,7 +466,7 @@ export const siteConfig = {
       },
       {
         id: "satr-dart-track",
-        number: "05",
+        number: "06",
         title: "DART PROGRAMMING TRACK",
         issuer: "Tuwaiq Academy · Satr",
         issuedDate: "MAY 2024",
@@ -490,7 +508,7 @@ export const siteConfig = {
       },
       {
         id: "busuu-english-a1",
-        number: "06",
+        number: "07",
         title: "ENGLISH LEVEL A1",
         issuer: "Busuu",
         issuedDate: "JAN 2023",
