@@ -21,7 +21,7 @@
 
 ## Certificates
 
-- **Next-Gen Devs: AI Tools for Software Engineers** (Manara · Nov 2026): Completed the Manara course on AI-assisted software engineering workflows, AI coding assistants, and rapid prototyping. [Verify Certificate](https://app.manara.tech/verify-certificate?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjZXJ0aWZpY2F0ZUlkIjo0Nzg2NiwiaWF0IjoxNzk1NDQ1ODQzfQ.fNLIvWrmUsJ2qH6k3Nwv7TNL9RHcMdum1q66EZe_wH4)
+- **Next-Gen Devs: AI Tools for Software Engineers** (Manara · Nov 2026): Completed the Manara course on AI-assisted software engineering workflows, AI coding assistants, and rapid prototyping. [Verify Certificate](https://api.manara.tech/api/v1/certificate/asset/mwte3oyi-qg03954g)
 - **Figma Variables** (Osama Eldrieny · Oct 2025): Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture. [Course Playlist](https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft)
 - **Ideation Camp** (ITIDA · TIEC · Creativa Zagazig · Nov 2026): 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig. [Creativa Zagazig](https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr)
 - **Create Apps Championship** (Dubai Chamber of Digital Economy · 2025–26): Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative. [Create Apps in Dubai](https://createapps.ae/)

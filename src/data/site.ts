@@ -396,7 +396,7 @@ export const siteConfig = {
         frameFormat: "landscape",
         imageSrc: "/images/certificates/manara-next-gen-devs-ai.webp",
         verifyUrl:
-          "https://app.manara.tech/verify-certificate?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjZXJ0aWZpY2F0ZUlkIjo0Nzg2NiwiaWF0IjoxNzk1NDQ1ODQzfQ.fNLIvWrmUsJ2qH6k3Nwv7TNL9RHcMdum1q66EZe_wH4",
+          "https://api.manara.tech/api/v1/certificate/asset/mwte3oyi-qg03954g",
         programUrl: "https://manara.tech/",
         programLabel: "Explore Manara",
         featured: true,
