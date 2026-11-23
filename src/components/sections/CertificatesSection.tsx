@@ -3,8 +3,9 @@
 import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
+import { CertificateSeriesControls } from "@/components/certificates/CertificateSeriesControls";
 import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
-import { siteConfig } from "@/data/site";
+import { siteConfig, type CertificateItem } from "@/data/site";
 import { useMagneticHover } from "@/hooks/useMagneticHover";
 import { useRevealOnView } from "@/hooks/useRevealOnView";
 
@@ -20,6 +21,7 @@ export function CertificatesSection() {
   }, [certificates]);
 
   const [activeIdx, setActiveIdx] = useState(0);
+  const [activeSeriesIdx, setActiveSeriesIdx] = useState(0);
   const sectionRef = useRef<HTMLElement | null>(null);
   const magnetic = useMagneticHover<HTMLAnchorElement>({
     xFactor: 0.14,
@@ -30,6 +32,30 @@ export function CertificatesSection() {
 
   const activeCert = featuredList[activeIdx] || featuredList[0];
   if (!activeCert) return null;
+
+  const series = activeCert.series;
+  const hasSeries = Boolean(series && series.length > 1);
+  const activeLevel =
+    hasSeries && series ? (series[activeSeriesIdx] ?? series[0]) : undefined;
+
+  const displayCert: CertificateItem = activeLevel
+    ? {
+        ...activeCert,
+        id: activeLevel.id,
+        imageSrc: activeLevel.imageSrc,
+        frameFormat: activeLevel.frameFormat ?? activeCert.frameFormat,
+      }
+    : activeCert;
+
+  const anyFeaturedHasSeries = featuredList.some(
+    (c) => c.series && c.series.length > 1
+  );
+
+  const selectCertificate = (idx: number) => {
+    if (idx === activeIdx) return;
+    setActiveIdx(idx);
+    setActiveSeriesIdx(0);
+  };
 
   return (
     <section
@@ -57,9 +83,9 @@ export function CertificatesSection() {
                 <button
                   key={cert.id}
                   type="button"
-                  onMouseEnter={() => setActiveIdx(idx)}
-                  onFocus={() => setActiveIdx(idx)}
-                  onClick={() => setActiveIdx(idx)}
+                  onMouseEnter={() => selectCertificate(idx)}
+                  onFocus={() => selectCertificate(idx)}
+                  onClick={() => selectCertificate(idx)}
                   style={
                     { "--cert-delay": `${140 + idx * 70}ms` } as React.CSSProperties
                   }
@@ -133,9 +159,22 @@ export function CertificatesSection() {
           className="cert-reveal-item lg:col-span-7"
         >
           <CertificateFrame3D
-            certificate={activeCert}
+            certificate={displayCert}
             className="h-[340px] sm:h-[420px] lg:h-[480px] w-full"
           />
+
+          {anyFeaturedHasSeries ? (
+            <div className="mt-3 h-9 flex items-center justify-center">
+              {hasSeries && series ? (
+                <CertificateSeriesControls
+                  series={series}
+                  activeIndex={activeSeriesIdx}
+                  onSelect={setActiveSeriesIdx}
+                  ariaLabel={`${activeCert.title} certificates`}
+                />
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

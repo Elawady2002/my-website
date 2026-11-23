@@ -53,6 +53,8 @@ export interface CertificateSeriesLevel {
   issuedDate: string;
   details: string;
   imageSrc: string;
+  title?: string;
+  description?: string;
   frameFormat?: CertificateFrameFormat;
   verifyUrl?: string;
 }
@@ -384,14 +386,14 @@ export const siteConfig = {
      */
     certificates: [
       {
-        id: "manara-next-gen-devs-ai",
+        id: "manara-ai-engineering",
         number: "01",
-        title: "NEXT-GEN DEVS: AI TOOLS FOR SOFTWARE ENGINEERS",
+        title: "AI & DATA ENGINEERING",
         issuer: "Manara",
         issuedDate: "NOV 2026",
-        details: "November 23, 2026 · Official Certificate of Completion",
+        details: "November 23, 2026 · Official Certificates of Completion",
         description:
-          "Completed the Manara course on modern AI-assisted software engineering workflows, covering AI coding assistants, rapid prototyping tools, and evaluating AI-generated code for production-grade applications.",
+          "Completed Manara's AI and Data courses covering AI-assisted software engineering tools, Generative AI case studies, and Python data visualization.",
         accentColor: "#F26532",
         frameFormat: "landscape",
         imageSrc: "/images/certificates/manara-next-gen-devs-ai.webp",
@@ -400,6 +402,50 @@ export const siteConfig = {
         programUrl: "https://manara.tech/",
         programLabel: "Explore Manara",
         featured: true,
+        series: [
+          {
+            id: "manara-next-gen-devs-ai",
+            label: "Next-Gen Devs: AI Tools",
+            title: "NEXT-GEN DEVS: AI TOOLS FOR SOFTWARE ENGINEERS",
+            level: "Course 1",
+            issuedDate: "NOV 2026",
+            details: "November 23, 2026 · Official Certificate of Completion",
+            description:
+              "Completed the Manara course on modern AI-assisted software engineering workflows, covering AI coding assistants, rapid prototyping tools, and evaluating AI-generated code for production-grade applications.",
+            imageSrc: "/images/certificates/manara-next-gen-devs-ai.webp",
+            verifyUrl:
+              "https://api.manara.tech/api/v1/certificate/asset/mwte3oyi-qg03954g",
+          },
+          {
+            id: "manara-generative-ai-in-action",
+            label: "Generative AI in Action",
+            title:
+              "GENERATIVE AI IN ACTION: CASE STUDIES AND FUTURE OUTLOOK",
+            level: "Course 2",
+            issuedDate: "NOV 2026",
+            details: "November 23, 2026 · Official Certificate of Completion",
+            description:
+              "Completed the Manara course exploring real-world Generative AI case studies, practical product applications, and the evolving landscape of AI engineering.",
+            imageSrc:
+              "/images/certificates/manara-generative-ai-in-action.webp",
+            verifyUrl:
+              "https://api.manara.tech/api/v1/certificate/asset/mwtflptz-f44ei0mw",
+          },
+          {
+            id: "manara-data-visualization-python",
+            label: "Data Visualization with Python",
+            title: "DATA VISUALIZATION WITH PYTHON: FROM INSIGHT TO IMPACT",
+            level: "Course 3",
+            issuedDate: "NOV 2026",
+            details: "November 23, 2026 · Official Certificate of Completion",
+            description:
+              "Completed the Manara course on transforming datasets into clear, decision-ready visualizations with Python, focusing on analytical storytelling from raw insight to measurable impact.",
+            imageSrc:
+              "/images/certificates/manara-data-visualization-python.webp",
+            verifyUrl:
+              "https://api.manara.tech/api/v1/certificate/asset/mwtfslo0-b2i2y385",
+          },
+        ],
       },
       {
         id: "figma-variables",

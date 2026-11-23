@@ -2,19 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { CertificateFrame3D } from "@/components/certificates/CertificateFrame3D";
+import { CertificateSeriesControls } from "@/components/certificates/CertificateSeriesControls";
 import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
 import { siteConfig, type CertificateItem } from "@/data/site";
 import { getLenis } from "@/lib/dom";
-
-const SERIES_ARROW_BTN_CLS =
-  "voy-glass inline-flex h-9 w-9 items-center justify-center rounded-full text-[#e7e1d7]/80 hover:text-white hover:border-[#f34213]/60 active:scale-95 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:border-[#f34213]";
 
 interface CertificateArchiveRowProps {
   cert: CertificateItem;
@@ -38,19 +31,10 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
       }
     : cert;
 
+  const effectiveTitle = activeLevel?.title ?? cert.title;
+  const effectiveDescription = activeLevel?.description ?? cert.description;
   const effectiveDate = activeLevel ? activeLevel.issuedDate : cert.issuedDate;
   const effectiveVerifyUrl = activeLevel?.verifyUrl ?? cert.verifyUrl;
-
-  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!series || series.length < 2) return;
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      setActiveSeriesIdx((prev) => (prev + 1) % series.length);
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      setActiveSeriesIdx((prev) => (prev - 1 + series.length) % series.length);
-    }
-  };
 
   return (
     <article
@@ -69,62 +53,13 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
         />
 
         {hasSeries && series ? (
-          <div className="mt-4 flex items-center justify-center gap-3">
-            <button
-              type="button"
-              aria-label="Previous certificate in track"
-              onClick={() =>
-                setActiveSeriesIdx(
-                  (prev) => (prev - 1 + series.length) % series.length
-                )
-              }
-              className={SERIES_ARROW_BTN_CLS}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            </button>
-
-            <div
-              role="tablist"
-              aria-label={`${cert.title} certificates`}
-              onKeyDown={handleTabKeyDown}
-              className="flex items-center justify-center gap-1"
-            >
-              {series.map((level, idx) => {
-                const isActive = idx === activeSeriesIdx;
-                return (
-                  <button
-                    key={level.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-label={`${level.label} — ${level.level}`}
-                    onClick={() => setActiveSeriesIdx(idx)}
-                    className="group p-1.5 cursor-pointer focus:outline-none"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`block h-2 rounded-full transition-all duration-300 ${
-                        isActive
-                          ? "w-7 bg-[#f34213] shadow-[0_0_12px_rgba(243,66,19,0.65)]"
-                          : "w-2 bg-[#e7e1d7]/25 group-hover:bg-[#e7e1d7]/60"
-                      }`}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              aria-label="Next certificate in track"
-              onClick={() =>
-                setActiveSeriesIdx((prev) => (prev + 1) % series.length)
-              }
-              className={SERIES_ARROW_BTN_CLS}
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+          <CertificateSeriesControls
+            series={series}
+            activeIndex={activeSeriesIdx}
+            onSelect={setActiveSeriesIdx}
+            ariaLabel={`${cert.title} certificates`}
+            className="mt-4"
+          />
         ) : null}
       </div>
 
@@ -138,7 +73,7 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
 
         <div>
           <h2 className="text-[24px] sm:text-[30px] xl:text-[34px] leading-[1.08] tracking-[-0.025em] font-normal uppercase text-[#e7e1d7]">
-            <StylizedWords text={cert.title} />
+            <StylizedWords text={effectiveTitle} />
           </h2>
           <p className="mt-2 text-[13.5px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
             {cert.issuer}
@@ -146,7 +81,7 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
         </div>
 
         <p className="text-[15px] sm:text-[16px] leading-[1.65] text-[#e7e1d7]/80">
-          {cert.description}
+          {effectiveDescription}
         </p>
 
         <div className="border-t border-[#e7e1d7]/15 text-[12.5px] uppercase tracking-[0.05em]">
