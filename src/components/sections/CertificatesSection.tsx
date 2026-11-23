@@ -75,6 +75,20 @@ export function CertificatesSection() {
     [series]
   );
 
+  const deckCertificates = useMemo(
+    () =>
+      hasSeries && series && activeCert
+        ? series.map((level) => ({
+            ...activeCert,
+            id: level.id,
+            title: level.title ?? activeCert.title,
+            imageSrc: level.imageSrc,
+            frameFormat: level.frameFormat ?? activeCert.frameFormat,
+          }))
+        : undefined,
+    [hasSeries, series, activeCert]
+  );
+
   if (!activeCert) return null;
 
   const activeLevel =
@@ -202,6 +216,8 @@ export function CertificatesSection() {
         >
           <CertificateFrame3D
             certificate={displayCert}
+            deckCertificates={deckCertificates}
+            activeDeckIndex={seriesState.idx}
             transitionDirection={seriesState.dir}
             preloadSrcs={preloadSrcs}
             onSeriesStep={hasSeries ? stepSeries : undefined}

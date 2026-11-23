@@ -20,6 +20,7 @@ import {
   Shape,
   SRGBColorSpace,
   Vector2,
+  type BufferGeometry,
 } from "three";
 import type { CertificateFrameFormat, CertificateItem } from "@/data/site";
 import { getDevicePerfTier } from "@/lib/deviceTier";
@@ -33,6 +34,11 @@ import {
 
 export interface CertificateFrameController {
   setCertificate: (cert: CertificateItem, direction?: 1 | -1 | 0) => void;
+  setDeck: (
+    items: readonly CertificateItem[],
+    activeIndex: number,
+    direction?: 1 | -1 | 0
+  ) => void;
   preloadImages: (srcs: readonly string[]) => void;
   setSwipeOffset: (pxOffset: number) => void;
   setPointerNormalized: (nx: number, ny: number) => void;
@@ -46,6 +52,8 @@ export interface CertificateFrameController {
 export interface CertificateFrameMountOptions {
   container: HTMLDivElement;
   certificate: CertificateItem;
+  deckCertificates?: readonly CertificateItem[];
+  activeDeckIndex?: number;
   allowWideOrbit?: boolean;
   onWebglFailed?: () => void;
 }
@@ -56,6 +64,7 @@ const FRAME_DEPTH = 0.16;
 const BEVEL_SIZE = 0.018;
 const BEVEL_THICKNESS = 0.022;
 const FILLET_W = 0.015;
+const SHUFFLE_DURATION_MS = 520;
 
 interface FrameSpec {
   outerW: number;
@@ -96,6 +105,42 @@ const FRAME_SPECS: Record<CertificateFrameFormat, FrameSpec> = {
     isPortrait: true,
   },
 };
+
+interface CardPose {
+  x: number;
+  y: number;
+  z: number;
+  rotY: number;
+  rotZ: number;
+  scale: number;
+  brightness: number;
+  opacity: number;
+}
+
+interface CardUnit {
+  id: string;
+  group: Group;
+  artCanvas: HTMLCanvasElement;
+  artTex: CanvasTexture;
+  woodMat: MeshPhysicalMaterial;
+  brassMat: MeshPhysicalMaterial;
+  artMat: MeshStandardMaterial;
+  glassMat: MeshPhysicalMaterial;
+  glareMat: ShaderMaterial;
+  backEdgeMat: MeshStandardMaterial;
+  backFrontMat: MeshStandardMaterial;
+  opaqueMeshes: Mesh[];
+  glassMesh: Mesh;
+  glareMesh: Mesh;
+  baseGlassOpacity: number;
+  baseGlareIntensity: number;
+  loadSeq: number;
+  currentBrightness: number;
+  currentOpacity: number;
+  fromSlot: number;
+  toSlot: number;
+  startPose: CardPose;
+}
 
 const GLASS_GLARE_VERTEX = /* glsl */ `
   varying vec2 vUv;
@@ -435,8 +480,7 @@ function loadCachedImage(
 
 function drawFallbackCertificatePlate(
   canvas: HTMLCanvasElement,
-  cert: CertificateItem,
-  withShadow = true
+  cert: CertificateItem
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -472,13 +516,12 @@ function drawFallbackCertificatePlate(
     height * 0.72
   );
 
-  if (withShadow) drawRecessedFrameShadow(ctx, width, height);
+  drawRecessedFrameShadow(ctx, width, height);
 }
 
 function drawScannedCertificateImage(
   canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
-  withShadow = true
+  img: HTMLImageElement
 ): void {
   const width = canvas.width;
   const height = canvas.height;
@@ -490,7 +533,7 @@ function drawScannedCertificateImage(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   drawCoverImage(ctx, img, width, height);
-  if (withShadow) drawRecessedFrameShadow(ctx, width, height);
+  drawRecessedFrameShadow(ctx, width, height);
 }
 
 function createMiterRailGeometry(
@@ -587,9 +630,160 @@ function createBackboardTexture(isPortrait: boolean): CanvasTexture {
   return tex;
 }
 
+function getSlotPose(slot: number, total: number): CardPose {
+  if (total <= 1 || slot <= 0) {
+    return {
+      x: 0,
+      y: 0,
+      z: 0,
+      rotY: 0,
+      rotZ: 0,
+      scale: 1,
+      brightness: 1,
+      opacity: 1,
+    };
+  }
+  if (slot === 1) {
+    return {
+      x: 0.3,
+      y: 0.1,
+      z: -0.42,
+      rotY: -0.04,
+      rotZ: -0.028,
+      scale: 0.955,
+      brightness: 0.74,
+      opacity: 1,
+    };
+  }
+  if (slot === 2) {
+    return {
+      x: 0.56,
+      y: 0.19,
+      z: -0.84,
+      rotY: -0.075,
+      rotZ: -0.052,
+      scale: 0.91,
+      brightness: 0.54,
+      opacity: 1,
+    };
+  }
+  return {
+    x: 0.66,
+    y: 0.24,
+    z: -1.16,
+    rotY: -0.09,
+    rotZ: -0.06,
+    scale: 0.87,
+    brightness: 0.38,
+    opacity: 0,
+  };
+}
+
+function lerpNum(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function lerpPose(a: CardPose, b: CardPose, t: number): CardPose {
+  return {
+    x: lerpNum(a.x, b.x, t),
+    y: lerpNum(a.y, b.y, t),
+    z: lerpNum(a.z, b.z, t),
+    rotY: lerpNum(a.rotY, b.rotY, t),
+    rotZ: lerpNum(a.rotZ, b.rotZ, t),
+    scale: lerpNum(a.scale, b.scale, t),
+    brightness: lerpNum(a.brightness, b.brightness, t),
+    opacity: lerpNum(a.opacity, b.opacity, t),
+  };
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function easeOutQuart(t: number): number {
+  return 1 - Math.pow(1 - t, 4);
+}
+
+const SWEEP_PEAK_POSE: CardPose = {
+  x: -1.08,
+  y: 0.05,
+  z: 0.24,
+  rotY: 0.24,
+  rotZ: 0.04,
+  scale: 0.93,
+  brightness: 0.85,
+  opacity: 0,
+};
+
+function readCardLivePose(card: CardUnit): CardPose {
+  return {
+    x: card.group.position.x,
+    y: card.group.position.y,
+    z: card.group.position.z,
+    rotY: card.group.rotation.y,
+    rotZ: card.group.rotation.z,
+    scale: card.group.scale.x,
+    brightness: card.currentBrightness,
+    opacity: card.currentOpacity,
+  };
+}
+
+function applyCardOpacityAndBrightness(
+  card: CardUnit,
+  opacity: number,
+  brightness: number
+): void {
+  const op = clamp(opacity, 0, 1);
+  const br = clamp(brightness, 0, 1);
+  card.currentOpacity = op;
+  card.currentBrightness = br;
+
+  if (op <= 0.004) {
+    card.group.visible = false;
+    return;
+  }
+  card.group.visible = true;
+
+  const isTranslucent = op < 0.995;
+  const opaqueMats = [
+    card.woodMat,
+    card.brassMat,
+    card.artMat,
+    card.backEdgeMat,
+    card.backFrontMat,
+  ];
+  opaqueMats.forEach((mat) => {
+    if (mat.transparent !== isTranslucent) {
+      mat.transparent = isTranslucent;
+      mat.depthWrite = !isTranslucent;
+    }
+    mat.opacity = op;
+  });
+
+  card.artMat.color.setScalar(br);
+  card.woodMat.color.setScalar(0.7 + 0.3 * br);
+  card.brassMat.color.setRGB(
+    (0xc9 / 255) * (0.65 + 0.35 * br),
+    (0xa6 / 255) * (0.65 + 0.35 * br),
+    (0x6b / 255) * (0.65 + 0.35 * br)
+  );
+
+  card.glassMat.opacity = card.baseGlassOpacity * op;
+  card.glareMat.uniforms.uIntensity.value = card.baseGlareIntensity * op;
+}
+
+function applyCardPose(card: CardUnit, pose: CardPose): void {
+  card.group.position.set(pose.x, pose.y, pose.z);
+  card.group.rotation.set(0, pose.rotY, pose.rotZ);
+  card.group.scale.setScalar(pose.scale);
+  applyCardOpacityAndBrightness(card, pose.opacity, pose.brightness);
+}
+
 export function mountCertificateFrameScene({
   container,
   certificate,
+  deckCertificates,
+  activeDeckIndex = 0,
   allowWideOrbit = false,
   onWebglFailed,
 }: CertificateFrameMountOptions): CertificateFrameController {
@@ -602,6 +796,7 @@ export function mountCertificateFrameScene({
     if (onWebglFailed) queueMicrotask(onWebglFailed);
     return {
       setCertificate: () => {},
+      setDeck: () => {},
       preloadImages: () => {},
       setSwipeOffset: () => {},
       setPointerNormalized: () => {},
@@ -649,104 +844,21 @@ export function mountCertificateFrameScene({
   woodBumpTex.anisotropy = Math.min(8, maxAniso);
   woodBumpTex.needsUpdate = true;
 
-  const woodMaterial = new MeshPhysicalMaterial({
-    map: woodColorTex,
-    bumpMap: woodBumpTex,
-    bumpScale: 0.018,
-    roughness: 0.42,
-    metalness: 0.04,
-    clearcoat: 0.38,
-    clearcoatRoughness: 0.28,
-    envMapIntensity: 1.05,
-  });
-
-  const brassMaterial = new MeshPhysicalMaterial({
-    color: new Color(0xc9a66b),
-    metalness: 0.85,
-    roughness: 0.26,
-    clearcoat: 0.4,
-    clearcoatRoughness: 0.2,
-    envMapIntensity: 1.35,
-  });
+  const initialItems =
+    deckCertificates && deckCertificates.length > 0
+      ? deckCertificates
+      : [certificate];
+  const initialActiveIdx = clamp(
+    activeDeckIndex,
+    0,
+    Math.max(0, initialItems.length - 1)
+  );
+  const initialActiveCert = initialItems[initialActiveIdx] ?? certificate;
 
   let currentFormat: CertificateFrameFormat =
-    certificate.frameFormat ?? "landscape";
+    initialActiveCert.frameFormat ?? "landscape";
   let activeSpec = FRAME_SPECS[currentFormat];
-
-  const certCanvas = document.createElement("canvas");
-  certCanvas.width = activeSpec.canvasW;
-  certCanvas.height = activeSpec.canvasH;
-  const prevArtCanvas = document.createElement("canvas");
-  prevArtCanvas.width = activeSpec.canvasW;
-  prevArtCanvas.height = activeSpec.canvasH;
-  const nextArtCanvas = document.createElement("canvas");
-  nextArtCanvas.width = activeSpec.canvasW;
-  nextArtCanvas.height = activeSpec.canvasH;
-
-  let hasRenderedArt = false;
-  if (certificate.imageSrc) {
-    const cCtx = certCanvas.getContext("2d");
-    if (cCtx) {
-      cCtx.fillStyle = "#181614";
-      cCtx.fillRect(0, 0, certCanvas.width, certCanvas.height);
-    }
-  } else {
-    drawFallbackCertificatePlate(nextArtCanvas, certificate, false);
-    const cCtx = certCanvas.getContext("2d");
-    if (cCtx) {
-      cCtx.drawImage(nextArtCanvas, 0, 0);
-      drawRecessedFrameShadow(cCtx, certCanvas.width, certCanvas.height);
-    }
-    hasRenderedArt = true;
-  }
-
-  let certTex = createCertCanvasTexture(certCanvas, maxAniso);
-
-  const artMaterial = new MeshStandardMaterial({
-    map: certTex,
-    roughness: 0.72,
-    metalness: 0.02,
-    envMapIntensity: 0.35,
-  });
-
-  const glassMaterial = new MeshPhysicalMaterial({
-    color: new Color(0xe4eff7),
-    transparent: true,
-    opacity: 0.055,
-    roughness: 0.025,
-    metalness: 0.02,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.02,
-    ior: 1.52,
-    reflectivity: 1.0,
-    envMapIntensity: 1.8,
-    depthWrite: false,
-  });
-
-  const glareMaterial = new ShaderMaterial({
-    uniforms: {
-      uTilt: { value: new Vector2(0, 0) },
-      uIntensity: { value: 1.0 },
-    },
-    vertexShader: GLASS_GLARE_VERTEX,
-    fragmentShader: GLASS_GLARE_FRAGMENT,
-    transparent: true,
-    depthWrite: false,
-  });
-
   let backboardTex = createBackboardTexture(activeSpec.isPortrait);
-
-  const backboardEdgeMaterial = new MeshStandardMaterial({
-    color: new Color(0x161412),
-    roughness: 0.85,
-    metalness: 0.05,
-  });
-
-  const backboardFrontMaterial = new MeshStandardMaterial({
-    map: backboardTex,
-    roughness: 0.82,
-    metalness: 0.04,
-  });
 
   const shadowTex = createRadialShadowTexture(0.62, 0.24);
   const shadowMat = new MeshBasicMaterial({
@@ -756,25 +868,44 @@ export function mountCertificateFrameScene({
     depthWrite: false,
   });
 
-  let geometries: Array<{ dispose: () => void }> = [];
-  const frameGroup = new Group();
-  scene.add(frameGroup);
+  const deckRoot = new Group();
+  scene.add(deckRoot);
 
-  const initialShadowGeo = new PlaneGeometry(1, 1);
-  geometries.push(initialShadowGeo);
-  const shadowMesh = new Mesh(initialShadowGeo, shadowMat);
+  let shadowGeo: BufferGeometry = new PlaneGeometry(1, 1);
+  const shadowMesh = new Mesh(shadowGeo, shadowMat);
   shadowMesh.position.set(0.06, -0.08, -0.45);
   scene.add(shadowMesh);
 
-  const rebuildFrameGeometry = (format: CertificateFrameFormat) => {
-    const spec = FRAME_SPECS[format];
-    const prevIsPortrait = activeSpec.isPortrait;
-    currentFormat = format;
-    activeSpec = spec;
+  let sharedRailGeos: ExtrudeGeometry[] = [];
+  let sharedTopBotFilletGeo: BoxGeometry | null = null;
+  let sharedSideFilletGeo: BoxGeometry | null = null;
+  let sharedArtGeo: PlaneGeometry | null = null;
+  let sharedGlassGeo: PlaneGeometry | null = null;
+  let sharedGlareGeo: PlaneGeometry | null = null;
+  let sharedBackBoxGeo: BoxGeometry | null = null;
+  let sharedBackStampGeo: PlaneGeometry | null = null;
 
-    geometries.forEach((g) => g.dispose());
-    geometries = [];
-    frameGroup.clear();
+  const disposeSharedCardGeos = () => {
+    sharedRailGeos.forEach((g) => g.dispose());
+    sharedRailGeos = [];
+    sharedTopBotFilletGeo?.dispose();
+    sharedTopBotFilletGeo = null;
+    sharedSideFilletGeo?.dispose();
+    sharedSideFilletGeo = null;
+    sharedArtGeo?.dispose();
+    sharedArtGeo = null;
+    sharedGlassGeo?.dispose();
+    sharedGlassGeo = null;
+    sharedGlareGeo?.dispose();
+    sharedGlareGeo = null;
+    sharedBackBoxGeo?.dispose();
+    sharedBackBoxGeo = null;
+    sharedBackStampGeo?.dispose();
+    sharedBackStampGeo = null;
+  };
+
+  const buildSharedCardGeos = (spec: FrameSpec, isDeck: boolean) => {
+    disposeSharedCardGeos();
 
     const hw = spec.outerW * 0.5;
     const hh = spec.outerH * 0.5;
@@ -783,101 +914,46 @@ export function mountCertificateFrameScene({
     const artW = (ihw - FILLET_W) * 2;
     const artH = (ihh - FILLET_W) * 2;
 
-    (["top", "bottom", "left", "right"] as const).forEach((side) => {
-      const geo = createMiterRailGeometry(side, hw, hh);
-      geometries.push(geo);
-      frameGroup.add(new Mesh(geo, woodMaterial));
-    });
+    sharedRailGeos = (["top", "bottom", "left", "right"] as const).map((side) =>
+      createMiterRailGeometry(side, hw, hh)
+    );
 
     const filletDepth = 0.088;
-    const filletZ = -0.008;
-    const topBotFilletGeo = new BoxGeometry(ihw * 2, FILLET_W, filletDepth);
-    const sideFilletGeo = new BoxGeometry(
+    sharedTopBotFilletGeo = new BoxGeometry(ihw * 2, FILLET_W, filletDepth);
+    sharedSideFilletGeo = new BoxGeometry(
       FILLET_W,
       (ihh - FILLET_W) * 2,
       filletDepth
     );
-    geometries.push(topBotFilletGeo, sideFilletGeo);
-
-    [
-      [topBotFilletGeo, 0, ihh - FILLET_W * 0.5],
-      [topBotFilletGeo, 0, -(ihh - FILLET_W * 0.5)],
-      [sideFilletGeo, -(ihw - FILLET_W * 0.5), 0],
-      [sideFilletGeo, ihw - FILLET_W * 0.5, 0],
-    ].forEach(([geo, x, y]) => {
-      const m = new Mesh(geo as BoxGeometry, brassMaterial);
-      m.position.set(x as number, y as number, filletZ);
-      frameGroup.add(m);
-    });
-
-    const artGeo = new PlaneGeometry(artW + 0.024, artH + 0.024);
-    geometries.push(artGeo);
-    const artMesh = new Mesh(artGeo, artMaterial);
-    artMesh.position.z = -0.052;
-    frameGroup.add(artMesh);
-
-    const glassGeo = new PlaneGeometry(ihw * 2 - 0.004, ihh * 2 - 0.004);
-    geometries.push(glassGeo);
-    const glassMesh = new Mesh(glassGeo, glassMaterial);
-    glassMesh.position.z = 0.044;
-    glassMesh.renderOrder = 2;
-    frameGroup.add(glassMesh);
-
-    const glareGeo = new PlaneGeometry(ihw * 2 - 0.006, ihh * 2 - 0.006);
-    geometries.push(glareGeo);
-    const glareMesh = new Mesh(glareGeo, glareMaterial);
-    glareMesh.position.z = 0.048;
-    glareMesh.renderOrder = 3;
-    frameGroup.add(glareMesh);
-
-    const backBoxGeo = new BoxGeometry(
+    sharedArtGeo = new PlaneGeometry(artW + 0.024, artH + 0.024);
+    sharedGlassGeo = new PlaneGeometry(ihw * 2 - 0.004, ihh * 2 - 0.004);
+    sharedGlareGeo = new PlaneGeometry(ihw * 2 - 0.006, ihh * 2 - 0.006);
+    sharedBackBoxGeo = new BoxGeometry(
       spec.outerW - 0.08,
       spec.outerH - 0.08,
       0.028
     );
-    const backStampGeo = new PlaneGeometry(
+    sharedBackStampGeo = new PlaneGeometry(
       spec.outerW - 0.1,
       spec.outerH - 0.1
     );
-    geometries.push(backBoxGeo, backStampGeo);
-    const backBoxMesh = new Mesh(backBoxGeo, backboardEdgeMaterial);
-    backBoxMesh.position.z = -0.092;
-    const backStampMesh = new Mesh(backStampGeo, backboardFrontMaterial);
-    backStampMesh.position.z = -0.108;
-    backStampMesh.rotation.y = Math.PI;
-    frameGroup.add(backBoxMesh, backStampMesh);
 
-    const shadowGeo = new PlaneGeometry(spec.outerW + 1.0, spec.outerH + 0.94);
-    geometries.push(shadowGeo);
+    shadowGeo.dispose();
+    shadowGeo = new PlaneGeometry(
+      spec.outerW + (isDeck ? 1.85 : 1.0),
+      spec.outerH + (isDeck ? 1.35 : 0.94)
+    );
     shadowMesh.geometry = shadowGeo;
-
-    if (certCanvas.width !== spec.canvasW || certCanvas.height !== spec.canvasH) {
-      certCanvas.width = spec.canvasW;
-      certCanvas.height = spec.canvasH;
-      prevArtCanvas.width = spec.canvasW;
-      prevArtCanvas.height = spec.canvasH;
-      nextArtCanvas.width = spec.canvasW;
-      nextArtCanvas.height = spec.canvasH;
-      const cCtx = certCanvas.getContext("2d");
-      if (cCtx) {
-        cCtx.fillStyle = "#181614";
-        cCtx.fillRect(0, 0, certCanvas.width, certCanvas.height);
-      }
-      certTex.dispose();
-      certTex = createCertCanvasTexture(certCanvas, maxAniso);
-      artMaterial.map = certTex;
-      artMaterial.needsUpdate = true;
-    }
-
-    if (spec.isPortrait !== prevIsPortrait) {
-      backboardTex.dispose();
-      backboardTex = createBackboardTexture(spec.isPortrait);
-      backboardFrontMaterial.map = backboardTex;
-      backboardFrontMaterial.needsUpdate = true;
-    }
   };
 
-  rebuildFrameGeometry(currentFormat);
+  let cards: CardUnit[] = [];
+  let deckSignature = "";
+  let currentActiveIdx = initialActiveIdx;
+
+  let disposed = false;
+  let rafId = 0;
+  let isInView = true;
+  let needsForcedRender = true;
 
   let curRotX = 0.1;
   let curRotY = 0.24;
@@ -889,95 +965,498 @@ export function mountCertificateFrameScene({
   let curSwipeNorm = 0;
   let targetSwipeNorm = 0;
 
-  let isTransitioning = false;
-  let transitionStartTime = 0;
-  let transitionDurationMs = 340;
-  let transitionDir: 1 | -1 | 0 = 0;
+  let curDeckX = initialItems.length > 1 ? -0.18 : 0;
+  let curDeckY = initialItems.length > 1 ? -0.05 : 0;
+  let targetDeckX = curDeckX;
+  let targetDeckY = curDeckY;
+  let curCamZ = 5.15;
+  let targetCamZ = 5.15;
 
-  frameGroup.rotation.set(curRotX, curRotY, 0);
-
-  let disposed = false;
-  let rafId = 0;
-  let isInView = true;
-  let needsForcedRender = true;
-  let certLoadSeq = 0;
-
-  const compositeTransitionFrame = (progress: number, withShadow = true) => {
-    const ctx = certCanvas.getContext("2d");
-    if (!ctx) return;
-    const w = certCanvas.width;
-    const h = certCanvas.height;
-    const shift = transitionDir === 0 ? 0 : w * 0.08;
-
-    ctx.fillStyle = "#181614";
-    ctx.fillRect(0, 0, w, h);
-
-    if (1 - progress > 0.005) {
-      ctx.globalAlpha = 1 - progress;
-      ctx.drawImage(prevArtCanvas, -transitionDir * shift * progress, 0);
-    }
-    ctx.globalAlpha = progress;
-    ctx.drawImage(nextArtCanvas, transitionDir * shift * (1 - progress), 0);
-    ctx.globalAlpha = 1;
-
-    if (withShadow) drawRecessedFrameShadow(ctx, w, h);
-    certTex.needsUpdate = true;
-  };
+  let isShuffling = false;
+  let shuffleStartTime = 0;
+  let shuffleDir: 1 | -1 = 1;
 
   const scheduleLoop = () => {
     if (disposed || !isInView || document.hidden || rafId !== 0) return;
     rafId = window.requestAnimationFrame(tick);
   };
 
-  const renderFrame = (): boolean => {
-    if (isTransitioning) {
-      const elapsed = performance.now() - transitionStartTime;
-      const t = clamp(elapsed / transitionDurationMs, 0, 1);
-      const e = 1 - Math.pow(1 - t, 3);
-      compositeTransitionFrame(e, true);
-      if (t >= 1) {
-        isTransitioning = false;
-      }
+  const wake = () => {
+    if (disposed) return;
+    needsForcedRender = true;
+    if (isInView && !document.hidden) scheduleLoop();
+    else activeRenderer.render(scene, camera);
+  };
+
+  const loadCardArtwork = (card: CardUnit, cert: CertificateItem) => {
+    card.loadSeq += 1;
+    const seq = card.loadSeq;
+
+    if (!cert.imageSrc) {
+      drawFallbackCertificatePlate(card.artCanvas, cert);
+      card.artTex.needsUpdate = true;
+      wake();
+      return;
     }
+
+    loadCachedImage(cert.imageSrc, (img) => {
+      if (disposed || seq !== card.loadSeq) return;
+      if (img) drawScannedCertificateImage(card.artCanvas, img);
+      else drawFallbackCertificatePlate(card.artCanvas, cert);
+      card.artTex.needsUpdate = true;
+      wake();
+    });
+  };
+
+  const disposeCards = () => {
+    cards.forEach((card) => {
+      card.loadSeq += 1;
+      card.woodMat.dispose();
+      card.brassMat.dispose();
+      card.artMat.dispose();
+      card.glassMat.dispose();
+      card.glareMat.dispose();
+      card.backEdgeMat.dispose();
+      card.backFrontMat.dispose();
+      card.artTex.dispose();
+    });
+    cards = [];
+    deckRoot.clear();
+  };
+
+  const createCardUnit = (
+    cert: CertificateItem,
+    spec: FrameSpec
+  ): CardUnit => {
+    const hw = spec.outerW * 0.5;
+    const hh = spec.outerH * 0.5;
+    const ihw = hw - RAIL_W;
+    const ihh = hh - RAIL_W;
+
+    const woodMat = new MeshPhysicalMaterial({
+      map: woodColorTex,
+      bumpMap: woodBumpTex,
+      bumpScale: 0.018,
+      roughness: 0.42,
+      metalness: 0.04,
+      clearcoat: 0.38,
+      clearcoatRoughness: 0.28,
+      envMapIntensity: 1.05,
+    });
+
+    const brassMat = new MeshPhysicalMaterial({
+      color: new Color(0xc9a66b),
+      metalness: 0.85,
+      roughness: 0.26,
+      clearcoat: 0.4,
+      clearcoatRoughness: 0.2,
+      envMapIntensity: 1.35,
+    });
+
+    const artCanvas = document.createElement("canvas");
+    artCanvas.width = spec.canvasW;
+    artCanvas.height = spec.canvasH;
+    if (cert.imageSrc) {
+      const cCtx = artCanvas.getContext("2d");
+      if (cCtx) {
+        cCtx.fillStyle = "#181614";
+        cCtx.fillRect(0, 0, artCanvas.width, artCanvas.height);
+      }
+    } else {
+      drawFallbackCertificatePlate(artCanvas, cert);
+    }
+
+    const artTex = createCertCanvasTexture(artCanvas, maxAniso);
+    const artMat = new MeshStandardMaterial({
+      map: artTex,
+      roughness: 0.72,
+      metalness: 0.02,
+      envMapIntensity: 0.35,
+    });
+
+    const baseGlassOpacity = 0.055;
+    const glassMat = new MeshPhysicalMaterial({
+      color: new Color(0xe4eff7),
+      transparent: true,
+      opacity: baseGlassOpacity,
+      roughness: 0.025,
+      metalness: 0.02,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.02,
+      ior: 1.52,
+      reflectivity: 1.0,
+      envMapIntensity: 1.8,
+      depthWrite: false,
+    });
+
+    const baseGlareIntensity = 1.0;
+    const glareMat = new ShaderMaterial({
+      uniforms: {
+        uTilt: { value: new Vector2(0, 0) },
+        uIntensity: { value: baseGlareIntensity },
+      },
+      vertexShader: GLASS_GLARE_VERTEX,
+      fragmentShader: GLASS_GLARE_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+    });
+
+    const backEdgeMat = new MeshStandardMaterial({
+      color: new Color(0x161412),
+      roughness: 0.85,
+      metalness: 0.05,
+    });
+
+    const backFrontMat = new MeshStandardMaterial({
+      map: backboardTex,
+      roughness: 0.82,
+      metalness: 0.04,
+    });
+
+    const group = new Group();
+    const opaqueMeshes: Mesh[] = [];
+
+    sharedRailGeos.forEach((geo) => {
+      const m = new Mesh(geo, woodMat);
+      opaqueMeshes.push(m);
+      group.add(m);
+    });
+
+    const filletZ = -0.008;
+    if (sharedTopBotFilletGeo && sharedSideFilletGeo) {
+      [
+        [sharedTopBotFilletGeo, 0, ihh - FILLET_W * 0.5],
+        [sharedTopBotFilletGeo, 0, -(ihh - FILLET_W * 0.5)],
+        [sharedSideFilletGeo, -(ihw - FILLET_W * 0.5), 0],
+        [sharedSideFilletGeo, ihw - FILLET_W * 0.5, 0],
+      ].forEach(([geo, x, y]) => {
+        const m = new Mesh(geo as BoxGeometry, brassMat);
+        m.position.set(x as number, y as number, filletZ);
+        opaqueMeshes.push(m);
+        group.add(m);
+      });
+    }
+
+    if (sharedArtGeo) {
+      const artMesh = new Mesh(sharedArtGeo, artMat);
+      artMesh.position.z = -0.052;
+      opaqueMeshes.push(artMesh);
+      group.add(artMesh);
+    }
+
+    const glassMesh = new Mesh(sharedGlassGeo!, glassMat);
+    glassMesh.position.z = 0.044;
+    group.add(glassMesh);
+
+    const glareMesh = new Mesh(sharedGlareGeo!, glareMat);
+    glareMesh.position.z = 0.048;
+    group.add(glareMesh);
+
+    if (sharedBackBoxGeo && sharedBackStampGeo) {
+      const backBoxMesh = new Mesh(sharedBackBoxGeo, backEdgeMat);
+      backBoxMesh.position.z = -0.092;
+      const backStampMesh = new Mesh(sharedBackStampGeo, backFrontMat);
+      backStampMesh.position.z = -0.108;
+      backStampMesh.rotation.y = Math.PI;
+      opaqueMeshes.push(backBoxMesh, backStampMesh);
+      group.add(backBoxMesh, backStampMesh);
+    }
+
+    const restPose = getSlotPose(0, 1);
+    const card: CardUnit = {
+      id: cert.id,
+      group,
+      artCanvas,
+      artTex,
+      woodMat,
+      brassMat,
+      artMat,
+      glassMat,
+      glareMat,
+      backEdgeMat,
+      backFrontMat,
+      opaqueMeshes,
+      glassMesh,
+      glareMesh,
+      baseGlassOpacity,
+      baseGlareIntensity,
+      loadSeq: 0,
+      currentBrightness: 1,
+      currentOpacity: 1,
+      fromSlot: 0,
+      toSlot: 0,
+      startPose: restPose,
+    };
+
+    if (cert.imageSrc) loadCardArtwork(card, cert);
+    return card;
+  };
+
+  const computeIdealCameraZ = (isDeck: boolean): number => {
+    const w = Math.max(container.clientWidth, 160);
+    const h = Math.max(container.clientHeight, 160);
+    const aspect = w / h;
+    const halfTan = Math.tan((FOV_DEG * Math.PI) / 360);
+    const fitW = activeSpec.fitW + (isDeck ? 1.05 : 0);
+    const fitH = activeSpec.fitH + (isDeck ? 0.45 : 0);
+    const camZHeight = (fitH * 0.5) / halfTan;
+    const camZWidth = (fitW * 0.5) / (halfTan * aspect);
+    return Math.max(5.15, camZHeight, camZWidth);
+  };
+
+  const buildDeck = (
+    items: readonly CertificateItem[],
+    activeIdx: number,
+    snapCamera: boolean
+  ) => {
+    const safeIdx = clamp(activeIdx, 0, Math.max(0, items.length - 1));
+    const activeCert = items[safeIdx] ?? items[0];
+    const nextFormat: CertificateFrameFormat =
+      activeCert.frameFormat ?? "landscape";
+    const nextSpec = FRAME_SPECS[nextFormat];
+    const isDeck = items.length > 1;
+
+    if (nextSpec.isPortrait !== activeSpec.isPortrait) {
+      backboardTex.dispose();
+      backboardTex = createBackboardTexture(nextSpec.isPortrait);
+    }
+
+    currentFormat = nextFormat;
+    activeSpec = nextSpec;
+    buildSharedCardGeos(activeSpec, isDeck);
+
+    disposeCards();
+    isShuffling = false;
+    curSwipeNorm = 0;
+    targetSwipeNorm = 0;
+    currentActiveIdx = safeIdx;
+    deckSignature = items.map((c) => c.id).join("|");
+
+    cards = items.map((cert, i) => {
+      const card = createCardUnit(cert, activeSpec);
+      const slot = (i - safeIdx + items.length) % items.length;
+      const pose = getSlotPose(slot, items.length);
+      card.fromSlot = slot;
+      card.toSlot = slot;
+      card.startPose = pose;
+      applyCardPose(card, pose);
+      deckRoot.add(card.group);
+      return card;
+    });
+
+    targetDeckX = isDeck ? -0.18 : 0;
+    targetDeckY = isDeck ? -0.05 : 0;
+    targetCamZ = computeIdealCameraZ(isDeck);
+
+    if (snapCamera) {
+      curDeckX = targetDeckX;
+      curDeckY = targetDeckY;
+      curCamZ = targetCamZ;
+      deckRoot.position.set(curDeckX, curDeckY, 0);
+      camera.position.set(0, 0, curCamZ);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+
+    wake();
+  };
+
+  buildDeck(initialItems, initialActiveIdx, true);
+  deckRoot.rotation.set(curRotX, curRotY, 0);
+
+  const computeShufflePose = (card: CardUnit, t: number): CardPose => {
+    const total = cards.length;
+    const toPose = getSlotPose(card.toSlot, total);
+
+    if (shuffleDir > 0) {
+      // Forward (Next): front card sweeps out left and tucks into rear slot
+      if (card.fromSlot === 0) {
+        if (t < 0.46) {
+          const u = t / 0.46;
+          const e = easeOutCubic(u);
+          const pose = lerpPose(card.startPose, SWEEP_PEAK_POSE, e);
+          const fadeT = clamp((u - 0.28) / 0.72, 0, 1);
+          pose.opacity = card.startPose.opacity * (1 - fadeT * fadeT);
+          return pose;
+        }
+        if (t < 0.52) {
+          return { ...toPose, z: toPose.z - 0.32, opacity: 0 };
+        }
+        const u = clamp((t - 0.52) / 0.48, 0, 1);
+        const e = easeOutQuart(u);
+        const backStart: CardPose = {
+          ...toPose,
+          z: toPose.z - 0.32,
+          scale: toPose.scale * 0.96,
+          opacity: 0,
+        };
+        const pose = lerpPose(backStart, toPose, e);
+        pose.opacity = toPose.opacity > 0 ? easeOutCubic(u) * toPose.opacity : 0;
+        return pose;
+      }
+
+      // Multi-slot jump where a card beyond slot 1 moves directly to front
+      if (card.toSlot === 0 && card.fromSlot > 1) {
+        if (t < 0.22) {
+          const u = t / 0.22;
+          return {
+            ...card.startPose,
+            z: card.startPose.z - 0.22 * u,
+            opacity: card.startPose.opacity * (1 - u),
+          };
+        }
+        if (t < 0.44) {
+          return { ...SWEEP_PEAK_POSE, opacity: 0 };
+        }
+        const u = clamp((t - 0.44) / 0.56, 0, 1);
+        const e = easeOutQuart(u);
+        const pose = lerpPose(SWEEP_PEAK_POSE, toPose, e);
+        pose.opacity = clamp(u / 0.42, 0, 1);
+        return pose;
+      }
+
+      const u = clamp((t - 0.05) / 0.95, 0, 1);
+      return lerpPose(card.startPose, toPose, easeOutQuart(u));
+    }
+
+    // Backward (Prev): incoming front card swoops in from the left
+    if (card.toSlot === 0) {
+      if (t < 0.2) {
+        const u = t / 0.2;
+        return {
+          ...card.startPose,
+          z: card.startPose.z - 0.24 * u,
+          opacity: card.startPose.opacity * (1 - u),
+        };
+      }
+      if (t < 0.22) {
+        return { ...SWEEP_PEAK_POSE, opacity: 0 };
+      }
+      const u = clamp((t - 0.22) / 0.78, 0, 1);
+      const e = easeOutQuart(u);
+      const pose = lerpPose(SWEEP_PEAK_POSE, toPose, e);
+      pose.opacity = clamp(u / 0.42, 0, 1);
+      return pose;
+    }
+
+    const u = clamp(t / 0.86, 0, 1);
+    return lerpPose(card.startPose, toPose, easeOutQuart(u));
+  };
+
+  const renderFrame = (): boolean => {
+    const total = cards.length;
+    const isDeck = total > 1;
 
     const goalX = isDragging ? clamp(dragRotX, -0.55, 0.55) : targetRotX;
     const maxYaw = allowWideOrbit ? Math.PI : 0.95;
     const goalY = isDragging ? clamp(dragRotY, -maxYaw, maxYaw) : targetRotY;
 
-    const lerp = isDragging ? 0.24 : 0.075;
+    const lerp = isDragging ? 0.24 : 0.085;
     curRotX += (goalX - curRotX) * lerp;
     curRotY += (goalY - curRotY) * lerp;
 
-    const swipeLerp = Math.abs(targetSwipeNorm) > 0.001 ? 0.24 : 0.12;
+    const swipeLerp = Math.abs(targetSwipeNorm) > 0.001 ? 0.24 : 0.13;
     curSwipeNorm += (targetSwipeNorm - curSwipeNorm) * swipeLerp;
     if (Math.abs(targetSwipeNorm - curSwipeNorm) < 0.001) {
       curSwipeNorm = targetSwipeNorm;
     }
 
+    curDeckX += (targetDeckX - curDeckX) * 0.14;
+    curDeckY += (targetDeckY - curDeckY) * 0.14;
+    curCamZ += (targetCamZ - curCamZ) * 0.14;
+    if (Math.abs(targetDeckX - curDeckX) < 0.001) curDeckX = targetDeckX;
+    if (Math.abs(targetDeckY - curDeckY) < 0.001) curDeckY = targetDeckY;
+    if (Math.abs(targetCamZ - curCamZ) < 0.002) curCamZ = targetCamZ;
+
+    deckRoot.rotation.set(curRotX, curRotY, 0);
+    deckRoot.position.set(curDeckX, curDeckY, 0);
+    if (Math.abs(camera.position.z - curCamZ) > 0.0005) {
+      camera.position.set(0, 0, curCamZ);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+
+    if (isShuffling) {
+      const elapsed = performance.now() - shuffleStartTime;
+      const t = clamp(elapsed / SHUFFLE_DURATION_MS, 0, 1);
+      cards.forEach((card) => {
+        applyCardPose(card, computeShufflePose(card, t));
+      });
+      if (t >= 1) {
+        isShuffling = false;
+        cards.forEach((card) => {
+          const finalPose = getSlotPose(card.toSlot, total);
+          card.fromSlot = card.toSlot;
+          card.startPose = finalPose;
+          applyCardPose(card, finalPose);
+        });
+      }
+    } else if (isDeck) {
+      const pull = Math.abs(curSwipeNorm);
+      cards.forEach((card, i) => {
+        const slot = (i - currentActiveIdx + total) % total;
+        const basePose = getSlotPose(slot, total);
+        if (slot === 0 && pull > 0.0005) {
+          applyCardPose(card, {
+            x: curSwipeNorm * 0.65,
+            y: pull * 0.02,
+            z: pull * 0.12,
+            rotY: -curSwipeNorm * 0.12,
+            rotZ: -curSwipeNorm * 0.04,
+            scale: 1 - pull * 0.025,
+            brightness: 1,
+            opacity: 1,
+          });
+        } else if (slot === 1 && pull > 0.0005) {
+          const frontPose = getSlotPose(0, total);
+          applyCardPose(card, lerpPose(basePose, frontPose, pull * 0.28));
+        } else {
+          applyCardPose(card, basePose);
+        }
+      });
+    }
+
+    // Dynamic back-to-front render order for crisp glass transparency
+    const sorted = [...cards].sort(
+      (a, b) => a.group.position.z - b.group.position.z
+    );
+    sorted.forEach((card, rank) => {
+      const baseOrder = rank * 4;
+      card.opaqueMeshes.forEach((m) => {
+        m.renderOrder = baseOrder;
+      });
+      card.glassMesh.renderOrder = baseOrder + 1;
+      card.glareMesh.renderOrder = baseOrder + 2;
+      card.glareMat.uniforms.uTilt.value.set(
+        curRotX,
+        curRotY + card.group.rotation.y
+      );
+    });
+
+    const frontShiftX =
+      isDeck && cards[currentActiveIdx]
+        ? cards[currentActiveIdx].group.position.x * 0.45
+        : 0;
+    shadowMesh.position.set(
+      0.06 + curDeckX + frontShiftX - curRotY * 0.35,
+      -0.08 + curDeckY + curRotX * 0.28,
+      -0.95
+    );
+
     const settled =
       !isDragging &&
-      !isTransitioning &&
+      !isShuffling &&
       Math.abs(goalX - curRotX) < 0.0005 &&
       Math.abs(goalY - curRotY) < 0.0005 &&
-      Math.abs(targetSwipeNorm - curSwipeNorm) < 0.001;
+      Math.abs(targetSwipeNorm - curSwipeNorm) < 0.001 &&
+      Math.abs(targetDeckX - curDeckX) < 0.001 &&
+      Math.abs(targetDeckY - curDeckY) < 0.001 &&
+      Math.abs(targetCamZ - curCamZ) < 0.002;
 
     if (settled) {
       curRotX = goalX;
       curRotY = goalY;
     }
-
-    const finalRotX = curRotX;
-    const finalRotY = curRotY;
-    const finalPosX = curSwipeNorm * 0.16;
-
-    frameGroup.rotation.set(finalRotX, finalRotY, 0);
-    frameGroup.position.x = finalPosX;
-    shadowMesh.position.set(
-      0.06 + finalPosX - finalRotY * 0.35,
-      -0.08 + finalRotX * 0.28,
-      -0.45
-    );
-    glareMaterial.uniforms.uTilt.value.set(finalRotX, finalRotY);
 
     if (!settled || needsForcedRender) {
       activeRenderer.render(scene, camera);
@@ -993,97 +1472,18 @@ export function mountCertificateFrameScene({
     if (!renderFrame()) rafId = window.requestAnimationFrame(tick);
   }
 
-  const wake = () => {
-    if (disposed) return;
-    needsForcedRender = true;
-    if (isInView && !document.hidden) scheduleLoop();
-    else activeRenderer.render(scene, camera);
-  };
-
-  const commitArtworkBuffer = (
-    drawIntoNext: () => void,
-    direction: 1 | -1 | 0
-  ) => {
-    if (hasRenderedArt) {
-      if (isTransitioning) {
-        const elapsed = performance.now() - transitionStartTime;
-        const t = clamp(elapsed / transitionDurationMs, 0, 1);
-        const e = 1 - Math.pow(1 - t, 3);
-        compositeTransitionFrame(e, false);
-        const pCtx = prevArtCanvas.getContext("2d");
-        if (pCtx) pCtx.drawImage(certCanvas, 0, 0);
-      } else {
-        const pCtx = prevArtCanvas.getContext("2d");
-        if (pCtx) pCtx.drawImage(nextArtCanvas, 0, 0);
-      }
-
-      drawIntoNext();
-      transitionDir = direction;
-      transitionDurationMs = direction === 0 ? 260 : 320;
-      transitionStartTime = performance.now();
-      isTransitioning = true;
-      compositeTransitionFrame(0, true);
-      wake();
-      return;
-    }
-
-    drawIntoNext();
-    const ctx = certCanvas.getContext("2d");
-    if (ctx) {
-      ctx.drawImage(nextArtCanvas, 0, 0);
-      drawRecessedFrameShadow(ctx, certCanvas.width, certCanvas.height);
-    }
-    certTex.needsUpdate = true;
-    hasRenderedArt = true;
-    wake();
-  };
-
-  const loadCertificateArtwork = (
-    cert: CertificateItem,
-    direction: 1 | -1 | 0 = 0
-  ) => {
-    certLoadSeq += 1;
-    const seq = certLoadSeq;
-
-    if (!cert.imageSrc) {
-      commitArtworkBuffer(
-        () => drawFallbackCertificatePlate(nextArtCanvas, cert, false),
-        direction
-      );
-      return;
-    }
-
-    loadCachedImage(cert.imageSrc, (img) => {
-      if (disposed || seq !== certLoadSeq) return;
-      if (img) {
-        commitArtworkBuffer(
-          () => drawScannedCertificateImage(nextArtCanvas, img, false),
-          direction
-        );
-      } else {
-        commitArtworkBuffer(
-          () => drawFallbackCertificatePlate(nextArtCanvas, cert, false),
-          direction
-        );
-      }
-    });
-  };
-
-  if (certificate.imageSrc) loadCertificateArtwork(certificate, 0);
-
   const handleResize = () => {
     if (disposed || !container) return;
     const w = Math.max(container.clientWidth, 160);
     const h = Math.max(container.clientHeight, 160);
     const aspect = w / h;
-    const halfTan = Math.tan((FOV_DEG * Math.PI) / 360);
-    const camZHeight = (activeSpec.fitH * 0.5) / halfTan;
-    const camZWidth = (activeSpec.fitW * 0.5) / (halfTan * aspect);
-    const camZ = Math.max(5.15, camZHeight, camZWidth);
+    const isDeck = cards.length > 1;
+    targetCamZ = computeIdealCameraZ(isDeck);
+    curCamZ = targetCamZ;
 
     activeRenderer.setSize(w, h, false);
     camera.aspect = aspect;
-    camera.position.set(0, 0, camZ);
+    camera.position.set(0, 0, curCamZ);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     wake();
@@ -1117,19 +1517,70 @@ export function mountCertificateFrameScene({
   };
   document.addEventListener("visibilitychange", handleVisibility);
 
+  const setDeck = (
+    items: readonly CertificateItem[],
+    activeIndex: number,
+    direction: 1 | -1 | 0 = 0
+  ) => {
+    if (disposed || items.length === 0) return;
+
+    const safeIdx = clamp(activeIndex, 0, items.length - 1);
+    const nextSig = items.map((c) => c.id).join("|");
+    const activeCert = items[safeIdx];
+    const nextFormat: CertificateFrameFormat =
+      activeCert.frameFormat ?? "landscape";
+
+    if (
+      nextSig !== deckSignature ||
+      nextFormat !== currentFormat ||
+      cards.length !== items.length
+    ) {
+      buildDeck(items, safeIdx, false);
+      return;
+    }
+
+    if (safeIdx === currentActiveIdx) return;
+
+    const total = cards.length;
+    if (total <= 1) {
+      currentActiveIdx = 0;
+      return;
+    }
+
+    // Choose collision-free direction; absorb any active swipe offset seamlessly
+    const isOneStepBack = (currentActiveIdx - 1 + total) % total === safeIdx;
+    const isOneStepForward = (currentActiveIdx + 1) % total === safeIdx;
+    const effectiveDir: 1 | -1 =
+      total === 2
+        ? direction < 0
+          ? -1
+          : 1
+        : isOneStepBack && !isOneStepForward
+          ? -1
+          : direction < 0
+            ? -1
+            : 1;
+
+    cards.forEach((card, i) => {
+      card.startPose = readCardLivePose(card);
+      card.fromSlot = (i - currentActiveIdx + total) % total;
+      card.toSlot = (i - safeIdx + total) % total;
+    });
+
+    curSwipeNorm = 0;
+    targetSwipeNorm = 0;
+    currentActiveIdx = safeIdx;
+    shuffleDir = effectiveDir;
+    shuffleStartTime = performance.now();
+    isShuffling = true;
+    wake();
+  };
+
   return {
     setCertificate: (nextCert, direction = 0) => {
-      if (disposed) return;
-      const nextFormat: CertificateFrameFormat =
-        nextCert.frameFormat ?? "landscape";
-      if (nextFormat !== currentFormat) {
-        isTransitioning = false;
-        hasRenderedArt = false;
-        rebuildFrameGeometry(nextFormat);
-        handleResize();
-      }
-      loadCertificateArtwork(nextCert, direction);
+      setDeck([nextCert], 0, direction);
     },
+    setDeck,
     preloadImages: (srcs) => {
       if (disposed) return;
       for (const src of srcs) {
@@ -1138,13 +1589,13 @@ export function mountCertificateFrameScene({
     },
     setSwipeOffset: (pxOffset) => {
       if (disposed) return;
-      targetSwipeNorm = Math.tanh(pxOffset / 240);
+      targetSwipeNorm = Math.tanh(pxOffset / 220);
       wake();
     },
     setPointerNormalized: (nx, ny) => {
       if (disposed || isDragging) return;
-      targetRotY = clamp(nx, -1, 1) * 0.28;
-      targetRotX = clamp(-ny, -1, 1) * 0.18;
+      targetRotY = clamp(nx, -1, 1) * 0.24;
+      targetRotX = clamp(-ny, -1, 1) * 0.16;
       wake();
     },
     resetPose: () => {
@@ -1183,7 +1634,6 @@ export function mountCertificateFrameScene({
     dispose: () => {
       if (disposed) return;
       disposed = true;
-      certLoadSeq += 1;
       document.removeEventListener("visibilitychange", handleVisibility);
       viewIo.disconnect();
       resizeObserver.disconnect();
@@ -1191,18 +1641,12 @@ export function mountCertificateFrameScene({
         window.cancelAnimationFrame(rafId);
         rafId = 0;
       }
-      geometries.forEach((g) => g.dispose());
-      woodMaterial.dispose();
-      brassMaterial.dispose();
-      artMaterial.dispose();
-      glassMaterial.dispose();
-      glareMaterial.dispose();
-      backboardEdgeMaterial.dispose();
-      backboardFrontMaterial.dispose();
+      disposeCards();
+      disposeSharedCardGeos();
+      shadowGeo.dispose();
       shadowMat.dispose();
       woodColorTex.dispose();
       woodBumpTex.dispose();
-      certTex.dispose();
       backboardTex.dispose();
       shadowTex.dispose();
       env.dispose();

@@ -388,12 +388,12 @@ export const siteConfig = {
       {
         id: "manara-ai-engineering",
         number: "01",
-        title: "AI & DATA ENGINEERING",
+        title: "AI, DATA & ENGINEERING",
         issuer: "Manara",
         issuedDate: "NOV 2026",
         details: "November 23, 2026 · Official Certificates of Completion",
         description:
-          "Completed Manara's AI and Data courses covering AI-assisted software engineering tools, Generative AI case studies, and Python data visualization.",
+          "Completed Manara courses and learning paths spanning AI-assisted software engineering, Generative AI case studies, Python data visualization, and professional engineering communication.",
         accentColor: "#F26532",
         frameFormat: "landscape",
         imageSrc: "/images/certificates/manara-next-gen-devs-ai.webp",
@@ -444,6 +444,19 @@ export const siteConfig = {
               "/images/certificates/manara-data-visualization-python.webp",
             verifyUrl:
               "https://api.manara.tech/api/v1/certificate/asset/mwtfslo0-b2i2y385",
+          },
+          {
+            id: "manara-professional-english",
+            label: "Professional English for Software Engineers",
+            title: "PROFESSIONAL ENGLISH FOR SOFTWARE ENGINEERS",
+            level: "Learning Path",
+            issuedDate: "NOV 2026",
+            details: "November 23, 2026 · Official Learning Path Certificate",
+            description:
+              "Completed the Manara learning path in professional technical English and engineering communication, focused on clear collaboration, technical discussions, and global engineering teams.",
+            imageSrc: "/images/certificates/manara-professional-english.webp",
+            verifyUrl:
+              "https://api.manara.tech/api/v1/certificate/asset/mwti7oy4-ckcq44hb",
           },
         ],
       },

@@ -52,6 +52,20 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
     [series]
   );
 
+  const deckCertificates = useMemo(
+    () =>
+      hasSeries && series
+        ? series.map((level) => ({
+            ...cert,
+            id: level.id,
+            title: level.title ?? cert.title,
+            imageSrc: level.imageSrc,
+            frameFormat: level.frameFormat ?? cert.frameFormat,
+          }))
+        : undefined,
+    [hasSeries, series, cert]
+  );
+
   const activeLevel =
     hasSeries && series ? (series[seriesState.idx] ?? series[0]) : undefined;
 
@@ -77,6 +91,8 @@ function CertificateArchiveRow({ cert, totalPadded }: CertificateArchiveRowProps
       <div className="lg:col-span-7">
         <CertificateFrame3D
           certificate={displayCert}
+          deckCertificates={deckCertificates}
+          activeDeckIndex={seriesState.idx}
           allowWideOrbit
           transitionDirection={seriesState.dir}
           preloadSrcs={preloadSrcs}

@@ -13,6 +13,8 @@ const FALLBACK_FRAME_CLASSES: Record<CertificateFrameFormat, string> = {
 
 export interface CertificateFrame3DProps {
   certificate: CertificateItem;
+  deckCertificates?: readonly CertificateItem[];
+  activeDeckIndex?: number;
   className?: string;
   allowWideOrbit?: boolean;
   transitionDirection?: 1 | -1 | 0;
@@ -22,6 +24,8 @@ export interface CertificateFrame3DProps {
 
 export function CertificateFrame3D({
   certificate,
+  deckCertificates,
+  activeDeckIndex = 0,
   className = "",
   allowWideOrbit = false,
   transitionDirection = 0,
@@ -32,7 +36,12 @@ export function CertificateFrame3D({
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const ctrlRef = useRef<CertificateFrameController | null>(null);
   const latestCertRef = useRef(certificate);
-  const lastAppliedIdRef = useRef(certificate.id);
+  const latestDeckRef = useRef(deckCertificates);
+  const latestActiveIdxRef = useRef(activeDeckIndex);
+  const deckKey = deckCertificates
+    ? deckCertificates.map((c) => c.id).join("|")
+    : certificate.id;
+  const lastAppliedStateRef = useRef(`${deckKey}#${activeDeckIndex}`);
   const preloadSrcsRef = useRef(preloadSrcs);
   const onSeriesStepRef = useRef(onSeriesStep);
   const stageRectRef = useRef<DOMRect | null>(null);
@@ -62,11 +71,19 @@ export function CertificateFrame3D({
 
   useEffect(() => {
     latestCertRef.current = certificate;
-    if (ctrlRef.current && lastAppliedIdRef.current !== certificate.id) {
-      lastAppliedIdRef.current = certificate.id;
-      ctrlRef.current.setCertificate(certificate, transitionDirection);
+    latestDeckRef.current = deckCertificates;
+    latestActiveIdxRef.current = activeDeckIndex;
+
+    const stateSig = `${deckKey}#${activeDeckIndex}`;
+    if (ctrlRef.current && lastAppliedStateRef.current !== stateSig) {
+      lastAppliedStateRef.current = stateSig;
+      const items =
+        deckCertificates && deckCertificates.length > 0
+          ? deckCertificates
+          : [certificate];
+      ctrlRef.current.setDeck(items, activeDeckIndex, transitionDirection);
     }
-  }, [certificate, transitionDirection]);
+  }, [certificate, deckCertificates, activeDeckIndex, deckKey, transitionDirection]);
 
   useEffect(() => {
     const el = outerRef.current;
@@ -103,10 +120,17 @@ export function CertificateFrame3D({
       .then(({ mountCertificateFrameScene }) => {
         if (disposed || !canvasHostRef.current) return;
         const currentCert = latestCertRef.current;
-        lastAppliedIdRef.current = currentCert.id;
+        const currentDeck = latestDeckRef.current;
+        const currentActiveIdx = latestActiveIdxRef.current;
+        const currentKey = currentDeck
+          ? currentDeck.map((c) => c.id).join("|")
+          : currentCert.id;
+        lastAppliedStateRef.current = `${currentKey}#${currentActiveIdx}`;
         ctrlRef.current = mountCertificateFrameScene({
           container: canvasHostRef.current,
           certificate: currentCert,
+          deckCertificates: currentDeck,
+          activeDeckIndex: currentActiveIdx,
           allowWideOrbit,
           onWebglFailed: () => {
             if (!disposed) {
@@ -254,14 +278,18 @@ export function CertificateFrame3D({
     }
 
     if (hasSeriesSwipe) {
-      ctrlRef.current?.setSwipeOffset(0);
+      let triggered = false;
       if (axisLockRef.current === "x") {
         const dx = e.clientX - swipeStartRef.current.x;
         const dt = Math.max(performance.now() - swipeStartRef.current.time, 1);
         const velocity = Math.abs(dx) / dt;
         if (Math.abs(dx) >= 48 || (Math.abs(dx) >= 24 && velocity >= 0.35)) {
+          triggered = true;
           onSeriesStepRef.current?.(dx < 0 ? 1 : -1);
         }
+      }
+      if (!triggered) {
+        ctrlRef.current?.setSwipeOffset(0);
       }
       axisLockRef.current = null;
       return;
