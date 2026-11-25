@@ -17,9 +17,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Abdullah Elawady Studio — Portfolio 2026",
+  title: "Abdullah Elawady — Product Designer",
   description:
-    "I craft digital products and mobile apps, sharper, faster, unforgettable.",
+    "Senior Product Designer crafting end-to-end mobile & web products—turning complex user problems into clear, shippable experiences.",
 };
 
 export default function RootLayout({

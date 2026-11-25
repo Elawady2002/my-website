@@ -20,6 +20,9 @@ export interface WorkProjectItem {
   id: string;
   title: string;
   category: string;
+  role?: string;
+  domain?: string;
+  outcomeTag?: string;
   stageBg: string;
   stageAccent: string;
   cardBg: string;
@@ -35,14 +38,26 @@ export interface WorkProjectItem {
   links?: readonly WorkProjectLink[];
 }
 
+export interface ExperienceRoleItem {
+  id: string;
+  number: string;
+  role: string;
+  company: string;
+  scope: string;
+  location: string;
+  summary: string;
+  highlights: readonly string[];
+}
+
+export interface RecognitionItem {
+  id: string;
+  title: string;
+  issuer: string;
+  subtitle: string;
+}
+
 /**
- * Credential entry displayed inside the Home 3D wooden-and-glass frame teaser
- * and on the dedicated `/certificates` archive page.
- *
- * To attach a real scanned certificate image:
- * 1. Save the image under `public/images/certificates/<file>.jpg` (or `.webp`, ~1.41:1 landscape).
- * 2. Set `imageSrc: "/images/certificates/<file>.jpg"` on the item below.
- * 3. Optionally set `verifyUrl` if the issuer provides an online verification URL.
+ * Credential entry displayed on the dedicated `/certificates` archive page.
  */
 export type CertificateFrameFormat = "landscape" | "landscape-4x3" | "portrait";
 
@@ -78,19 +93,19 @@ export interface CertificateItem {
 }
 
 export const siteConfig = {
-  domain: "ABDULLAHELAWADY.STUDIO",
-  edition: "PORTFOLIO 2026",
-  greeting: "HI THERE",
+  domain: "ABDULLAH ELAWADY",
+  edition: "PRODUCT DESIGN · 2026",
+  greeting: "SENIOR PRODUCT DESIGNER",
   tagline:
-    "I craft digital products and mobile apps, sharper, faster, unforgettable.",
-  heroLine1: "ABDULLAHELAWADY",
-  heroLine2: ".STUDIO",
+    "I design end-to-end mobile & web products—turning complex user problems into clear, shippable experiences.",
+  heroLine1: "ABDULLAH",
+  heroLine2: "ELAWADY",
   portraitSrc: "/images/abdullah-portrait.webp",
-  portraitAlt: "Abdullah Elawady — Studio portrait",
+  portraitAlt: "Abdullah Elawady — Senior Product Designer portrait",
   navLinks: [
-    { label: "INFO", href: "#info" },
-    { label: "ABOUT", href: "#about" },
+    { label: "ABOUT", href: "#info" },
     { label: "WORK", href: "#work" },
+    { label: "EXPERIENCE", href: "#experience" },
     { label: "CONTACT", href: "#contact" },
   ],
   pillNavLinks: [
@@ -105,12 +120,16 @@ export const siteConfig = {
     timezoneIana: "Africa/Cairo",
     rows: [
       {
-        label: "SERVICES",
-        value: "Product Engineer",
+        label: "ROLE",
+        value: "Senior Product Designer",
       },
       {
-        label: "EXPERIENCE",
-        value: "6+ years",
+        label: "SPECIALTY",
+        value: "Mobile Apps, Web & Design Systems",
+      },
+      {
+        label: "CRAFT EDGE",
+        value: "Figma · Flutter · Front-end Prototyping",
       },
       {
         label: "TIMEZONE",
@@ -118,14 +137,10 @@ export const siteConfig = {
       },
       {
         label: "AVAILABILITY",
-        value: "Taking on projects from Q4",
-      },
-      {
-        label: "PRODUCTS SHIPPED",
-        value: "40+ mobile & web apps",
+        value: "Open to Product Roles (Remote / MENA)",
       },
     ] as InfoRowItem[],
-    ctaLabel: "VIEW WORK",
+    ctaLabel: "VIEW CASE STUDIES",
     ctaHref: "#work",
   },
   booking: {
@@ -141,106 +156,25 @@ export const siteConfig = {
     maxAdvanceDays: 45,
   },
   aboutSection: {
-    waveHeading:
-      "I BUILD PRODUCTS THAT TURN HEADS — MOBILE, WEB AND BEYOND",
-    eyebrow: "BECAUSE",
+    waveHeading: "DESIGNING PRODUCTS THAT SOLVE REAL PROBLEMS — AT SCALE",
+    eyebrow: "APPROACH",
     paragraphs: [
-      "I’m an independent Product Engineer. I bring product strategy, interface craft and native-grade mobile development together to ship digital experiences that stand out and stay effortless across every screen.",
-      "From early user flows and design systems in Figma to production 60fps iOS, Android and web builds—I lead the full product journey from zero to launch.",
+      "I’m a Product Designer focused on end-to-end mobile and web experiences across mobility, marketplaces, and digital platforms. I partner with founders, PMs, and engineers to turn ambiguous user pain points into clear flows, scalable Figma design systems, and shipped products.",
+      "With hands-on fluency in Flutter, front-end code, and AI-assisted prototyping, I validate interactions on real devices early, eliminate design-to-engineering friction, and ship interfaces that hold up in production—not just static mockups.",
     ],
-    closingLine: "One vision. Pixel-level craft. Products that work as one.",
+    closingLine: "User clarity. Business outcomes. Production-ready craft.",
   },
   workSection: {
-    eyebrow: "WHAT YOU’RE HERE FOR (I GUESS)",
+    eyebrow: "SELECTED CASE STUDIES",
     heading: "WORK",
     projects: [
       {
-        id: "yusr-academy",
-        title: "YUSR ACADEMY",
-        category: "WEBSITE",
-        stageBg: "#060F0F",
-        stageAccent: "#52B285",
-        cardBg: "#0A1919",
-        cardAccent: "#A7F3B8",
-        badge: "ARABIC UX ACADEMY · LIVE WEBSITE",
-        headline: "MASTER HUMAN\nEXPERIENCE",
-        subcopy:
-          "Arabic-first UI/UX design academy and design studio uniting practical projects, career coaching, and Vibe Coding.",
-        layout: "desktop",
-        imageSrc: "/images/projects/yusr-academy-bg.webp",
-        posterSrc: "/images/projects/yusr-academy-poster.webp",
-        videoSrc: "/videos/projects/yusr-academy-tour.mp4",
-        links: [{ type: "web", href: "https://www.yusr-academy.com/" }],
-      },
-      {
-        id: "active-platform",
-        title: "ACTIVE",
-        category: "PRODUCT DESIGN / WEB PLATFORM",
-        stageBg: "#1a092b",
-        stageAccent: "#89288f",
-        cardBg: "#ffffff",
-        cardAccent: "#89288f",
-        badge: "BRAND CAMPAIGNS PLATFORM · LIVE WEBSITE",
-        headline: "CONNECTING BRANDS\nWITH CREATORS",
-        subcopy:
-          "End-to-end campaign discovery and creator matching web platform crafted for clarity and conversion.",
-        layout: "desktop",
-        imageSrc: "/images/projects/active-bg.webp",
-        posterSrc: "/images/projects/active-poster.webp",
-        videoSrc: "/videos/projects/active-tour.mp4",
-        links: [{ type: "web", href: "https://activksa.com/brands/" }],
-      },
-      {
-        id: "malahi",
-        title: "MALAHI",
-        category: "PRODUCT DESIGN / WEBSITE",
-        stageBg: "#081018",
-        stageAccent: "#059969",
-        cardBg: "#0b0d12",
-        cardAccent: "#10b981",
-        badge: "SAUDI ENTERTAINMENT DESTINATIONS · LIVE WEBSITE",
-        headline: "KEEP\nSMILING",
-        subcopy:
-          "Interactive multi-brand entertainment and ticketing web experience uniting Wanoos, Doos Karting, Garage, and Remote.",
-        layout: "desktop",
-        imageSrc: "/images/projects/malahi-bg.webp",
-        posterSrc: "/images/projects/malahi-poster.webp",
-        videoSrc: "/videos/projects/malahi-tour.mp4",
-        links: [{ type: "web", href: "https://malahi.com/ar" }],
-      },
-      {
-        id: "quranic-radio",
-        title: "QURANIC RADIO",
-        category: "MOBILE UX / FLUTTER",
-        stageBg: "#211F22",
-        stageAccent: "#DFD7C8",
-        cardBg: "#1E1E1E",
-        cardAccent: "#D4B363",
-        badge: "ISLAMIC AUDIO PLAYER · FLUTTER",
-        headline: "TACTILE VINYL\nQURAN STREAMING",
-        subcopy:
-          "Minimalist Arabic Quran radio experience pairing tactile vinyl turntable motion with curated reciter sleeves.",
-        layout: "mobile",
-        imageSrc: "/images/projects/quranic-radio-bg.webp",
-        mobileScreens: [
-          "/images/projects/quranic-radio-1.webp",
-          "/images/projects/quranic-radio-2.webp",
-        ],
-        links: [
-          {
-            type: "video",
-            href: "https://www.facebook.com/reel/1864644460753214",
-          },
-          {
-            type: "figma",
-            href: "https://www.figma.com/design/gbqTrzytAQLRcNWAvw5vyO/Quranic-Radio-%F0%9F%8E%A7?node-id=0-1",
-          },
-        ],
-      },
-      {
         id: "fi-el-sekka",
         title: "FI EL SEKKA",
-        category: "TRANSIT & TICKETING / FLUTTER",
+        category: "INTERCITY MOBILITY · MOBILE CASE STUDY",
+        role: "Lead Product Designer",
+        domain: "Transit & QR Ticketing · Egypt",
+        outcomeTag: "Live on Apple App Store",
         stageBg: "#1E2019",
         stageAccent: "#D7E140",
         cardBg: "#1A1A1A",
@@ -264,61 +198,17 @@ export const siteConfig = {
         ],
       },
       {
-        id: "wanas-ai",
-        title: "WANAS AI",
-        category: "AI WELLNESS / MOBILE APP",
-        stageBg: "#0B583C",
-        stageAccent: "#2AC58D",
-        cardBg: "#0C1D17",
-        cardAccent: "#0EBE7F",
-        badge: "MENTAL WELLNESS & GROUP SUPPORT · MOBILE",
-        headline: "CONNECTED\nMIND CARE",
-        subcopy:
-          "Arabic mental wellness and tele-therapy platform featuring live moderated support rooms, licensed specialists, and AI guidance.",
-        layout: "desktop",
-        imageSrc: "/images/projects/wanas-ai-showcase.webp",
-        links: [
-          {
-            type: "figma",
-            href: "https://www.figma.com/design/N8iSt8ctzQODLEwlzAvZId/Wanas-Ai-%D9%88%D9%86%D8%B3-?node-id=285-20730&t=eLBaqikobroLCw7R-1",
-          },
-        ],
-      },
-      {
-        id: "foxus",
-        title: "FOXUS",
-        category: "MARKETPLACE APP / FLUTTER",
-        stageBg: "#121E24",
-        stageAccent: "#F48823",
-        cardBg: "#0C191A",
-        cardAccent: "#F48823",
-        badge: "CLASSIFIEDS MARKETPLACE · EGYPT",
-        headline: "DISCOVER EVERY\nOPPORTUNITY",
-        subcopy:
-          "Bilingual Egyptian marketplace app uniting real estate, automotive, and electronics discovery with instant seller chat.",
-        layout: "mobile",
-        imageSrc: "/images/projects/foxus-bg.webp",
-        mobileScreens: [
-          "/images/projects/foxus-2.webp",
-          "/images/projects/foxus-1.webp",
-          "/images/projects/foxus-3.webp",
-        ],
-        links: [
-          {
-            type: "figma",
-            href: "https://www.figma.com/design/G0mquJC19n9qXrKTBnntPB/Foxus?node-id=627-840",
-          },
-        ],
-      },
-      {
         id: "tride",
         title: "TRIDE",
-        category: "PRODUCT DESIGN / UI/UX",
+        category: "SCHOOL MOBILITY · MOBILE CASE STUDY",
+        role: "UI/UX & Product Designer · Corevine",
+        domain: "Parent Safety & Commutes · Egypt",
+        outcomeTag: "Live on App Store & Google Play",
         stageBg: "#182128",
         stageAccent: "#FFA81D",
         cardBg: "#122535",
         cardAccent: "#FFA81D",
-        badge: "SAFE SCHOOL TRANSPORT · UI/UX",
+        badge: "SAFE SCHOOL TRANSPORT · COREVINE",
         headline: "SAFE RIDES\nFOR YOUR KIDS",
         subcopy:
           "Trusted school ride-booking app giving parents flexible car or seat plans, multi-child profiles, and verified school routes.",
@@ -338,62 +228,193 @@ export const siteConfig = {
             type: "googlePlay",
             href: "https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share",
           },
-          {
-            type: "figma",
-            href: "https://www.figma.com/design/slzrLqEDN0l10yDeJUofbK/Tride?node-id=723-37072",
-          },
         ],
       },
       {
-        id: "nursy",
-        title: "NURSY",
-        category: "HEALTHCARE UX / MOBILE APP",
-        stageBg: "#132330",
-        stageAccent: "#74B9E2",
-        cardBg: "#192A38",
-        cardAccent: "#74B9E2",
-        badge: "ON-DEMAND HOME NURSING · MOBILE",
-        headline: "COMPASSIONATE\nHOME CARE",
+        id: "active-platform",
+        title: "ACTIVE",
+        category: "CREATOR CAMPAIGNS · WEB CASE STUDY",
+        role: "Lead Product Designer",
+        domain: "B2B Marketing Platform · KSA",
+        outcomeTag: "Live Web Platform",
+        stageBg: "#1a092b",
+        stageAccent: "#89288f",
+        cardBg: "#ffffff",
+        cardAccent: "#89288f",
+        badge: "BRAND CAMPAIGNS PLATFORM · LIVE WEBSITE",
+        headline: "CONNECTING BRANDS\nWITH CREATORS",
         subcopy:
-          "On-demand home nursing platform pairing real-time Cairo geolocation matching with patient care history and live chat.",
-        layout: "mobile",
-        imageSrc: "/images/projects/nursy-bg.webp",
-        mobileScreens: [
-          "/images/projects/nursy-1.webp",
-          "/images/projects/nursy-3.webp",
-          "/images/projects/nursy-2.webp",
-        ],
-        links: [
-          {
-            type: "figma",
-            href: "https://www.figma.com/design/7gteXIlESSCoUq8haoZMQU/Nursy-app?node-id=0-1",
-          },
-        ],
+          "End-to-end campaign discovery and creator matching web platform crafted for clarity and conversion.",
+        layout: "desktop",
+        imageSrc: "/images/projects/active-bg.webp",
+        posterSrc: "/images/projects/active-poster.webp",
+        videoSrc: "/videos/projects/active-tour.mp4",
+        links: [{ type: "web", href: "https://activksa.com/brands/" }],
+      },
+      {
+        id: "malahi",
+        title: "MALAHI",
+        category: "MULTI-BRAND TICKETING · WEB CASE STUDY",
+        role: "Product & Web Designer",
+        domain: "Entertainment Hub · KSA",
+        outcomeTag: "Live Bilingual Web Platform",
+        stageBg: "#081018",
+        stageAccent: "#059969",
+        cardBg: "#0b0d12",
+        cardAccent: "#10b981",
+        badge: "SAUDI ENTERTAINMENT DESTINATIONS · LIVE WEBSITE",
+        headline: "KEEP\nSMILING",
+        subcopy:
+          "Interactive multi-brand entertainment and ticketing web experience uniting Wanoos, Doos Karting, Garage, and Remote.",
+        layout: "desktop",
+        imageSrc: "/images/projects/malahi-bg.webp",
+        posterSrc: "/images/projects/malahi-poster.webp",
+        videoSrc: "/videos/projects/malahi-tour.mp4",
+        links: [{ type: "web", href: "https://malahi.com/ar" }],
+      },
+      {
+        id: "yusr-academy",
+        title: "YUSR ACADEMY",
+        category: "EDTECH & MENTORSHIP · WEB CASE STUDY",
+        role: "Product Designer & Mentor",
+        domain: "Arabic UX Academy · MENA",
+        outcomeTag: "Live Platform & Active Track",
+        stageBg: "#060F0F",
+        stageAccent: "#52B285",
+        cardBg: "#0A1919",
+        cardAccent: "#A7F3B8",
+        badge: "ARABIC UX ACADEMY · LIVE WEBSITE",
+        headline: "MASTER HUMAN\nEXPERIENCE",
+        subcopy:
+          "Arabic-first UI/UX design academy and design studio uniting practical projects, career coaching, and Vibe Coding.",
+        layout: "desktop",
+        imageSrc: "/images/projects/yusr-academy-bg.webp",
+        posterSrc: "/images/projects/yusr-academy-poster.webp",
+        videoSrc: "/videos/projects/yusr-academy-tour.mp4",
+        links: [{ type: "web", href: "https://www.yusr-academy.com/" }],
       },
     ] as WorkProjectItem[],
   },
+  experienceSection: {
+    eyebrow: "TRACK RECORD",
+    heading: "EXPERIENCE",
+    roles: [
+      {
+        id: "corevine",
+        number: "01",
+        role: "Product & UI/UX Designer",
+        company: "Corevine",
+        scope: "Mobile & Web Products",
+        location: "Egypt",
+        summary:
+          "Designing end-to-end consumer and mobility apps including Tride (live on App Store & Google Play), owning UX flows, UI architecture, and production handoff with engineering squads.",
+        highlights: [
+          "End-to-end parent booking & multi-child commute setup flows",
+          "Reusable Figma component systems built for iOS & Android parity",
+          "Direct engineering QA through store release cycles",
+        ],
+      },
+      {
+        id: "independent-mena",
+        number: "02",
+        role: "Independent Product Designer",
+        company: "Egypt & KSA Product Teams",
+        scope: "End-to-End Delivery",
+        location: "MENA",
+        summary:
+          "Partnering directly with founders and product teams to design and launch live regional mobile and web platforms including Fi El Sekka, Active KSA, and Malahi.",
+        highlights: [
+          "Arabic RTL & bilingual product architecture across Egypt and Saudi Arabia",
+          "Zero-to-launch flows spanning commuter ticketing, B2B creator matching & venue discovery",
+          "Interactive code/Flutter prototyping to validate ergonomics before dev freeze",
+        ],
+      },
+      {
+        id: "yusr-academy-mentor",
+        number: "03",
+        role: "UI/UX Mentor & Prototyping Instructor",
+        company: "Yusr Academy",
+        scope: "Design Education",
+        location: "MENA",
+        summary:
+          "Mentoring Arabic UI/UX designers on real-world case studies, product thinking, and rapid AI-assisted prototyping workflows.",
+        highlights: [
+          "Teaching case-study storytelling centered on real problem-solving over visual screens",
+          "Leading hands-on Vibe Coding workshops turning Figma designs into working builds",
+          "Reviewing student flows, information architecture, and portfolio positioning",
+        ],
+      },
+    ] as ExperienceRoleItem[],
+    recognition: [
+      {
+        id: "create-apps-dubai",
+        title: "Create Apps Championship 2025–26",
+        issuer: "Dubai Chamber of Digital Economy",
+        subtitle: "Regional Mobile Product Recognition",
+      },
+      {
+        id: "figma-systems",
+        title: "Figma Variables & Design Systems",
+        issuer: "Design Systems Track",
+        subtitle: "Semantic Tokens & Scalable Components",
+      },
+      {
+        id: "creativa-ideation",
+        title: "ITIDA · TIEC Creativa Ideation Camp",
+        issuer: "Technology Innovation & Entrepreneurship Center",
+        subtitle: "28h Product Validation & Innovation",
+      },
+    ] as RecognitionItem[],
+  },
   certificatesSection: {
-    eyebrow: "VERIFIED CREDENTIALS",
-    heading: "CERTIFICATES",
+    eyebrow: "SELECTED CREDENTIALS",
+    heading: "CREDENTIALS",
     subtitle:
-      "Selected design & engineering credentials framed in museum-grade 3D walnut and glass. Explore the full archive for how each was earned and how to follow the same track.",
-    ctaLabel: "VIEW ALL CERTIFICATES",
+      "Selected recognition across mobile product building, design systems, AI engineering workflows, and product validation.",
+    ctaLabel: "VIEW ALL CREDENTIALS",
     ctaHref: "/certificates",
-    /**
-     * To replace the generated museum plate inside any 3D wooden frame with a real scan:
-     * drop `<name>.webp` in `public/images/certificates/` and set `imageSrc: "/images/certificates/<name>.webp"`
-     * alongside the live `verifyUrl`.
-     */
     certificates: [
       {
-        id: "manara-ai-engineering",
+        id: "create-apps-championship",
         number: "01",
+        title: "CREATE APPS CHAMPIONSHIP",
+        issuer: "Dubai Chamber of Digital Economy",
+        issuedDate: "2025–26",
+        details: "Create Apps in Dubai · Certificate of Participation",
+        description:
+          "Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative by Dubai Chamber of Digital Economy.",
+        accentColor: "#1E7CC6",
+        frameFormat: "landscape-4x3",
+        imageSrc: "/images/certificates/create-apps-championship-dubai.webp",
+        programUrl: "https://createapps.ae/",
+        programLabel: "Explore Create Apps",
+        featured: true,
+      },
+      {
+        id: "figma-variables",
+        number: "02",
+        title: "FIGMA VARIABLES",
+        issuer: "Osama Eldrieny",
+        issuedDate: "OCT 2025",
+        details: "October 25, 2025 · Design Systems Track",
+        description:
+          "Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture taught by Osama Eldrieny.",
+        accentColor: "#00D084",
+        imageSrc: "/images/certificates/figma-variables-osama-eldrieny.webp",
+        programUrl:
+          "https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft",
+        programLabel: "Take This Course",
+        featured: true,
+      },
+      {
+        id: "manara-ai-engineering",
+        number: "03",
         title: "AI, DATA & ENGINEERING",
         issuer: "Manara",
         issuedDate: "NOV 2026",
         details: "November 23, 2026 · Official Certificates of Completion",
         description:
-          "Completed Manara courses and learning paths spanning AI-assisted software engineering, Generative AI case studies, Python data visualization, and professional engineering communication.",
+          "Completed Manara courses spanning AI-assisted software workflows, Generative AI case studies, and Python data visualization from insight to impact.",
         accentColor: "#F26532",
         frameFormat: "landscape",
         imageSrc: "/images/certificates/manara-next-gen-devs-ai.webp",
@@ -445,51 +466,7 @@ export const siteConfig = {
             verifyUrl:
               "https://api.manara.tech/api/v1/certificate/asset/mwtfslo0-b2i2y385",
           },
-          {
-            id: "manara-professional-english",
-            label: "Professional English for Software Engineers",
-            title: "PROFESSIONAL ENGLISH FOR SOFTWARE ENGINEERS",
-            level: "Learning Path",
-            issuedDate: "NOV 2026",
-            details: "November 23, 2026 · Official Learning Path Certificate",
-            description:
-              "Completed the Manara learning path in professional technical English and engineering communication, focused on clear collaboration, technical discussions, and global engineering teams.",
-            imageSrc: "/images/certificates/manara-professional-english.webp",
-            verifyUrl:
-              "https://api.manara.tech/api/v1/certificate/asset/mwti7oy4-ckcq44hb",
-          },
         ],
-      },
-      {
-        id: "figma-variables",
-        number: "02",
-        title: "FIGMA VARIABLES",
-        issuer: "Osama Eldrieny",
-        issuedDate: "OCT 2025",
-        details: "October 25, 2025 · Design Systems Track",
-        description:
-          "Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture taught by Osama Eldrieny.",
-        accentColor: "#00D084",
-        imageSrc: "/images/certificates/figma-variables-osama-eldrieny.webp",
-        programUrl: "https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft",
-        programLabel: "Take This Course",
-        featured: true,
-      },
-      {
-        id: "create-apps-championship",
-        number: "03",
-        title: "CREATE APPS CHAMPIONSHIP",
-        issuer: "Dubai Chamber of Digital Economy",
-        issuedDate: "2025–26",
-        details: "Create Apps in Dubai · Certificate of Participation",
-        description:
-          "Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative by Dubai Chamber of Digital Economy.",
-        accentColor: "#1E7CC6",
-        frameFormat: "landscape-4x3",
-        imageSrc: "/images/certificates/create-apps-championship-dubai.webp",
-        programUrl: "https://createapps.ae/",
-        programLabel: "Explore Create Apps",
-        featured: true,
       },
       {
         id: "ideation-camp",
@@ -502,85 +479,9 @@ export const siteConfig = {
           "Completed 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig.",
         accentColor: "#0057A8",
         imageSrc: "/images/certificates/ideation-camp-creativa-tiec.webp",
-        programUrl: "https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr",
-        programLabel: "Explore Creativa",
-        featured: false,
-      },
-      {
-        id: "gdg-on-campus-uiux-core-team",
-        number: "05",
-        title: "GDG ON CAMPUS · UI/UX CORE TEAM",
-        issuer: "Google Developer Groups on Campus · Zagazig",
-        issuedDate: "2024–25",
-        details: "2024–2025 Academic Year · Certificate of Completion",
-        description:
-          "Recognized for serving as a UI/UX Core Team member at Google Developer Groups on Campus — Zagazig University during the 2024–2025 academic year, contributing to design workshops and student tech community initiatives.",
-        accentColor: "#F9AB00",
-        frameFormat: "landscape",
-        imageSrc: "/images/certificates/gdg-on-campus-uiux-core-team.webp",
         programUrl:
-          "https://gdg.community.dev/gdg-on-campus-zagazig-university-zagazig-egypt/",
-        programLabel: "Explore GDG Zagazig",
-        featured: false,
-      },
-      {
-        id: "satr-dart-track",
-        number: "06",
-        title: "DART PROGRAMMING TRACK",
-        issuer: "Tuwaiq Academy · Satr",
-        issuedDate: "MAY 2024",
-        details: "3 Levels Completed · 3 Certificates · 6 Hours Total",
-        description:
-          "Completed the 3-level Dart programming certification track (Dart 101, 102 & 103) on Satr by Tuwaiq Academy, covering core syntax, object-oriented fundamentals, and intermediate Dart patterns for Flutter engineering.",
-        accentColor: "#00B4E6",
-        frameFormat: "landscape",
-        imageSrc: "/images/certificates/satr-dart-101.webp",
-        programUrl: "https://satr.codes/",
-        programLabel: "Explore Satr",
-        featured: false,
-        series: [
-          {
-            id: "satr-dart-101",
-            label: "Dart 101",
-            level: "Beginner",
-            issuedDate: "MAY 20, 2024",
-            details: "Dart 101 · Beginner · 2 Hours",
-            imageSrc: "/images/certificates/satr-dart-101.webp",
-          },
-          {
-            id: "satr-dart-102",
-            label: "Dart 102",
-            level: "Intermediate",
-            issuedDate: "MAY 21, 2024",
-            details: "Dart 102 · Intermediate · 2 Hours",
-            imageSrc: "/images/certificates/satr-dart-102.webp",
-          },
-          {
-            id: "satr-dart-103",
-            label: "Dart 103",
-            level: "Intermediate",
-            issuedDate: "MAY 21, 2024",
-            details: "Dart 103 · Intermediate · 2 Hours",
-            imageSrc: "/images/certificates/satr-dart-103.webp",
-          },
-        ],
-      },
-      {
-        id: "busuu-english-a1",
-        number: "07",
-        title: "ENGLISH LEVEL A1",
-        issuer: "Busuu",
-        issuedDate: "JAN 2023",
-        details: "January 9, 2023 · Grade B (86%) · CEFR A1",
-        description:
-          "Successfully completed the CEFR Level A1 English language certification on Busuu with a Grade B (86%), covering foundational everyday communication and structured expression.",
-        accentColor: "#117AF2",
-        frameFormat: "portrait",
-        imageSrc: "/images/certificates/busuu-english-a1.webp",
-        verifyUrl:
-          "https://api.busuu.com/anon/certificates/f851ec37c745e20ebe70bbb5807a32e7",
-        programUrl: "https://www.busuu.com/en/course/learn-english-online",
-        programLabel: "Explore Busuu",
+          "https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr",
+        programLabel: "Explore Creativa",
         featured: false,
       },
     ] as CertificateItem[],
@@ -596,7 +497,7 @@ export const siteConfig = {
     socials: [
       {
         label: "LINKEDIN",
-        handle: "@ABDULLAHELAWADY",
+        handle: "@ABDULLAH-ELAWADY",
         href: "https://www.linkedin.com/in/abdullah-elawady-019129330",
       },
       {
@@ -604,18 +505,8 @@ export const siteConfig = {
         handle: "@ELAWADY2002",
         href: "https://github.com/Elawady2002",
       },
-      {
-        label: "INSTAGRAM",
-        handle: "@ABDLLA_67",
-        href: "https://www.instagram.com/abdlla_67",
-      },
-      {
-        label: "FACEBOOK",
-        handle: "ABDULLAH ELAWADY",
-        href: "https://www.facebook.com/share/1A3SmiAnEj/?mibextid=wwXIfr",
-      },
     ],
-    marqueePrimary: "ABDULLAHELAWADY",
-    marqueeAccent: ".STUDIO",
+    marqueePrimary: "ABDULLAH ",
+    marqueeAccent: "ELAWADY",
   },
 } as const;

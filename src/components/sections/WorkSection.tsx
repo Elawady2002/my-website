@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { StylizedText } from "@/components/ui/StylizedText";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
 import { siteConfig, type WorkProjectLinkType } from "@/data/site";
 import { useRevealOnView } from "@/hooks/useRevealOnView";
 import { WORK_CARD_STRIDE } from "@/three/constants";
@@ -12,7 +14,7 @@ const WORK_REVEAL_OPTS = { threshold: 0.18 };
 const LINK_LABELS: Record<WorkProjectLinkType, string> = {
   appStore: "App Store",
   googlePlay: "Google Play",
-  web: "Website",
+  web: "Live Website",
   figma: "Figma",
   video: "Watch Video",
 };
@@ -107,8 +109,6 @@ export function WorkSection() {
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [webglReady, setWebglReady] = useState(true);
-  const [isCardHovered, setIsCardHovered] = useState(false);
-  const [isDockHovered, setIsDockHovered] = useState(false);
   const [isDraggingUI, setIsDraggingUI] = useState(false);
   const activeIdxRef = useRef(0);
 
@@ -278,17 +278,6 @@ export function WorkSection() {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "touch") {
-      const rect = getCachedStageRect(e.currentTarget);
-      const relX = (e.clientX - rect.left) / Math.max(rect.width, 1);
-      const relY = (e.clientY - rect.top) / Math.max(rect.height, 1);
-      const overCenterCard =
-        relX >= 0.17 && relX <= 0.83 && relY >= 0.2 && relY <= 0.92;
-      setIsCardHovered((prev) =>
-        prev === overCenterCard ? prev : overCenterCard
-      );
-    }
-
     if (!isDraggingRef.current) return;
     if (Math.abs(e.clientX - startXRef.current) > 10) {
       setIsDraggingUI((prev) => (prev ? prev : true));
@@ -353,8 +342,6 @@ export function WorkSection() {
 
   const activeProject = projects[activeIdx];
   const projectLinks = activeProject.links ?? [];
-  const showLinksDock =
-    projectLinks.length > 0 && !isDraggingUI && (isCardHovered || isDockHovered);
   const counterLabel = `${String(activeIdx + 1).padStart(2, "0")}/${String(
     count
   ).padStart(2, "0")}`;
@@ -395,10 +382,6 @@ export function WorkSection() {
         onPointerMove={handlePointerMove}
         onPointerUp={finishDrag}
         onPointerCancel={finishDrag}
-        onPointerLeave={() => {
-          setIsCardHovered(false);
-          setIsDockHovered(false);
-        }}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") stepBy(1);
           if (e.key === "ArrowLeft") stepBy(-1);
@@ -443,48 +426,47 @@ export function WorkSection() {
           </div>
         </div>
 
-        {projectLinks.length > 0 ? (
+        <div
+          data-project-links=""
+          data-visible={!isDraggingUI ? "true" : "false"}
+          className="pointer-events-none absolute inset-x-0 bottom-[82px] sm:bottom-[84px] z-30 flex justify-center px-4"
+        >
           <div
-            data-project-links=""
-            data-visible={showLinksDock ? "true" : "false"}
-            className="pointer-events-none absolute inset-x-0 bottom-[82px] sm:bottom-[84px] z-30 flex justify-center px-4"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            className={`max-w-[92vw] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              isDraggingUI
+                ? "opacity-45 scale-[0.98] pointer-events-none"
+                : "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+            }`}
           >
             <div
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onPointerEnter={() => setIsDockHovered(true)}
-              onPointerLeave={() => setIsDockHovered(false)}
-              className={`max-w-[92vw] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                isDraggingUI
-                  ? "opacity-55 scale-[0.98] pointer-events-none md:opacity-0 md:translate-y-4 md:scale-[0.96]"
-                  : showLinksDock
-                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                  : "opacity-100 translate-y-0 scale-100 pointer-events-auto md:opacity-0 md:translate-y-4 md:scale-[0.96] md:pointer-events-none"
-              }`}
+              key={activeProject.id}
+              className="booking-step-in flex flex-wrap items-center justify-center gap-2 sm:gap-2.5"
             >
-              <div
-                key={activeProject.id}
-                className="booking-step-in flex flex-wrap items-center justify-center gap-2 sm:gap-2.5"
+              <Link
+                href={`/work/${activeProject.id}`}
+                className="inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full bg-[#f34213] text-[#0b0b0b] text-[12.5px] sm:text-[13.5px] font-medium tracking-[-0.01em] whitespace-nowrap shadow-[0_10px_26px_rgba(243,66,19,0.28)] transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#ff5629] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
               >
-                {projectLinks.map((link, idx) => (
-                  <a
-                    key={`${activeProject.id}-${link.type}`}
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      transitionDelay: showLinksDock ? `${idx * 45}ms` : "0ms",
-                    }}
-                    className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
-                  >
-                    <ProjectLinkIcon type={link.type} />
-                    <span>{link.label ?? LINK_LABELS[link.type]}</span>
-                  </a>
-                ))}
-              </div>
+                <span>Read Case Study</span>
+                <ArrowUpRight className="w-[15px] h-[15px] shrink-0" aria-hidden="true" />
+              </Link>
+
+              {projectLinks.map((link) => (
+                <a
+                  key={`${activeProject.id}-${link.type}`}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
+                >
+                  <ProjectLinkIcon type={link.type} />
+                  <span>{link.label ?? LINK_LABELS[link.type]}</span>
+                </a>
+              ))}
             </div>
           </div>
-        ) : null}
+        </div>
 
         <div
           ref={counterRef}
@@ -494,6 +476,74 @@ export function WorkSection() {
           {counterLabel}
         </div>
       </section>
+
+      {/* Scannable Case Study Index for Hiring Managers & Recruiters */}
+      <div className="px-4 sm:px-6 pt-12 sm:pt-16 pb-10 max-w-[1440px] mx-auto">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-6 text-[12px] sm:text-[13px] uppercase tracking-[0.06em] text-[#e7e1d7]/60">
+          <span>
+            <StylizedText text="CASE STUDY INDEX" />
+          </span>
+          <span className="tabular-nums text-[#e7e1d7]/45">
+            {String(count).padStart(2, "0")} SHIPPED PRODUCTS
+          </span>
+        </div>
+
+        <div className="border-b border-[#e7e1d7]/15">
+          {projects.map((project, idx) => {
+            const num = String(idx + 1).padStart(2, "0");
+            return (
+              <div
+                key={project.id}
+                className="group border-t border-[#e7e1d7]/15 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center"
+              >
+                <div className="lg:col-span-5 flex items-baseline gap-4 sm:gap-6 min-w-0">
+                  <span className="text-[12px] tabular-nums tracking-[0.08em] text-[#f34213] shrink-0">
+                    {num}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-[22px] sm:text-[28px] leading-[1.08] tracking-[-0.025em] font-normal uppercase text-[#e7e1d7] transition-transform duration-300 group-hover:translate-x-1">
+                      <StylizedWords text={project.title} />
+                    </h3>
+                    <p className="mt-1.5 text-[12px] uppercase tracking-[0.05em] text-[#e7e1d7]/50">
+                      {project.domain ?? project.category}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 space-y-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] uppercase tracking-[0.05em]">
+                    {project.role ? (
+                      <span className="text-[#e7e1d7]/80">{project.role}</span>
+                    ) : null}
+                    {project.outcomeTag ? (
+                      <span className="inline-flex items-center gap-1.5 text-[#f34213]/90">
+                        <span
+                          aria-hidden="true"
+                          className="h-1.5 w-1.5 rounded-full bg-[#f34213]"
+                        />
+                        {project.outcomeTag}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] leading-[1.55] text-[#e7e1d7]/65">
+                    {project.subcopy}
+                  </p>
+                </div>
+
+                <div className="lg:col-span-2 flex lg:justify-end">
+                  <Link
+                    href={`/work/${project.id}`}
+                    className="voy-glass inline-flex h-[42px] items-center gap-2 rounded-full px-5 text-[12.5px] uppercase tracking-[0.05em] text-[#e7e1d7] transition-all duration-200 hover:bg-[#f34213] hover:text-[#0b0b0b] hover:border-[#f34213] whitespace-nowrap"
+                  >
+                    <span>Read Case Study</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

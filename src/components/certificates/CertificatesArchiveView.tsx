@@ -214,7 +214,7 @@ export function CertificatesArchiveView() {
             className="h-4 w-4 text-[#f34213] transition-transform duration-200 group-hover:-translate-x-0.5"
             aria-hidden="true"
           />
-          <span>Back to Studio</span>
+          <span>Back to Portfolio</span>
         </Link>
 
         <Link
@@ -232,7 +232,7 @@ export function CertificatesArchiveView() {
           className="pb-10 sm:pb-14"
         >
           <h1 className="text-[clamp(2.8rem,8.5vw,7.4rem)] leading-[0.88] tracking-[-0.04em] font-normal uppercase text-[#e7e1d7]">
-            <StylizedText text="CERTIFICATES" />
+            <StylizedText text="CREDENTIALS" />
           </h1>
         </section>
 

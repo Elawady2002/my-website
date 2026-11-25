@@ -3,9 +3,9 @@ import { CertificatesArchiveView } from "@/components/certificates/CertificatesA
 import { SmoothExperience } from "@/components/layout/SmoothExperience";
 
 export const metadata: Metadata = {
-  title: "Certificates — Abdullah Elawady Studio",
+  title: "Credentials — Abdullah Elawady",
   description:
-    "Verified Product Engineering, design systems, and innovation certificates framed in interactive 3D walnut & glass — with course details and program links.",
+    "Selected product design systems, AI, and innovation credentials framed in interactive 3D walnut & glass — with course details and program links.",
 };
 
 export default function CertificatesPage() {

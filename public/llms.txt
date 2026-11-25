@@ -1,36 +1,34 @@
-# Abdullah Elawady Studio
+# Abdullah Elawady — Senior Product Designer
 
-> Portfolio of Abdullah Elawady — Product Engineer with 6+ years of experience crafting 40+ mobile & web apps across iOS, Android, Flutter, and modern web platforms. Based in Cairo, Egypt.
+> Portfolio of Abdullah Elawady — Senior Product Designer crafting end-to-end mobile & web products across mobility, marketplaces, and digital platforms, backed by hands-on Flutter & front-end prototyping fluency. Based in Cairo, Egypt.
 
 ## Pages
 
-- [Home](https://my-website-neon-ten-94.vercel.app/): Main studio showcase including hero, studio overview (`#info`), engineering narrative (`#about`), interactive 3D project gallery (`#work`), featured credentials (`#certificates`), booking modal, and contact footer (`#contact`).
-- [Certificates Archive](https://my-website-neon-ten-94.vercel.app/certificates): Verified design and engineering credentials presented in interactive 3D frames with full details and course/organization links.
+- [Home](https://my-website-neon-ten-94.vercel.app/): Main portfolio featuring role overview (`#info`), design approach (`#about`), interactive 3D project carousel and case study index (`#work`), experience & recognition (`#experience`), intro call booking, and contact footer (`#contact`).
+- [Credentials Archive](https://my-website-neon-ten-94.vercel.app/certificates): Selected recognition across mobile product building, Figma design systems, AI workflows, and product validation.
 
-## Selected Projects
+## Selected Case Studies
 
-- [Yusr Academy](https://www.yusr-academy.com/): Arabic-first UI/UX design academy and design studio uniting practical projects, career coaching, and Vibe Coding.
-- [Active](https://activksa.com/brands/): End-to-end brand campaign discovery and creator matching web platform crafted for clarity and conversion.
-- [Malahi](https://malahi.com/ar): Interactive multi-brand Saudi entertainment and ticketing web experience uniting Wanoos, Doos Karting, Garage, and Remote.
-- [Quranic Radio (Figma)](https://www.figma.com/design/gbqTrzytAQLRcNWAvw5vyO/Quranic-Radio-%F0%9F%8E%A7?node-id=0-1): Minimalist Arabic Quran radio experience in Flutter pairing tactile vinyl turntable motion with curated reciter sleeves.
-- [Fi El Sekka (App Store)](https://apps.apple.com/eg/app/fi-el-sekka/id6813012849): Intercity shuttle booking and digital wallet app in Flutter with instant QR seat boarding passes, route tracking, and verified captains.
-- [Wanas AI (Figma)](https://www.figma.com/design/N8iSt8ctzQODLEwlzAvZId/Wanas-Ai-%D9%88%D9%86%D8%B3-?node-id=285-20730&t=eLBaqikobroLCw7R-1): Arabic mental wellness and tele-therapy platform featuring live moderated support rooms, licensed specialists, and AI guidance.
-- [Foxus (Figma)](https://www.figma.com/design/G0mquJC19n9qXrKTBnntPB/Foxus?node-id=627-840): Bilingual Egyptian marketplace app in Flutter uniting real estate, automotive, and electronics discovery with instant seller chat.
-- [Tride (App Store)](https://apps.apple.com/eg/app/tride-egypt/id6749056619) / [Google Play](https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share): Trusted school ride-booking app giving parents flexible car or seat plans, multi-child profiles, and verified school routes.
-- [Nursy (Figma)](https://www.figma.com/design/7gteXIlESSCoUq8haoZMQU/Nursy-app?node-id=0-1): On-demand home nursing platform pairing real-time Cairo geolocation matching with patient care history and live chat.
+- [Fi El Sekka Case Study](https://my-website-neon-ten-94.vercel.app/work/fi-el-sekka) · [App Store](https://apps.apple.com/eg/app/fi-el-sekka/id6813012849): Intercity shuttle booking and digital wallet app in Egypt with instant QR seat boarding passes, route tracking, and verified captains.
+- [Tride Case Study](https://my-website-neon-ten-94.vercel.app/work/tride) · [App Store](https://apps.apple.com/eg/app/tride-egypt/id6749056619) / [Google Play](https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share): Trusted school ride-booking app built at Corevine giving parents flexible car or seat plans, multi-child profiles, and verified school routes.
+- [Active Case Study](https://my-website-neon-ten-94.vercel.app/work/active-platform) · [Live Website](https://activksa.com/brands/): End-to-end Saudi brand campaign discovery and creator matching web platform crafted for clarity and conversion.
+- [Malahi Case Study](https://my-website-neon-ten-94.vercel.app/work/malahi) · [Live Website](https://malahi.com/ar): Bilingual multi-brand Saudi entertainment and ticketing web flagship uniting Wanoos, Doos Karting, Garage, and Remote.
+- [Yusr Academy Case Study](https://my-website-neon-ten-94.vercel.app/work/yusr-academy) · [Live Website](https://www.yusr-academy.com/): Arabic-first UI/UX design academy and studio platform pairing practical case-study training with Vibe Coding mentorship.
 
-## Certificates
+## Experience & Mentorship
 
-- **Next-Gen Devs: AI Tools for Software Engineers** (Manara · Nov 2026): Completed the Manara course on AI-assisted software engineering workflows, AI coding assistants, and rapid prototyping. [Verify Certificate](https://api.manara.tech/api/v1/certificate/asset/mwte3oyi-qg03954g)
-- **Generative AI in Action: Case Studies and Future Outlook** (Manara · Nov 2026): Completed the Manara course exploring real-world Generative AI case studies, practical product applications, and the evolving landscape of AI engineering. [Verify Certificate](https://api.manara.tech/api/v1/certificate/asset/mwtflptz-f44ei0mw)
-- **Data Visualization with Python: From Insight to Impact** (Manara · Nov 2026): Completed the Manara course on transforming datasets into clear, decision-ready visualizations with Python, focusing on analytical storytelling from raw insight to measurable impact. [Verify Certificate](https://api.manara.tech/api/v1/certificate/asset/mwtfslo0-b2i2y385)
-- **Professional English for Software Engineers** (Manara Learning Path · Nov 2026): Completed the Manara learning path in professional technical English and engineering communication for global engineering teams. [Verify Certificate](https://api.manara.tech/api/v1/certificate/asset/mwti7oy4-ckcq44hb)
-- **Figma Variables** (Osama Eldrieny · Oct 2025): Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture. [Course Playlist](https://www.youtube.com/playlist?list=PLk31GonFeFpuGaYgN2uiwa4SpMEitr-ft)
-- **Ideation Camp** (ITIDA · TIEC · Creativa Zagazig · Nov 2026): 28 hours of intensive product ideation, startup validation, and innovation workshops hosted by ITIDA, TIEC, and Creativa Innovation Hub Zagazig. [Creativa Zagazig](https://www.facebook.com/share/1FYUe9ghRM/?mibextid=wwXIfr)
-- **Create Apps Championship** (Dubai Chamber of Digital Economy · 2025–26): Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative. [Create Apps in Dubai](https://createapps.ae/)
-- **GDG on Campus · UI/UX Core Team** (Google Developer Groups on Campus · Zagazig · 2024–25): Served as a UI/UX Core Team member during the 2024–2025 academic year, contributing to design workshops and student tech community initiatives. [GDG Zagazig](https://gdg.community.dev/gdg-on-campus-zagazig-university-zagazig-egypt/)
-- **Dart Programming Track** (Tuwaiq Academy · Satr · May 2024): Completed the 3-level Dart programming certification series (Dart 101, Dart 102 & Dart 103, 6 hours total). [Satr Platform](https://satr.codes/)
-- **English Level A1** (Busuu · Jan 2023): Completed CEFR Level A1 English language certification on Busuu with Grade B (86%). [Verify Certificate](https://api.busuu.com/anon/certificates/f851ec37c745e20ebe70bbb5807a32e7)
+- **Product & UI/UX Designer — Corevine (Egypt)**: End-to-end mobile & web product delivery including Tride (live on App Store & Google Play), Figma component systems, and engineering QA.
+- **Independent Product Designer — Egypt & KSA Product Teams (MENA)**: Partnering with founders and product teams to design and launch live regional mobile & web platforms (Fi El Sekka, Active KSA, Malahi).
+- **UI/UX Mentor & Prototyping Instructor — Yusr Academy (MENA)**: Mentoring Arabic UI/UX designers on real-world case studies, product thinking, and AI-assisted Vibe Coding workflows.
+
+## Credentials
+
+- **Create Apps Championship** (Dubai Chamber of Digital Economy · 2025–26): Recognized for notable contribution in the Create Apps Championship 2025–26 under the Create Apps in Dubai initiative.
+- **Figma Variables** (Osama Eldrieny · Oct 2025): Hands-on specialization in Figma Variables, semantic design tokens, multi-mode theming, and scalable component architecture.
+- **Next-Gen Devs: AI Tools for Software Engineers** (Manara · Nov 2026): [Verify](https://api.manara.tech/api/v1/certificate/asset/mwte3oyi-qg03954g)
+- **Generative AI in Action: Case Studies and Future Outlook** (Manara · Nov 2026): [Verify](https://api.manara.tech/api/v1/certificate/asset/mwtflptz-f44ei0mw)
+- **Data Visualization with Python: From Insight to Impact** (Manara · Nov 2026): [Verify](https://api.manara.tech/api/v1/certificate/asset/mwtfslo0-b2i2y385)
+- **Ideation Camp** (ITIDA · TIEC · Creativa Zagazig · Nov 2026): 28 hours of intensive product ideation, startup validation, and innovation workshops.
 
 ## Contact
 
@@ -38,5 +36,3 @@
 - Phone: +20 103 319 0408
 - LinkedIn: https://www.linkedin.com/in/abdullah-elawady-019129330
 - GitHub: https://github.com/Elawady2002
-- Instagram: https://www.instagram.com/abdlla_67
-- Facebook: https://www.facebook.com/share/1A3SmiAnEj/?mibextid=wwXIfr

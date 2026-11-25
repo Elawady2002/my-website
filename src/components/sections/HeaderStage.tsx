@@ -383,13 +383,13 @@ export function HeaderStage() {
             ref={titleWrapRef}
             className="pt-4 sm:pt-5 select-none will-change-transform"
           >
-            <h1 className="w-full text-[9.1vw] sm:text-[9.5vw] leading-[0.88] tracking-[-0.035em] font-normal uppercase text-[#e7e1d7] whitespace-nowrap">
+            <h1 className="w-full text-[11.2vw] sm:text-[10.8vw] leading-[0.88] tracking-[-0.035em] font-normal uppercase text-[#e7e1d7] whitespace-nowrap">
               <MaskedChars
                 text={siteConfig.heroLine1}
                 baseDelayMs={200}
                 stepMs={26}
               />
-              <span className="block text-right text-[#f34213] mt-1 text-[11vw] sm:text-[10.4vw]">
+              <span className="block text-right text-[#f34213] mt-1 text-[11.2vw] sm:text-[10.8vw]">
                 <MaskedChars
                   text={siteConfig.heroLine2}
                   baseDelayMs={580}

@@ -381,7 +381,7 @@ export function BottomNav() {
       const mappedTab =
         href === "#contact"
           ? "connect"
-          : href === "#work"
+          : href === "#work" || href === "#experience"
           ? "work"
           : href === "#info" || href === "#about"
           ? "about"
@@ -470,21 +470,21 @@ export function BottomNav() {
             onMouseEnter={magnetic.onMouseEnter}
             onMouseMove={magnetic.onMouseMove}
             onMouseLeave={magnetic.onMouseLeave}
-            aria-label="Abdullah Elawady Studio — Scroll to top"
+            aria-label="Abdullah Elawady — Scroll to top"
             className="voy-glass group pointer-events-auto h-[44px] w-[44px] md:h-[54px] md:w-auto md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center text-[11.5px] md:text-[14.5px] font-medium uppercase tracking-[-0.02em] md:tracking-[0.04em] transition-transform duration-200 ease-out cursor-pointer select-none"
           >
             <span className="relative h-[1.25em] overflow-hidden leading-[1.25em]">
               <span className="flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] translate-y-0 group-hover:-translate-y-1/2">
                 <span className="block h-[1.25em] whitespace-nowrap">
                   <span className="text-[#e7e1d7]">AE</span>
-                  <span className="text-[#f34213]">.S</span>
+                  <span className="text-[#f34213]">.</span>
                 </span>
                 <span
                   aria-hidden="true"
                   className="block h-[1.25em] whitespace-nowrap"
                 >
                   <span className="text-[#e7e1d7]">AE</span>
-                  <span className="text-[#f34213]">.S</span>
+                  <span className="text-[#f34213]">.</span>
                 </span>
               </span>
             </span>
@@ -563,8 +563,8 @@ export function BottomNav() {
               aria-hidden={isOpen}
               aria-expanded={isBookingOpen && !isOpen}
               tabIndex={isOpen ? -1 : 0}
-              aria-label="Schedule a call"
-              title="Schedule a call"
+              aria-label="Book an intro call"
+              title="Book an intro call"
               className={`voy-glass group relative flex items-center justify-center shrink-0 h-[40px] w-[40px] sm:h-[44px] sm:w-[44px] md:h-[50px] md:w-[50px] rounded-full transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] cursor-pointer ${
                 isOpen
                   ? "opacity-0 scale-95 pointer-events-none"
@@ -660,7 +660,10 @@ export function BottomNav() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.65)]" />
             </span>
             <span>
-              AVAILABLE F<span className="playfair-o">o</span>R Q4
+              <span className="playfair-o">O</span>PEN T
+              <span className="playfair-o">o</span> PR
+              <span className="playfair-o">o</span>DUCT R
+              <span className="playfair-o">o</span>LES
             </span>
           </div>
         </div>

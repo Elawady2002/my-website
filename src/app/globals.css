@@ -80,7 +80,8 @@ body {
 .info-line,
 .about-reveal-line,
 .footer-reveal-line,
-.cert-reveal-line {
+.cert-reveal-line,
+.exp-reveal-line {
   transform-origin: left center;
   transform: scaleX(0);
   transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
@@ -95,10 +96,15 @@ body {
   --reveal-delay: var(--cert-delay, 0ms);
 }
 
+.exp-reveal-line {
+  --reveal-delay: var(--exp-delay, 0ms);
+}
+
 .info-row-content,
 .about-reveal-item,
 .footer-reveal-item,
-.cert-reveal-item {
+.cert-reveal-item,
+.exp-reveal-item {
   opacity: 0;
   transform: translate3d(0, var(--reveal-y, 18px), 0);
   transition:
@@ -126,17 +132,23 @@ body {
   --reveal-delay: var(--cert-delay, 0ms);
 }
 
+.exp-reveal-item {
+  --reveal-delay: var(--exp-delay, 0ms);
+}
+
 #info[data-revealed="true"] .info-line,
 #about-narrative[data-revealed="true"] .about-reveal-line,
 #contact[data-revealed="true"] .footer-reveal-line,
-#certificates[data-revealed="true"] .cert-reveal-line {
+#certificates[data-revealed="true"] .cert-reveal-line,
+#experience[data-revealed="true"] .exp-reveal-line {
   transform: scaleX(1);
 }
 
 #info[data-revealed="true"] .info-row-content,
 #about-narrative[data-revealed="true"] .about-reveal-item,
 #contact[data-revealed="true"] .footer-reveal-item,
-#certificates[data-revealed="true"] .cert-reveal-item {
+#certificates[data-revealed="true"] .cert-reveal-item,
+#experience[data-revealed="true"] .exp-reveal-item {
   opacity: 1;
   transform: translate3d(0, 0, 0);
 }

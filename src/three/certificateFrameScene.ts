@@ -390,7 +390,7 @@ function getBackboardCanvas(isPortrait: boolean): HTMLCanvasElement {
     ctx.fillStyle = "rgba(231, 225, 215, 0.48)";
     ctx.font =
       '500 13px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText("ABDULLAHELAWADY.STUDIO", width * 0.5, height * 0.48);
+    ctx.fillText("ABDULLAH ELAWADY", width * 0.5, height * 0.48);
 
     ctx.fillStyle = "rgba(243, 66, 19, 0.72)";
     ctx.font =
