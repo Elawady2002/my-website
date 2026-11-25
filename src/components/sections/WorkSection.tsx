@@ -2,8 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
+import { StylizedText } from "@/components/ui/StylizedText";
 import { siteConfig, type WorkProjectLinkType } from "@/data/site";
 import { useRevealOnView } from "@/hooks/useRevealOnView";
 import { WORK_CARD_STRIDE } from "@/three/constants";
@@ -18,6 +17,24 @@ const LINK_LABELS: Record<WorkProjectLinkType, string> = {
   figma: "Figma",
   video: "Watch Video",
 };
+
+function CaseStudyIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="w-[15px] h-[15px] shrink-0"
+    >
+      <rect x="3" y="4" width="18" height="12" rx="2.5" />
+      <path d="M8 20h8M12 16v4" />
+    </svg>
+  );
+}
 
 function ProjectLinkIcon({ type }: { type: WorkProjectLinkType }) {
   if (type === "appStore") {
@@ -355,19 +372,19 @@ export function WorkSection() {
 
         <h2
           aria-label={siteConfig.workSection.heading}
-          className="mt-4 w-full text-center text-[27vw] leading-[0.82] tracking-[-0.04em] font-normal uppercase text-[#e7e1d7] select-none overflow-clip"
+          className="mt-4 w-full text-center text-[11.8vw] sm:text-[12.2vw] leading-[0.86] tracking-[-0.04em] font-normal uppercase text-[#e7e1d7] select-none overflow-clip whitespace-nowrap"
         >
           {Array.from(siteConfig.workSection.heading).map((char, idx) => {
             const isO = char === "O" || char === "o";
             return (
               <span
                 key={idx}
-                style={{ "--work-delay": `${idx * 70}ms` } as React.CSSProperties}
+                style={{ "--work-delay": `${idx * 45}ms` } as React.CSSProperties}
                 className={`work-intro-char inline-block ${
                   isO ? "playfair-o" : ""
                 }`}
               >
-                {char}
+                {char === " " ? "\u00A0" : char}
               </span>
             );
           })}
@@ -376,7 +393,7 @@ export function WorkSection() {
 
       <section
         id="work"
-        aria-label="Selected projects carousel"
+        aria-label="Case studies carousel"
         onPointerEnter={handlePointerEnterStage}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -446,10 +463,10 @@ export function WorkSection() {
             >
               <Link
                 href={`/work/${activeProject.id}`}
-                className="inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full bg-[#f34213] text-[#0b0b0b] text-[12.5px] sm:text-[13.5px] font-medium tracking-[-0.01em] whitespace-nowrap shadow-[0_10px_26px_rgba(243,66,19,0.28)] transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#ff5629] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
+                className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97] cursor-pointer"
               >
-                <span>Read Case Study</span>
-                <ArrowUpRight className="w-[15px] h-[15px] shrink-0" aria-hidden="true" />
+                <CaseStudyIcon />
+                <span>Case Study</span>
               </Link>
 
               {projectLinks.map((link) => (
@@ -476,74 +493,6 @@ export function WorkSection() {
           {counterLabel}
         </div>
       </section>
-
-      {/* Scannable Case Study Index for Hiring Managers & Recruiters */}
-      <div className="px-4 sm:px-6 pt-12 sm:pt-16 pb-10 max-w-[1440px] mx-auto">
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-6 text-[12px] sm:text-[13px] uppercase tracking-[0.06em] text-[#e7e1d7]/60">
-          <span>
-            <StylizedText text="CASE STUDY INDEX" />
-          </span>
-          <span className="tabular-nums text-[#e7e1d7]/45">
-            {String(count).padStart(2, "0")} SHIPPED PRODUCTS
-          </span>
-        </div>
-
-        <div className="border-b border-[#e7e1d7]/15">
-          {projects.map((project, idx) => {
-            const num = String(idx + 1).padStart(2, "0");
-            return (
-              <div
-                key={project.id}
-                className="group border-t border-[#e7e1d7]/15 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center"
-              >
-                <div className="lg:col-span-5 flex items-baseline gap-4 sm:gap-6 min-w-0">
-                  <span className="text-[12px] tabular-nums tracking-[0.08em] text-[#f34213] shrink-0">
-                    {num}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-[22px] sm:text-[28px] leading-[1.08] tracking-[-0.025em] font-normal uppercase text-[#e7e1d7] transition-transform duration-300 group-hover:translate-x-1">
-                      <StylizedWords text={project.title} />
-                    </h3>
-                    <p className="mt-1.5 text-[12px] uppercase tracking-[0.05em] text-[#e7e1d7]/50">
-                      {project.domain ?? project.category}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-5 space-y-2">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] uppercase tracking-[0.05em]">
-                    {project.role ? (
-                      <span className="text-[#e7e1d7]/80">{project.role}</span>
-                    ) : null}
-                    {project.outcomeTag ? (
-                      <span className="inline-flex items-center gap-1.5 text-[#f34213]/90">
-                        <span
-                          aria-hidden="true"
-                          className="h-1.5 w-1.5 rounded-full bg-[#f34213]"
-                        />
-                        {project.outcomeTag}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-[14px] sm:text-[15px] leading-[1.55] text-[#e7e1d7]/65">
-                    {project.subcopy}
-                  </p>
-                </div>
-
-                <div className="lg:col-span-2 flex lg:justify-end">
-                  <Link
-                    href={`/work/${project.id}`}
-                    className="voy-glass inline-flex h-[42px] items-center gap-2 rounded-full px-5 text-[12.5px] uppercase tracking-[0.05em] text-[#e7e1d7] transition-all duration-200 hover:bg-[#f34213] hover:text-[#0b0b0b] hover:border-[#f34213] whitespace-nowrap"
-                  >
-                    <span>Read Case Study</span>
-                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

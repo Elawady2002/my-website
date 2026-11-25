@@ -4,7 +4,8 @@
 
 ## Pages
 
-- [Home](https://my-website-neon-ten-94.vercel.app/): Main portfolio featuring role overview (`#info`), design approach (`#about`), interactive 3D project carousel and case study index (`#work`), experience & recognition (`#experience`), intro call booking, and contact footer (`#contact`).
+- [Home](https://my-website-neon-ten-94.vercel.app/): Main portfolio featuring hero, role overview (`#info`), design approach (`#about`), interactive 3D case studies showcase (`#work`), intro call booking, and contact footer (`#contact`).
+- [Resume / CV](https://my-website-neon-ten-94.vercel.app/resume): ATS-friendly resume and printable PDF curriculum vitae covering experience, shipped products, skills, and credentials.
 - [Credentials Archive](https://my-website-neon-ten-94.vercel.app/certificates): Selected recognition across mobile product building, Figma design systems, AI workflows, and product validation.
 
 ## Selected Case Studies

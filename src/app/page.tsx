@@ -2,7 +2,6 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { PreloaderIntro } from "@/components/layout/PreloaderIntro";
 import { SmoothExperience } from "@/components/layout/SmoothExperience";
 import { AboutSection } from "@/components/sections/AboutSection";
-import { ExperienceSection } from "@/components/sections/ExperienceSection";
 import { FooterSection } from "@/components/sections/FooterSection";
 import { HeaderStage } from "@/components/sections/HeaderStage";
 import { WorkSection } from "@/components/sections/WorkSection";
@@ -16,7 +15,6 @@ export default function HomePage() {
           <HeaderStage />
           <AboutSection />
           <WorkSection />
-          <ExperienceSection />
         </main>
         <FooterSection />
         <BottomNav />

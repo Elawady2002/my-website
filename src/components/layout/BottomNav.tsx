@@ -381,7 +381,7 @@ export function BottomNav() {
       const mappedTab =
         href === "#contact"
           ? "connect"
-          : href === "#work" || href === "#experience"
+          : href === "#work"
           ? "work"
           : href === "#info" || href === "#about"
           ? "about"

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import Link from "next/link";
 import { FooterPhysicsOrbs } from "@/components/ui/FooterPhysicsOrbs";
 import { StylizedText } from "@/components/ui/StylizedText";
 import { WhatsAppQrBadge } from "@/components/ui/WhatsAppQrBadge";
@@ -139,6 +140,36 @@ export function FooterSection() {
                   </a>
                 </div>
               ))}
+
+              <div
+                style={{ "--footer-delay": "280ms" } as React.CSSProperties}
+                className="footer-reveal-item"
+              >
+                <p className="text-[12px] sm:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
+                  <StylizedText text="RESUME" />
+                </p>
+                <Link
+                  href={siteConfig.resumeHref}
+                  className="mt-1 inline-block text-[14px] sm:text-[16px] uppercase tracking-[0.04em] text-[#e7e1d7] hover:text-[#f34213] sm:hover:-translate-x-1 transition-all duration-200"
+                >
+                  <StylizedText text="VIEW / PDF" />
+                </Link>
+              </div>
+
+              <div
+                style={{ "--footer-delay": "360ms" } as React.CSSProperties}
+                className="footer-reveal-item"
+              >
+                <p className="text-[12px] sm:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/55">
+                  <StylizedText text="CREDENTIALS" />
+                </p>
+                <Link
+                  href="/certificates"
+                  className="mt-1 inline-block text-[14px] sm:text-[16px] uppercase tracking-[0.04em] text-[#e7e1d7] hover:text-[#f34213] sm:hover:-translate-x-1 transition-all duration-200"
+                >
+                  <StylizedText text="ARCHIVE" />
+                </Link>
+              </div>
             </div>
           </div>
 

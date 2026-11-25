@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { StylizedText } from "@/components/ui/StylizedText";
 import { siteConfig } from "@/data/site";
 import { useMagneticHover } from "@/hooks/useMagneticHover";
@@ -84,26 +86,38 @@ export function InfoSection() {
             />
           </div>
 
-          <a
-            href={siteConfig.infoSection.ctaHref}
-            onClick={handleCtaClick}
-            onMouseEnter={magnetic.onMouseEnter}
-            onMouseMove={magnetic.onMouseMove}
-            onMouseLeave={magnetic.onMouseLeave}
-            className="group relative self-start inline-flex h-[50px] items-center gap-3 overflow-hidden rounded-full border border-[#e7e1d7]/25 bg-white/[0.04] px-7 text-[13px] font-normal uppercase tracking-[0.06em] text-[#e7e1d7] backdrop-blur-xs transition-transform duration-200 ease-out"
-          >
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 translate-y-full bg-[#f34213] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0"
-            />
-            <span className="relative z-10 transition-colors duration-200 group-hover:text-[#0b0b0b] group-hover:font-medium">
-              <StylizedText text={siteConfig.infoSection.ctaLabel} />
-            </span>
-            <span
-              aria-hidden="true"
-              className="relative z-10 h-1.5 w-1.5 rounded-full bg-[#f34213] transition-all duration-300 group-hover:scale-125 group-hover:bg-[#0b0b0b]"
-            />
-          </a>
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={siteConfig.infoSection.ctaHref}
+              onClick={handleCtaClick}
+              onMouseEnter={magnetic.onMouseEnter}
+              onMouseMove={magnetic.onMouseMove}
+              onMouseLeave={magnetic.onMouseLeave}
+              className="group relative inline-flex h-[50px] items-center gap-3 overflow-hidden rounded-full border border-[#e7e1d7]/25 bg-white/[0.04] px-7 text-[13px] font-normal uppercase tracking-[0.06em] text-[#e7e1d7] backdrop-blur-xs transition-transform duration-200 ease-out"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 translate-y-full bg-[#f34213] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0"
+              />
+              <span className="relative z-10 transition-colors duration-200 group-hover:text-[#0b0b0b] group-hover:font-medium">
+                <StylizedText text={siteConfig.infoSection.ctaLabel} />
+              </span>
+              <span
+                aria-hidden="true"
+                className="relative z-10 h-1.5 w-1.5 rounded-full bg-[#f34213] transition-all duration-300 group-hover:scale-125 group-hover:bg-[#0b0b0b]"
+              />
+            </a>
+
+            <Link
+              href={siteConfig.resumeHref}
+              className="voy-glass inline-flex h-[50px] items-center gap-2 rounded-full px-6 text-[13px] font-normal uppercase tracking-[0.06em] text-[#e7e1d7]/85 transition-[transform,color,background-color,border-color] duration-200 ease-out hover:text-white hover:border-white/25 hover:!bg-white/[0.08]"
+            >
+              <span>
+                <StylizedText text="RESUME / CV" />
+              </span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-[#f34213]" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

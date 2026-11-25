@@ -102,10 +102,11 @@ export const siteConfig = {
   heroLine2: "ELAWADY",
   portraitSrc: "/images/abdullah-portrait.webp",
   portraitAlt: "Abdullah Elawady — Senior Product Designer portrait",
+  resumeHref: "/resume",
   navLinks: [
     { label: "ABOUT", href: "#info" },
-    { label: "WORK", href: "#work" },
-    { label: "EXPERIENCE", href: "#experience" },
+    { label: "APPROACH", href: "#about" },
+    { label: "CASE STUDIES", href: "#work" },
     { label: "CONTACT", href: "#contact" },
   ],
   pillNavLinks: [
@@ -165,8 +166,8 @@ export const siteConfig = {
     closingLine: "User clarity. Business outcomes. Production-ready craft.",
   },
   workSection: {
-    eyebrow: "SELECTED CASE STUDIES",
-    heading: "WORK",
+    eyebrow: "SELECTED WORK",
+    heading: "CASE STUDIES",
     projects: [
       {
         id: "fi-el-sekka",

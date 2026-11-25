@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { StylizedText } from "@/components/ui/StylizedText";
 import { WhatsAppQrBadge } from "@/components/ui/WhatsAppQrBadge";
 import { siteConfig } from "@/data/site";
@@ -189,10 +190,25 @@ export const FullscreenMenuOverlay = React.memo(function FullscreenMenuOverlay({
                 ))}
               </ul>
             </div>
+
+            <div
+              style={{ transitionDelay: contentRevealed ? "345ms" : "0ms" }}
+              className={revealBlockCls}
+            >
+              <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/50">
+                CURRICULUM VITAE
+              </p>
+              <Link
+                href={siteConfig.resumeHref}
+                className="mt-1.5 inline-block text-[15px] lg:text-[18px] tracking-[-0.02em] text-[#e7e1d7] hover:text-[#f34213] transition-colors"
+              >
+                <StylizedText text="RESUME / CV" />
+              </Link>
+            </div>
           </div>
 
           <p
-            style={{ transitionDelay: contentRevealed ? "355ms" : "0ms" }}
+            style={{ transitionDelay: contentRevealed ? "390ms" : "0ms" }}
             className={`text-[11px] uppercase tracking-[0.06em] text-[#e7e1d7]/45 ${revealBlockCls}`}
           >
             © 2026 <StylizedText text={siteConfig.domain} />. ALL RIGHTS
