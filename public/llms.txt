@@ -1,6 +1,6 @@
 # Abdullah Elawady — Senior Product Designer
 
-> Portfolio of Abdullah Elawady — Senior Product Designer crafting end-to-end mobile & web products across mobility, marketplaces, and digital platforms, backed by hands-on Flutter & front-end prototyping fluency. Based in Cairo, Egypt.
+> Portfolio of Abdullah Elawady — Senior Product Designer crafting end-to-end mobile & web products across mobility, marketplaces, and entertainment platforms, backed by hands-on Flutter & AI prototyping fluency. Based in Cairo, Egypt.
 
 ## Pages
 
@@ -10,17 +10,17 @@
 
 ## Selected Case Studies
 
-- [Fi El Sekka Case Study](https://my-website-neon-ten-94.vercel.app/work/fi-el-sekka) · [App Store](https://apps.apple.com/eg/app/fi-el-sekka/id6813012849): Intercity shuttle booking and digital wallet app in Egypt with instant QR seat boarding passes, route tracking, and verified captains.
-- [Tride Case Study](https://my-website-neon-ten-94.vercel.app/work/tride) · [App Store](https://apps.apple.com/eg/app/tride-egypt/id6749056619) / [Google Play](https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share): Trusted school ride-booking app built at Corevine giving parents flexible car or seat plans, multi-child profiles, and verified school routes.
-- [Active Case Study](https://my-website-neon-ten-94.vercel.app/work/active-platform) · [Live Website](https://activksa.com/brands/): End-to-end Saudi brand campaign discovery and creator matching web platform crafted for clarity and conversion.
-- [Malahi Case Study](https://my-website-neon-ten-94.vercel.app/work/malahi) · [Live Website](https://malahi.com/ar): Bilingual multi-brand Saudi entertainment and ticketing web flagship uniting Wanoos, Doos Karting, Garage, and Remote.
-- [Yusr Academy Case Study](https://my-website-neon-ten-94.vercel.app/work/yusr-academy) · [Live Website](https://www.yusr-academy.com/): Arabic-first UI/UX design academy and studio platform pairing practical case-study training with Vibe Coding mentorship.
+- [Fi El Sekka Case Study](https://my-website-neon-ten-94.vercel.app/work/fi-el-sekka) · [App Store](https://apps.apple.com/eg/app/fi-el-sekka/id6813012849): Voice-first Egyptian-Arabic AI commuting app built 0→1 after 6 months of field research (20+ drivers/supervisors, 50+ commuters) and a Creativa validation sprint, uniting direct driver matching with Go Bus / Blue Bus / Otobeesy API booking.
+- [Tride Case Study](https://my-website-neon-ten-94.vercel.app/work/tride) · [App Store](https://apps.apple.com/eg/app/tride-egypt/id6749056619) / [Google Play](https://play.google.com/store/apps/details?id=com.corevine.trideuser&pcampaignid=web_share): Two-sided Parent & Driver school mobility apps designed at Corevine with a Bosta PM founder, supporting individual seats or 4–5 child sibling and neighbor carpool groups.
+- [Active Case Study](https://my-website-neon-ten-94.vercel.app/work/active-platform) · [Live Website](https://activksa.com/brands/): Multi-platform Saudi creator marketplace across Web, Brand Analytics Dashboard, and Flutter app replacing WhatsApp operations with fake-follower verification, campaign bidding, brand ratings, and MyFatoorah checkout.
+- [Malahi Case Study](https://my-website-neon-ten-94.vercel.app/work/malahi) · [Live Website](https://malahi.com/ar): Enterprise 3D bilingual Saudi entertainment portal & live ticketing platform organizing age-segmented venues (Lamby, Wanoos, Fazz, Doos/Garage) with Vibe-Coded motion prototypes and developer-tuned media performance.
 
-## Experience & Mentorship
+## Experience
 
-- **Product & UI/UX Designer — Corevine (Egypt)**: End-to-end mobile & web product delivery including Tride (live on App Store & Google Play), Figma component systems, and engineering QA.
-- **Independent Product Designer — Egypt & KSA Product Teams (MENA)**: Partnering with founders and product teams to design and launch live regional mobile & web platforms (Fi El Sekka, Active KSA, Malahi).
-- **UI/UX Mentor & Prototyping Instructor — Yusr Academy (MENA)**: Mentoring Arabic UI/UX designers on real-world case studies, product thinking, and AI-assisted Vibe Coding workflows.
+- **Founder & Lead Product Designer — Fi El Sekka (Egypt)**: 0→1 field research, strategic pivot, Egyptian-Arabic Voice & Chat AI UX, brand identity, and ~90% Flutter implementation shipped to Apple App Store.
+- **Product & UI/UX Designer — Corevine (Egypt)**: Collaborated 1:1 with a Bosta PM founder and engineering team to design the two-sided Tride Parent & Driver school mobility apps shipped on App Store and Google Play.
+- **Product & UX/UI Designer — Design Agency, New Capital (Egypt / KSA)**: Rebuilt Malahi's enterprise 3D entertainment and online ticketing portal across age-segmented destinations, using AI Vibe-Coding prototypes and developer media performance tuning.
+- **Product Designer & Flutter Contributor — Active KSA (Saudi Arabia)**: Shipped UX and Flutter product features transforming WhatsApp agency operations into a live Saudi Web, Dashboard & mobile creator marketplace with MyFatoorah payments and third-party audience analytics.
 
 ## Credentials
 

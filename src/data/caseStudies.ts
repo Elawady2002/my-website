@@ -2,8 +2,7 @@ export type CaseStudySlug =
   | "fi-el-sekka"
   | "tride"
   | "active-platform"
-  | "malahi"
-  | "yusr-academy";
+  | "malahi";
 
 export interface CaseStudyExploration {
   label: string;
@@ -80,7 +79,6 @@ export const CASE_STUDY_SLUGS: readonly CaseStudySlug[] = [
   "tride",
   "active-platform",
   "malahi",
-  "yusr-academy",
 ];
 
 export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
@@ -88,121 +86,126 @@ export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
     slug: "fi-el-sekka",
     number: "01",
     title: "FI EL SEKKA",
-    domain: "INTERCITY MOBILITY & QR TICKETING",
+    domain: "VOICE-FIRST AI MOBILITY & AGGREGATOR",
     subtitle:
-      "Replacing chaotic cash-and-queue intercity shuttle boarding in Egypt with guaranteed seat booking, digital wallet balance, and zero-tap QR validation.",
-    role: "Lead Product Designer (End-to-End UX/UI & Flutter UI Partner)",
-    timeline: "Product Launch · 2025",
-    platform: "iOS & Android (Flutter)",
-    market: "Egypt (Intercity Commuters)",
+      "Reimagining Egyptian intercity mass commuting through 6 months of field research, a strategic pivot away from station bureaucracy, and Egyptian-Arabic Voice & Chat AI matching.",
+    role: "Founder & Lead Product Designer (0→1 · UX/UI & Flutter)",
+    timeline: "0→1 Product Build · Live on App Store",
+    platform: "iOS & Flutter",
+    market: "Egypt (Mass Commuters & Bus Routes)",
     status: "Live on Apple App Store",
     accentColor: "#D7E140",
     stageBg: "#1E2019",
     cardBg: "#1A1A1A",
     summary: {
       problemBrief:
-        "Daily intercity commuters faced unverified departures, cash friction, and uncertain seat availability at physical stops.",
+        "Peak-hour bottlenecks at Egyptian transit hubs leave students risking missed exams and workers arriving late while fragmented bus companies force manual phone-by-phone searches.",
       roleScope:
-        "Owned commuter UX architecture, booking & QR boarding flow, wallet visibility, captain trust cards, and mobile UI handoff.",
+        "Owned ~90% end-to-end: 6 months field research, Creativa pitch validation, business-model pivot, brand identity, AI voice/chat UX, Flutter build & App Store launch.",
       keyOutcome:
-        "Shipped live consumer & driver booking experience on the Apple App Store uniting wallet balance, route summary, and instant QR pass.",
+        "Pivoted into an 'inDrive for mass commuting' + intercity bus API aggregator (5–10% commission model) shipped live on the Apple App Store.",
       deliverables:
-        "User Flows · Edge-State Mapping · High-Fidelity Mobile System · Flutter Production QA",
+        "Field Research · Business Pivot · Voice & Chat AI UX · QR Boarding Pass · Flutter Production App",
     },
     context:
-      "Fi El Sekka serves daily commuters and university students traveling regional Egyptian corridors (such as Bilbeis to El-Salam). Unlike occasional ride-hailing trips, riders travel under tight morning schedules at crowded transit hubs where speed, fare clarity, and certainty about the vehicle and driver determine retention.",
+      "Premium ride-hailing apps target private commuters—leaving everyday Egyptian students and workers stranded in peak-hour queues at regional hubs like El-Salam and Bilbeis. Over 6 months on the ground, I interviewed 20+ drivers and station supervisors plus 50+ daily commuters, followed by a 4-day Creativa (ITIDA/TIEC) validation and pitch sprint that reshaped the entire product.",
     problem: {
       headline:
-        "How might a rushed commuter confirm a seat, verify the captain, and board in seconds at a noisy station?",
-      body: "Traditional shuttle stations force riders to negotiate fares in cash, guess whether a seat is still open, and walk through parked vans trying to identify the right vehicle. Even early digital booking concepts fail if the active ticket is buried two or three taps deep when the rider reaches the van door.",
+        "Why did V1 hub digitization fail on the ground—and how do we fix daily rush-hour uncertainty without station politics?",
+      body: "My initial V1 concept aimed to integrate directly inside official government transit hubs (المواقف) and station offices. Field interviews revealed hard institutional and operational friction that made station-owned adoption impossible to scale. Meanwhile, intercity travelers also struggled calling operators like Go Bus, Blue Bus, and Otobeesy one by one just to check open seats.",
       painPoints: [
-        "High boarding anxiety at crowded hubs when commuters cannot quickly verify vehicle details and captain identity.",
-        "Buried digital tickets cause queues at the door when riders fumble through tabs under glare or weak cellular signal.",
-        "Split mental models between wallet balance, trip price, departure time, and route stops create hesitation before booking.",
+        "Students miss exams and workers miss shifts due to unpredictable rush-hour queues and unscheduled departures.",
+        "Independent shuttle drivers lose hours waiting idle at hubs or departing half-empty because next-day rider demand isn't visible ahead of time.",
+        "Passengers booking intercity buses bounce across fragmented operators with no unified seat & schedule visibility.",
       ],
     },
     whyItMattered: {
       userImpact:
-        "Commuters save morning wait uncertainty, verify the captain and vehicle ahead of arrival, and keep exact ticket cost and seat number visible at a glance.",
+        "Everyday commuters declare tomorrow's trip naturally in Egyptian Arabic via voice or text, verify their driver ahead of time, or book unified intercity operator seats in one place.",
       businessStakes:
-        "Faster per-passenger boarding cuts station dwell time for captains, encourages repeat wallet top-ups, and lowers cash-handling disputes for operations.",
+        "Bypassing station bureaucracy created a scalable dual revenue model: direct automated supply-demand matching for independent drivers ('inDrive for mass transit') plus a 5–10% commission on partner bus API bookings.",
     },
     constraints: [
-      "Arabic RTL-first typography paired cleanly with Latin numbers, currency (EGP), and ticket codes.",
-      "High-contrast readability outdoors under harsh daylight at transit hubs.",
-      "Active ride state must remain effortless for first-time digital commuters, not just tech-savvy users.",
-      "Two-sided operational coordination between passenger app and captain verification workflow.",
+      "Blocked from direct integration inside government-run transit hubs—requiring a driver-first & API-aggregator pivot.",
+      "Everyday commuters and independent drivers need minimal cognitive load rather than dense 8-dropdown booking forms.",
+      "Egyptian Arabic dialect & voice input handling paired with mixed RTL/Latin strings (currency, time, ticket codes).",
+      "Offline-resilient QR pass and vehicle verification for low-signal transit pickup zones.",
     ],
     explorations: [
       {
-        label: "Option A — Deep Seat-Map Wizard",
+        label: "Option A — Official Transit Hub Digitization (V1)",
         approach:
-          "Multi-step flow with an interactive 14-seat van schematic and hidden ticket tab after checkout.",
+          "Partner directly with physical hub offices and station supervisors to digitize departure queues.",
         verdict: "Rejected",
         rationale:
-          "Added 3 extra taps per daily commute and slowed repeat riders down without improving actual boarding speed on standard shuttle vans.",
+          "6 months of interviews across El-Salam and Bilbeis hubs proved institutional and regulatory friction blocked scalable adoption on the ground.",
       },
       {
-        label: "Option B — Bottom-Nav Ticket Drawer",
+        label: "Option B — Traditional Multi-Step Bus Search Form",
         approach:
-          "Standard e-commerce dashboard where active trips live strictly inside a secondary 'My Trips' tab.",
+          "Require commuters and drivers to navigate 6–8 nested dropdowns for city, hub, exact date, time window, operator, and seat count.",
         verdict: "Rejected",
         rationale:
-          "Failed the station-door stress test: riders standing in line had to navigate away from home while checking route stops and captain info.",
+          "Added heavy form fatigue for rushed students and drivers managing schedules between trips.",
       },
       {
-        label: "Option C — Home-First Active Boarding Card + QR",
+        label: "Option C — Egyptian-Arabic Voice & Chat AI + Structured QR Pass (V2)",
         approach:
-          "Surface the next upcoming trip directly on Home with expandable QR pass, seat number, departure time, route corridor, and captain verification card.",
+          "Let riders and drivers state availability/demand naturally in Arabic (via Live Voice Orb or Chat), auto-match supply & demand alongside partner bus APIs, and lock results into a structured QR pass.",
         verdict: "Chosen",
         rationale:
-          "Balanced zero-tap boarding readiness with full trip context—wallet balance sits at top left, active QR sits one thumb reach away, and vehicle verification stays anchored below.",
+          "Matched natural Egyptian speech ('محتاج رحلة بكرة من السلام لبلبيس'), eliminated deep menus, and unified independent drivers with Go Bus / Blue Bus / Otobeesy APIs.",
       },
     ],
     designDecisions: [
       {
-        title: "Dark High-Contrast Boarding Card on Warm Neutral Canvas",
+        title: "Calm AI Prompt Home ('إزاي أقدر أساعدك النهارده') + Persistent Wallet",
         rationale:
-          "Separates the active ticket from surrounding route and captain cards so commuters immediately spot departure time, date, fare, and the QR toggle icon.",
+          "Replaces noisy transport dashboards with one clear conversational entry point while keeping digital EGP wallet balance visible at the top.",
       },
       {
-        title: "Persistent Wallet Pill & Centered Primary Booking CTA",
+        title: "Live Egyptian-Arabic Voice AI Orb Mode",
         rationale:
-          "Surfaces available EGP balance in the header without cluttering the ticket body, while anchoring the elevated lime '+' booking trigger in the bottom bar.",
+          "Supports hands-free voice requests and real-time transcript confirmation so commuters walking or drivers between trips immediately verify route, captain, car, and fare.",
       },
       {
-        title: "Dedicated Captain & Vehicle Identity Strip",
+        title: "Graceful Recovery & Structured QR Boarding Receipt",
         rationale:
-          "Displays captain rating, verified badge, and exact van model/roof spec right below the route corridor to eliminate station guesswork before boarding.",
+          "Handles empty schedules clearly without dead ends, while transitioning confirmed matches into a scannable QR ticket with copyable ticket ID, captain details, and vehicle spec.",
+      },
+      {
+        title: "V2 Generative Card Roadmap & 1-Tap Repeat Commute",
+        rationale:
+          "V1 validated conversational intent with plain-text match replies; V2 upgrades in-thread results into interactive 1-tap 'Select & Pay' cards plus repeat-route shortcuts.",
       },
     ],
     systemsAndHandoff: {
-      headline: "Designing directly for Flutter constraints and real-device ergonomics",
-      body: "Because I understand Flutter widget trees and layout behavior, component spacing, dynamic Arabic/English text wrapping, and QR state transitions were specified with production implementation in mind from day one.",
+      headline: "90% End-to-End Execution: Brand Geometry to Flutter Production",
+      body: "From sketching the path-shaped 'ف' logo and design system tokens to writing ~90% of the Flutter application and shipping to the Apple App Store, owning design and production code let me test real Arabic voice ergonomics on physical devices every single day.",
       highlights: [
-        "Unified spacing scale and reusable card primitives across Home, Upcoming Trip, Route Corridor, and Captain cards.",
-        "Explicit Arabic RTL alignment rules for mixed numeric strings (currency, time, seat counts, ticket IDs).",
-        "Direct visual QA against live iOS builds prior to App Store submission.",
+        "Unified warm neutral canvas (#FAF8F0), dark high-contrast ticket cards, and lime voice accents across all flows.",
+        "Explicit Arabic RTL alignment rules for mixed numeric strings (EGP wallet balances, dates, ticket references).",
+        "End-to-end Flutter implementation, real-device testing, and App Store release management.",
       ],
     },
     outcomeAndNextSteps: {
       shippedReality: [
-        "Shipped live on the Apple App Store as Fi El Sekka for Egyptian intercity riders alongside a companion captain flow.",
-        "Unified digital wallet top-up visibility, instant QR seat boarding pass, and captain verification into a single home surface.",
+        "Shipped live on the Apple App Store (Fi El Sekka) with working Egyptian-Arabic Voice AI, chat booking, wallet visibility, and QR boarding pass.",
+        "Grounded in 70+ real field conversations across El-Salam & Bilbeis hubs and refined through a 4-day Creativa (ITIDA/TIEC) pitch validation sprint.",
       ],
       nextMetricsToTrack: [
-        "Median time from app open to QR scan completion at station boarding.",
-        "Repeat weekly commuter retention after first wallet-funded trip vs cash trips.",
-        "Support ticket reduction around wrong-vehicle or missed-pickup incidents.",
+        "Automated rider-to-driver match fill rate (%) on peak morning corridors.",
+        "Voice AI vs. text chat booking completion ratio across daily commuters.",
+        "Partner bus API booking volume and 5–10% commission conversion rate.",
       ],
     },
     media: {
       layout: "mobile",
       bgImage: "/images/projects/fielsekka-bg.webp",
       mobileScreens: [
+        "/images/projects/fielsekka-3.webp",
         "/images/projects/fielsekka-1.webp",
         "/images/projects/fielsekka-2.webp",
-        "/images/projects/fielsekka-3.webp",
       ],
     },
     liveLinks: [
@@ -217,12 +220,12 @@ export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
     slug: "tride",
     number: "02",
     title: "TRIDE",
-    domain: "SCHOOL MOBILITY & PARENT TRUST",
+    domain: "TWO-SIDED SCHOOL MOBILITY · COREVINE",
     subtitle:
-      "Structuring a calm, high-trust school commute booking flow for parents managing multiple children, flexible car or seat plans, and verified routes.",
-    role: "UI/UX & Product Designer at Corevine",
-    timeline: "Product Delivery · Corevine",
-    platform: "iOS & Android",
+      "Designing a two-sided Parent & Driver mobile platform where busy families book shared seats or pool 4–5 neighborhood and sibling children into a dedicated daily school car.",
+    role: "Product & UI/UX Designer (Corevine Squad)",
+    timeline: "Dual-Store Delivery · Corevine",
+    platform: "iOS & Android (Parent + Driver Apps)",
     market: "Egypt (West Cairo / School Corridors)",
     status: "Live on App Store & Google Play",
     accentColor: "#FFA81D",
@@ -230,108 +233,108 @@ export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
     cardBg: "#122535",
     summary: {
       problemBrief:
-        "Parents arranging daily school rides had to juggle informal carpools or fragmented driver chats without structured multi-child plans.",
+        "Working parents lacked a safe, structured way to arrange door-to-door school commutes or split a dedicated car among siblings and neighbors.",
       roleScope:
-        "Designed onboarding clarity, plan-type selection (full car vs seat), multi-child booking configuration, and pickup/school location pairing.",
+        "Owned UX architecture and UI design for both Parent and Driver apps at Corevine—collaborating directly 1:1 with the Founder (a Bosta Product Manager) and mobile engineers.",
       keyOutcome:
-        "Launched across both Apple App Store and Google Play through Corevine, enabling parents to configure recurring school commutes digitally.",
+        "Launched live across both Apple App Store and Google Play with active family adoption; built ongoing product partnership with the PM founder.",
       deliverables:
-        "Onboarding Architecture · Subscription Booking Flow · Multi-Child Configuration · Mobile UI System",
+        "PM Discovery Alignment · Two-Sided App Flows · Group Carpool UX · Dual-Store UI Handoff",
     },
     context:
-      "Tride is a specialized school transportation app built at Corevine for parents in areas like October and Sheikh Zayed. Unlike on-demand ride-hailing where price and convenience dominate, school mobility is an emotional, high-stakes trust decision made for an entire semester.",
+      "Built inside Corevine, Tride was founded by an experienced Product Manager from Bosta who explicitly asked to collaborate 1:1 with the Product Designer shaping the product. Unlike standard ride-hailing, Tride connects Parents and vetted Drivers across two synchronized apps to handle daily doorstep-to-school routines—letting parents either book a single seat or pool 4–5 kids (their own children, relatives, or neighbors) into a shared private car.",
     problem: {
       headline:
-        "How do you turn a complex multi-child, multi-stop recurring transport setup into a clear 60-second booking flow?",
-      body: "Parents may book a dedicated private car or individual shared seats, attach one or several children, and map exact home pickup coordinates to specific school drop-offs. Cramming subscription pricing, driver vetting, child profiles, and route picking onto one screen overwhelms busy parents.",
+        "How do you turn multi-child, multi-household school carpooling into a calm, trustworthy mobile booking flow?",
+      body: "Parents short on morning time face a costly gap: hiring a solo private driver is expensive, while informal WhatsApp carpools break down around pickup times, seat counts, and driver accountability. Putting carpool grouping, seat capacity, doorstep pins, and school matching into one intuitive flow—while aligning cleanly with the Driver app—was the central UX challenge.",
       painPoints: [
-        "Confusion between booking an entire private car versus individual shared seats for siblings.",
-        "Friction entering home pickup locations and matching verified partner schools accurately.",
-        "Trust hesitation during onboarding before a parent commits a child's daily schedule to a platform.",
+        "Confusion between booking an individual shared seat vs. reserving a full 4–5 seat private car for a family or neighborhood group.",
+        "Friction coordinating multiple children (siblings, cousins, or neighbor kids) going to the same school under one booking.",
+        "High emotional stakes around child safety requiring reassuring visual clarity before parents commit a semester schedule.",
       ],
     },
     whyItMattered: {
       userImpact:
-        "Parents get predictable, transparent setup for one or multiple kids without WhatsApp back-and-forth or vague route commitments.",
+        "Busy parents gain reliable daily doorstep pickup and afternoon return while splitting private-car costs cleanly with relatives or neighbors.",
       businessStakes:
-        "Clear upfront plan & child configuration directly determines checkout completion and gives fleet operations clean routing inputs from day one.",
+        "Structured 4–5 child group bookings give fleet operations full-vehicle utilization and clean routing inputs directly inside the Driver app.",
     },
     constraints: [
-      "Dual-platform mobile conventions for iOS and Android under Corevine engineering timelines.",
-      "Support both 1-child families and multi-child households cleanly without cluttering the form.",
-      "High visual reassurance (warm amber brand language + clean whitespace) appropriate for family safety.",
-      "Bilingual address/location handling (Google Maps pickup pins paired with school selection).",
+      "Two synchronized applications (Parent App & Driver App) built for iOS and Android parity inside a software-house delivery schedule.",
+      "Must support solo-child families and 4–5 child neighbor/relative groups without intimidating single-child parents.",
+      "High trust visual language balancing warm reassurance with clean mobile readability.",
+      "Design-and-handoff role: engineering team owned production implementation while design owned flows, UI clarity, and client iterations.",
     ],
     explorations: [
       {
-        label: "Option A — Single-Screen Long Form",
+        label: "Option A — Instant Map-First Taxi Flow (Uber-style)",
         approach:
-          "Place ride type, child details, payment plan, and map pickers inside one continuous scrolling form.",
+          "Drop parents straight into a live street map asking for immediate pickup and drop-off pins.",
         verdict: "Rejected",
         rationale:
-          "Felt heavy on mobile viewports and caused drop-off anxiety before parents even locked their pickup and school corridor.",
+          "Mismatched parent mental models—families first decide between renting a private car vs. booking a seat and which kids are riding together before picking locations.",
       },
       {
-        label: "Option B — Map-First Ride Hailing Clone",
+        label: "Option B — Single-Child Rigid Booking Form",
         approach:
-          "Open straight into a live Uber-style map asking for immediate pickup and drop-off pins.",
+          "Treat each child as an isolated passenger requiring separate checkouts.",
         verdict: "Rejected",
         rationale:
-          "Mismatched parent mental models—parents first decide whether they want a private car or shared seats and which children are riding before picking map coordinates.",
+          "Broke the core family and neighborhood carpooling model where one parent coordinates 4–5 seats together.",
       },
       {
-        label: "Option C — Progressive Configuration Flow",
+        label: "Option C — Capacity-Based Progressive Flow (Plan -> Group Slots -> Route Anchors)",
         approach:
-          "Lead with trust-centered onboarding, then step cleanly through Ride Type (Car vs Seat) -> Child Slots -> Home & School Locations -> Review.",
+          "Start with trust-led onboarding, then step cleanly through Ride Type (Book Car vs Book Seat), modular 5-slot group addition, and paired Home Pin + School selection.",
         verdict: "Chosen",
         rationale:
-          "Matched how parents naturally explain their needs ('I need a seat/car for my two kids from home to X school') while keeping each decision lightweight.",
+          "Mirrored how parents actually organize school runs ('we need a car for our 4 kids from home to X school') while supplying clean routing inputs to the Driver app.",
       },
     ],
     designDecisions: [
       {
-        title: "Binary Visual Cards for Private Car vs Shared Seat",
+        title: "Visual Binary Cards for 'Book Car' vs 'Book Seat'",
         rationale:
-          "Large iconographic toggle cards prevent mis-taps and immediately clarify the core pricing/privacy model before any personal data is requested.",
+          "Large iconographic cards immediately separate private full-car rentals (4–5 seats) from single shared seat bookings on tap one.",
       },
       {
-        title: "Modular Child Profile Slots Right Under Ride Type",
+        title: "5-Seat Modular Child Slots for Siblings & Neighbors",
         rationale:
-          "Allows parents to add one or multiple children in context before entering routes, eliminating duplicate forms for siblings going to the same school.",
+          "Visually communicates carpool capacity in context so parents can attach their own children alongside relatives' or neighbors' kids in one unified group.",
       },
       {
-        title: "Dedicated Parent Pin + Verified School Selector Pairing",
+        title: "Paired Doorstep Pin & Verified School Selector",
         rationale:
-          "Separates flexible residential map pinning from curated school dropdowns so operations receive accurate, standardized destination anchors.",
+          "Combines precise residential pickup coordinates with standardized partner school entries so drivers receive clean morning and afternoon route lists.",
       },
     ],
     systemsAndHandoff: {
-      headline: "Cross-platform mobile components shipped with Corevine engineers",
-      body: "Designed reusable selection cards, form pickers, and consistent button states in Figma, partnering closely with Corevine's mobile developers to verify keyboard handling, safe-area padding, and store build fidelity.",
+      headline: "Direct 1:1 PM alignment and cross-platform Figma handoff",
+      body: "Working directly alongside a Bosta Product Manager let us align business edge cases early—before engineering began—ensuring Parent inputs mapped cleanly to Driver-side pickup cards, reusable form controls, and consistent amber CTA states across iOS and Android.",
       highlights: [
-        "Unified component states (default, selected amber highlight, disabled, error validation) across onboarding and booking.",
-        "Clean visual hierarchy balancing warm brand amber (#FFA81D) strictly for primary actions and active states.",
-        "Iterative polish reviews prior to dual App Store & Google Play release.",
+        "Reusable Figma card, slot, and picker patterns maintained across Parent & Driver journeys.",
+        "Iterated directly with the PM founder and Corevine engineers across client feedback rounds.",
+        "Delivered dual-platform production specs shipped cleanly to Apple App Store and Google Play.",
       ],
     },
     outcomeAndNextSteps: {
       shippedReality: [
-        "Successfully launched Tride on both Apple App Store and Google Play via Corevine.",
-        "Delivered a complete parent booking journey supporting both private car and shared seat plans.",
+        "Shipped live on both Apple App Store and Google Play through Corevine with active parent usage in Egypt.",
+        "Built lasting product trust with the founder/PM—who continues collaborating for product feedback on subsequent ventures (post-launch internal analytics stayed with the client).",
       ],
       nextMetricsToTrack: [
-        "Booking step-by-step funnel drop-off from Ride Type selection to final confirmation.",
-        "Ratio of multi-child bookings completed in a single session vs support-assisted signups.",
-        "Parent satisfaction and first-week pickup punctuality ratings.",
+        "Completion split between full-car group bookings (4–5 kids) and single-seat bookings.",
+        "Drop-off diagnostics between child group setup and school route selection.",
+        "Semester renewal rate and daily morning/afternoon on-time pickup reliability.",
       ],
     },
     media: {
       layout: "mobile",
       bgImage: "/images/projects/tride-bg.webp",
       mobileScreens: [
+        "/images/projects/tride-2.webp",
         "/images/projects/tride-1.webp",
         "/images/projects/tride-3.webp",
-        "/images/projects/tride-2.webp",
       ],
     },
     liveLinks: [
@@ -351,111 +354,117 @@ export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
     slug: "active-platform",
     number: "03",
     title: "ACTIVE",
-    domain: "INFLUENCER CAMPAIGNS · KSA WEB PLATFORM",
+    domain: "B2B CREATOR MARKETPLACE & ANALYTICS · KSA",
     subtitle:
-      "Reframing a Saudi creator-matching platform around audience relevance over vanity reach—guiding brands straight from skepticism to campaign launch.",
-    role: "Lead Product Designer (UX Strategy & Web Experience)",
-    timeline: "Web Platform Launch · KSA",
-    platform: "Responsive Web Platform",
+      "Migrating an established Saudi brand-and-influencer network out of chaotic WhatsApp groups into a unified Web, Brand Dashboard, and Flutter marketplace powered by audience fraud analytics and MyFatoorah payments.",
+    role: "Product Designer & Flutter Contributor",
+    timeline: "Multi-Surface Production · KSA",
+    platform: "Web · Brand Dashboard · Flutter Mobile App",
     market: "Saudi Arabia (Brands & Creators)",
-    status: "Live Production Website",
+    status: "Live Production Platform",
     accentColor: "#89288f",
     stageBg: "#1a092b",
     cardBg: "#ffffff",
     summary: {
       problemBrief:
-        "Saudi brands waste marketing budgets picking the most famous influencers rather than creators who actually match their audience and budget.",
+        "A Saudi operator with a large active roster of brands and influencers ran every campaign through messy WhatsApp groups—with zero follower-authenticity data or automated payouts.",
       roleScope:
-        "Defined positioning hierarchy, dual-audience navigation (Brands vs Creators), objection-handling storytelling, and conversion architecture.",
+        "Shaped UX/UI improvements and shipped continuous product features across the Flutter mobile app, Web portal, and Brand Dashboard.",
       keyOutcome:
-        "Shipped a live Arabic-first web platform on activksa.com/brands aligning creator relevance with fast brand campaign onboarding.",
+        "Live in Saudi Arabia from Day 1 with real brands and creators transacting through third-party fake-follower analytics, campaign bidding, and MyFatoorah checkout.",
       deliverables:
-        "Information Architecture · Arabic UX Copy Hierarchy · Conversion Landing System · Interactive Video Walkthrough",
+        "Multi-Surface UX · Analytics Data Display · MyFatoorah Payment Flow · Flutter Feature Delivery",
     },
     context:
-      "Active connects Saudi brands with vetted content creators across niche verticals. In the KSA market, influencer fatigue and inflated mega-celebrity fees made marketing teams skeptical of traditional creator agencies. The web product needed to win trust in seconds and separate Brand entry from Creator onboarding cleanly.",
+      "Active began with a Saudi founder who already had strong real-world deal flow—hundreds of brands and influencers working together—but every brief, negotiation, and deliverable lived inside scattered WhatsApp chats. We transformed that manual operation into a full multi-surface digital ecosystem spanning a Public Web Flagship, a Brand Analytics Dashboard, and a Flutter Mobile App.",
     problem: {
       headline:
-        "How do you convert skeptical Saudi marketing leads while separating Brand campaign flows from Creator sign-ups?",
-      body: "Two distinct personas land on the same URL: Brand managers evaluating campaign ROI, and Creators looking to join the network. Generic SaaS templates fail to address the core cultural objection—why 'most relevant' beats 'most famous'—leaving visitors bouncing before starting a campaign.",
+        "How do you replace messy WhatsApp deal-making with transparent, fraud-checked creator hiring and GCC checkout?",
+      body: "Scaling beyond manual agency chats exposed three bottlenecks: brands couldn't tell if an influencer's followers were real or fake, creators had no structured storefront for their services, and collecting payments manually slowed down campaign launches.",
       painPoints: [
-        "Dual-persona collision: Creators and Brand buyers competing for the same hero CTA.",
-        "Low trust in generic influencer directories without clear proof of audience relevance and budget fit.",
-        "Arabic marketing copy often suffers from robotic translation rather than persuasive local Saudi phrasing.",
+        "WhatsApp-group operations collapsed as concurrent brand campaigns and creator applications scaled.",
+        "Brands lacked trustworthy audience insights (real vs. fake followers, customer demographics) and paid on guesswork.",
+        "No standardized service pricing, application tracking, post-campaign brand ratings, or GCC online checkout.",
       ],
     },
     whyItMattered: {
       userImpact:
-        "Brand managers immediately understand the value proposition in native Saudi Arabic and see a frictionless path to launch without wading through creator sign-up noise.",
+        "Brands vet creators in seconds using verified audience authenticity and past brand feedback, while creators manage service packages and apply to live briefs directly from mobile.",
       businessStakes:
-        "Cleaner top-of-funnel qualification improves lead quality for campaign teams and reduces misrouted creator inquiries.",
+        "Integrating MyFatoorah automated GCC payments, eliminated manual coordination overhead, and unlocked scalable campaign volume from Day 1 of launch.",
     },
     constraints: [
-      "Saudi Arabic (RTL) copywriting and visual balance—every section had to feel native to KSA brand teams.",
-      "Serve both Brands (primary conversion) and Creators (secondary entry) in one header without cognitive overload.",
-      "High-velocity web performance while incorporating interactive motion and campaign previews.",
+      "Must convert existing non-technical WhatsApp clients smoothly on Day 1 without steep onboarding friction.",
+      "Distill dense third-party social analytics APIs (fake followers, audience segments, demographics) into clear hiring signals.",
+      "Seamless Saudi Arabic RTL experience across Web, Dashboard, and Flutter mobile builds.",
+      "Reliable GCC payment compatibility through MyFatoorah (Mada, Apple Pay, cards).",
     ],
     explorations: [
       {
-        label: "Option A — Split 50/50 Brand vs Creator Hero",
+        label: "Option A — Simple Landing Form + Manual WhatsApp Ops",
         approach:
-          "Equal dual columns asking visitors 'Are you a Brand or a Creator?' before showing any value.",
+          "Capture brand leads on a marketing site while account managers continue vetting and matching creators via WhatsApp.",
         verdict: "Rejected",
         rationale:
-          "Forced every high-intent brand buyer through an extra routing gate instead of immediately proving why Active solves their campaign ROI problem.",
+          "Left the core operational bottleneck untouched and couldn't scale fake-follower verification or payments.",
       },
       {
-        label: "Option B — Public Creator Marketplace Grid Above the Fold",
+        label: "Option B — Vanity Follower-Count Marketplace",
         approach:
-          "Display searchable creator cards immediately on the landing hero.",
+          "Rank creators publicly by total follower count like generic influencer directories.",
         verdict: "Rejected",
         rationale:
-          "Encouraged window-shopping on follower counts—directly contradicting Active's core message of curated relevance over popularity.",
+          "Contradicted Active's core value proposition and exposed Saudi brands to inflated, low-ROI accounts.",
       },
       {
-        label: "Option C — Editorial Objection-Breaking Hero + Secondary Creator Pill",
+        label: "Option C — Analytics-First Marketplace + MyFatoorah Loop",
         approach:
-          "Lead the hero with the crossed-out contrast ('Your campaign needs the Most Relevant, not the Most Famous'), primary Brand CTA, and a clear outlined 'Creator? Register here' pill in the nav.",
+          "Integrate third-party audience & fake-follower analytics directly inside Brand profiles, let creators list services & bid via Flutter, and close payments via MyFatoorah.",
         verdict: "Chosen",
         rationale:
-          "Tackled the #1 buyer objection in the first 3 seconds while cleanly routing creators via a distinct secondary pill.",
+          "Solved trust (verified real audiences + brand feedback), velocity (mobile bidding), and monetization (MyFatoorah) in one connected loop.",
       },
     ],
     designDecisions: [
       {
-        title: "Strikethrough Contrast Headline ('الأشهر' -> 'الأنسب')",
+        title: "Objection-Breaking Web Hero ('حملتك تحتاج الأنسب مش الأشهر')",
         rationale:
-          "Visually anchors Active's core thesis in under two seconds, reframing how brand managers judge creator fit.",
+          "Addresses Saudi marketers' #1 skepticism immediately on the web landing page while routing Creators through a distinct outlined nav entry.",
       },
       {
-        title: "Asymmetric Nav Hierarchy (Solid Brand Login vs Outlined Creator Entry)",
+        title: "Decision-Ready Creator Analytics Cards",
         rationale:
-          "Prevents persona confusion in the floating glass navbar while preserving instant access for incoming influencers.",
+          "Surfaces third-party API metrics cleanly—fake vs. real follower integrity, audience demographics, and verified brand feedback—without overwhelming marketers.",
       },
       {
-        title: "Contextual Comparison Module Right Below the Fold",
+        title: "Structured Service Storefront & Campaign Bidding in Flutter",
         rationale:
-          "Uses dismissible floating preview cards ('Why choose the most famous..!') to turn skepticism into product curiosity.",
+          "Gives influencers a clean mobile workspace to publish service rates, apply to relevant brand briefs, and track feedback loops.",
+      },
+      {
+        title: "Integrated MyFatoorah Payment & Brand Review Loop",
+        rationale:
+          "Standardizes GCC checkout while feeding post-campaign brand ratings straight back into creator credibility scores.",
       },
     ],
     systemsAndHandoff: {
-      headline: "Arabic RTL web design system built for responsive clarity",
-      body: "Structured reusable pill navigation, soft brand-violet radial depth, and responsive RTL grid tokens so sections scale cleanly across desktop and mobile without breaking Arabic typographic rhythm.",
+      headline: "Rapid cross-surface iteration across Web, Dashboard & Flutter",
+      body: "Contributing directly across UX improvements, Web/Dashboard layouts, and Flutter feature implementation meant client feedback and live market needs translated into shipped features rapidly—without traditional design-to-dev translation loss.",
       highlights: [
-        "Unified RTL layout grid, rounded CTA hierarchy, and glass pill navbar states.",
-        "Interactive motion walkthrough captured to validate pacing before deployment.",
-        "Live production QA on activksa.com/brands across desktop and mobile viewports.",
+        "Unified Saudi Arabic RTL typography and status patterns across Web, Dashboard, and Flutter.",
+        "Structured API data hierarchy turning third-party follower diagnostics into clear visual cards.",
+        "Continuous post-launch feature shipping driven by active Saudi brands and creators.",
       ],
     },
     outcomeAndNextSteps: {
       shippedReality: [
-        "Launched live in production for the Saudi market at activksa.com/brands.",
-        "Established clear dual-persona routing and objection-first messaging across the platform entry experience.",
+        "Running live in production in Saudi Arabia across Web (`activksa.com/brands`), Brand Dashboard, and Flutter mobile app.",
+        "Active brands and creators migrated off manual WhatsApp groups and transacted from Day 1 of launch, supported by continuous feature releases.",
       ],
       nextMetricsToTrack: [
-        "Primary Brand CTA click-through rate vs Creator nav pill engagement.",
-        "Scroll depth through the relevance comparison and social-proof sections.",
-        "Lead-to-brief completion rate inside the brand campaign onboarding flow.",
+        "Time-to-hire from brand campaign brief creation to creator match approval.",
+        "Campaign conversion lift when brands inspect fake-follower authenticity vs. unverified profiles.",
+        "Repeat brand campaign rate and MyFatoorah checkout completion rate.",
       ],
     },
     media: {
@@ -476,111 +485,112 @@ export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
     slug: "malahi",
     number: "04",
     title: "MALAHI",
-    domain: "ENTERTAINMENT & MULTI-BRAND TICKETING · KSA",
+    domain: "ENTERPRISE 3D WEB & TICKETING · KSA",
     subtitle:
-      "Unifying four distinct Saudi entertainment destinations—Wanoos, Doos Karting, Garage, and Remote—into one cohesive discovery and ticketing web flagship.",
-    role: "Product & Web Experience Designer",
-    timeline: "Live Web Launch · KSA",
+      "Rebuilding a broken legacy site for one of Saudi Arabia’s largest entertainment groups—balancing age-segmented brand discovery (Lamby, Wanoos, Fazz, Doos), 3D motion, and fast online ticket checkout.",
+    role: "Product & UX/UI Designer (Agency Squad · New Capital)",
+    timeline: "Enterprise Web Relaunch · KSA",
     platform: "Responsive Interactive Web (AR / EN)",
     market: "Saudi Arabia (Family & Youth Entertainment)",
-    status: "Live Production Website",
+    status: "Live Production Website & Ticketing",
     accentColor: "#059969",
     stageBg: "#081018",
     cardBg: "#0b0d12",
     summary: {
       problemBrief:
-        "Four sub-brands with wildly different audiences (kids parks vs karting vs arcade venues) needed one unified portal without losing individual identity.",
+        "One of Saudi Arabia's biggest entertainment operators had a broken legacy site unable to organize its sprawling age-segmented destinations or support smooth online booking.",
       roleScope:
-        "Architected multi-brand navigation, bilingual AR/EN framing, persistent ticket access, and interactive destination switching.",
+        "Owned UX architecture, UI design, AI Vibe-Coding motion prototypes, and iterative back-and-forth engineering collaboration on 3D/video loading performance.",
       keyOutcome:
-        "Shipped live bilingual entertainment hub on malahi.com connecting visitors from brand discovery straight into ticket selection.",
+        "Shipped a fast, interactive flagship portal at malahi.com showcasing every sub-brand clearly while powering live online bookings and payments across KSA.",
       deliverables:
-        "Multi-Brand Architecture · Bilingual Navigation · Destination Rail Pattern · Interactive Web Tour",
+        "Multi-Brand IA · Age-Segmented UX · AI Vibe-Coded Prototypes · Media Performance Optimization",
     },
     context:
-      "Malahi operates diverse entertainment venues across Saudi Arabia—spanning family play (Wanoos), high-speed racing (Doos Karting), gaming (Garage), and immersive experiences (Remote). Visitors often know one venue by name without realizing all four belong to one ecosystem, or struggle to reach tickets quickly from brand storytelling pages.",
+      "Created inside a design agency in Egypt's New Administrative Capital for Malahi—one of Saudi Arabia's largest entertainment companies. The existing legacy site was visually broken and failed to explain a wide portfolio spanning distinct age groups: infants & crawlers (Lamby), kids arcade parks (Wanoos), active jumping attractions (Fazz), karting & racing (Doos / Garage), and mall relaxation massage-chair services for parents.",
     problem: {
       headline:
-        "How do you showcase four energetic sub-brands in one flagship without overwhelming families or burying ticket booking?",
-      body: "Multi-brand entertainment portals typically fall into two traps: either a sterile corporate directory with zero excitement, or chaotic visual noise where visitors cannot switch between destinations or locate ticket booking.",
+        "How do you deliver jaw-dropping 3D storytelling for 5+ age-segmented venues without crushing load speed or burying ticket payments?",
+      body: "Agency stakeholders demanded rich 3D depth, playful character presence, and video storytelling—yet unoptimized 3D/video sites stall on mobile networks and frustrate families trying to check venue details and buy tickets quickly.",
       painPoints: [
-        "Visitors landing on the parent brand did not immediately grasp the distinct vibe of each venue.",
-        "Language switching (Arabic/English) and theme/accessibility controls often break immersive hero layouts.",
-        "Ticket CTA gets lost when rich 3D/character artwork dominates the viewport.",
+        "Broken legacy layout failed to communicate the breadth of Malahi's venues or explain what each program actually offers.",
+        "Parents didn't immediately see which destination fit toddlers (Lamby) vs. older kids (Wanoos/Fazz) vs. racing youth (Doos/Garage) vs. parent mall massage zones.",
+        "Heavy 3D and video assets risked sluggish loading states that hurt real booking conversion.",
       ],
     },
     whyItMattered: {
       userImpact:
-        "Families and youth groups explore all four experiences effortlessly in Arabic or English and jump straight to choosing their outing.",
+        "Saudi families immediately understand which destination fits each family member's age, explore each venue interactively, and book tickets in just a few clicks.",
       businessStakes:
-        "Cross-pollinates traffic across Malahi's four venues under one parent brand and reduces friction to the ticketing funnel.",
+        "Protected Malahi's position as a premier Saudi entertainment brand while driving cross-venue discovery directly into paid online ticket checkout.",
     },
     constraints: [
-      "Full bilingual parity (Arabic RTL primary + English) without breaking spatial overlays.",
-      "High-contrast typography and persistent booking action over rich, full-bleed 3D character art.",
-      "Instant sub-brand recognition via a compact switcher that stays visible on both desktop and mobile.",
+      "Strict visual craft & 3D animation expectations set by an agency environment prioritizing polish and spatial balance.",
+      "Clear Information Architecture across multiple distinct sub-brands targeted at completely different age brackets.",
+      "High-volume video and 3D assets must load cleanly and stay responsive so booking flows never lag.",
+      "Full Arabic RTL flagship parity paired with seamless English switching and persistent online payment entry.",
     ],
     explorations: [
       {
-        label: "Option A — 4-Column Static Split Grid",
+        label: "Option A — Flat Static Corporate Directory",
         approach:
-          "Divide the initial screen into four vertical strips, one for each sub-brand.",
+          "Strip away 3D and video into plain editorial cards to maximize raw page speed.",
         verdict: "Rejected",
         rationale:
-          "Cramped typography on Arabic viewports, weakened emotional storytelling, and left mobile screens stacking awkwardly.",
+          "Eliminated the emotional magic and brand stature expected from Saudi Arabia's leading entertainment destination.",
       },
       {
-        label: "Option B — Corporate Carousel Behind Hamburger Menu",
+        label: "Option B — Heavy Uncompressed 3D & Video Wall",
         approach:
-          "Hide sub-brands inside a dropdown menu and keep only a generic parent hero.",
+          "Load high-bitrate video backgrounds and heavy interactive layers upfront across every section.",
         verdict: "Rejected",
         rationale:
-          "Concealed the four destinations—killing cross-discovery between Wanoos, Doos Karting, Garage, and Remote.",
+          "Caused heavy loading bottlenecks that degraded user experience and risked dropping mobile ticket buyers.",
       },
       {
-        label: "Option C — Immersive Parent Stage + Persistent Left Brand Rail",
+        label: "Option C — Age-Mapped Interactive Stage + Vibe-Coded Motion + Tuned Performance",
         approach:
-          "Lead with one unified flagship hero ('Keep Smiling') paired with a vertical sub-brand dock rail, persistent top-left ticket pill, and single-click 'Choose your fun' CTA.",
+          "Unite all venues inside a clean 3D hero stage with a persistent sub-brand dock rail, validate interactions via AI Vibe-Coding prototypes, and tune video/media delivery directly with engineers.",
         verdict: "Chosen",
         rationale:
-          "Maintains emotional brand impact while giving returning visitors one-click access to tickets and direct brand switching.",
+          "Delivered memorable 3D craft alongside clear program explanations, persistent ticket booking, and snappy real-world loading.",
       },
     ],
     designDecisions: [
       {
-        title: "Vertical Sub-Brand Dock Rail",
+        title: "Age-Segmented Sub-Brand Architecture & Persistent Dock Rail",
         rationale:
-          "Displays circular destination badges cleanly on the edge so visitors see all sister venues at a glance without cluttering the center stage.",
+          "Maps Lamby (toddlers), Wanoos (kids arcade), Fazz (active jumping), Doos/Garage (karting & racing), and parent relaxation offerings clearly so visitors switch venues effortlessly.",
       },
       {
-        title: "Persistent Top Utility Bar (Menu · Language · Theme · Tickets)",
+        title: "Persistent Top Utility & Ticket Action Cluster",
         rationale:
-          "Keeps AR/EN switching and green direct-ticketing icon locked in one predictable corner across every viewport.",
+          "Locks menu, AR/EN toggle, theme switch, and the green direct-ticketing button in one reachable corner throughout exploration.",
       },
       {
-        title: "Dual-Color Arabic Typography & Smile Curve Anchor",
+        title: "Interactive Program Explainers Before Booking",
         rationale:
-          "Ties the parent tagline ('خلّيك مبتسم') directly into the primary emerald CTA button below, guiding eye flow vertically.",
+          "Dedicated interactive sections show what each destination includes so families choose confidently before entering checkout.",
       },
     ],
     systemsAndHandoff: {
-      headline: "Bilingual interactive layout tokens & motion choreography",
-      body: "Defined clear contrast overlays, directional RTL/LTR mirroring rules for the navigation rail and utility cluster, and smooth destination transitions aligned with production web constraints.",
+      headline: "AI Vibe-Coding Prototypes & Engineering Performance Partnership",
+      body: "Instead of tossing static Figma frames over the wall, I built working interactive prototypes using AI Vibe Coding to demonstrate exact motion timing and spatial feel—then worked iteratively back-and-forth with front-end developers to optimize video compression, asset loading, and smooth frame pacing.",
       highlights: [
-        "Mirrored RTL/LTR utility placement tested across Arabic and English views.",
-        "Accessible contrast scrims preserving CTA legibility over bright illustrations.",
-        "Production walkthrough verification prior to live release on malahi.com.",
+        "Built functional AI Vibe-Coded motion prototypes to align stakeholders and engineers before final build.",
+        "Direct back-and-forth optimization with front-end developers on heavy video & 3D loading performance.",
+        "Responsive bilingual Arabic RTL / English layout polish across desktop and mobile.",
       ],
     },
     outcomeAndNextSteps: {
       shippedReality: [
-        "Shipped live at malahi.com/ar unifying Wanoos, Doos Karting, Garage, and Remote in one destination hub.",
-        "Delivered bilingual AR/EN navigation alongside persistent ticket entry across desktop and mobile.",
+        "Shipped live at malahi.com as a major enterprise portal serving one of Saudi Arabia's largest entertainment operators.",
+        "Actively handles high visitor traffic, interactive brand exploration, online ticket bookings, and live payments.",
       ],
       nextMetricsToTrack: [
-        "Cross-brand click-through rates from the vertical sub-brand switcher rail.",
-        "Conversion rate from the primary hero CTA into destination ticket checkout.",
-        "Bounce rate difference between Arabic RTL and English sessions.",
+        "Mobile Largest Contentful Paint (LCP) & media load latency vs. bounce rate.",
+        "Sub-brand dock rail click distribution across Lamby, Wanoos, Fazz, and Doos.",
+        "Funnel conversion from brand exploration screens into completed online ticket payments.",
       ],
     },
     media: {
@@ -594,131 +604,6 @@ export const CASE_STUDIES: Record<CaseStudySlug, CaseStudyDetail> = {
         type: "web",
         label: "Live Website",
         href: "https://malahi.com/ar",
-      },
-    ],
-  },
-  "yusr-academy": {
-    slug: "yusr-academy",
-    number: "05",
-    title: "YUSR ACADEMY",
-    domain: "EDTECH & UX MENTORSHIP PLATFORM",
-    subtitle:
-      "Positioning an Arabic UI/UX academy around real product thinking and AI-assisted execution—replacing vague course hype with transparent process proof.",
-    role: "Product Designer & Curriculum Mentor",
-    timeline: "Platform & Mentorship · 2025–2026",
-    platform: "Web Platform & Interactive Curriculum",
-    market: "MENA (Aspiring & Mid-Level Arab Designers)",
-    status: "Live Production Platform",
-    accentColor: "#52B285",
-    stageBg: "#060F0F",
-    cardBg: "#0A1919",
-    summary: {
-      problemBrief:
-        "Arab UI/UX learners distrust theory-heavy bootcamps that graduate students with pretty Dribbble shots instead of hireable case studies.",
-      roleScope:
-        "Designed the flagship web positioning, interactive UX-process preview widget, dual action hierarchy, and hands-on Vibe Coding mentorship track.",
-      keyOutcome:
-        "Live platform at yusr-academy.com pairing structured design practice with direct mentorship and production prototyping guidance.",
-      deliverables:
-        "Product Positioning · Interactive Process Widget · RTL Conversion Flow · Vibe Coding Curriculum",
-    },
-    context:
-      "Yusr Academy trains Arabic-speaking product and UI/UX designers to compete for real product roles. Having mentored students directly inside Yusr on translating Figma designs into working web/mobile builds, I understood the #1 skepticism learners bring: 'Will this actually teach me how product teams think and ship, or just Figma tools?'",
-    problem: {
-      headline:
-        "How do you prove practical product-team rigor right on the landing hero before a prospective learner leaves?",
-      body: "Most Arabic EdTech landing pages rely on generic stock imagery and vague promises ('Become a UI/UX Expert in X weeks'). Learners burned by screen-copying courses need immediate, tangible proof that the curriculum prioritizes problem-solving, research, and real engineering handoff.",
-      painPoints: [
-        "Learners struggle to distinguish between surface-level UI decoration courses and real Product Design education.",
-        "Prospective students want to inspect mentors and curriculum mechanics before creating an account.",
-        "Traditional static hero mockups fail to demonstrate interactive product craft.",
-      ],
-    },
-    whyItMattered: {
-      userImpact:
-        "Students immediately see the end-to-end UX process, transparent outcomes, and direct access to practitioner mentors before enrolling.",
-      businessStakes:
-        "Higher trust above the fold increases qualified cohort sign-ups and lowers pre-enrollment uncertainty handled by support.",
-    },
-    constraints: [
-      "Balance dark editorial credibility with warm, approachable Arabic mentorship copy.",
-      "Surface complex curriculum pillars (Research, IA, Design Systems, Usability Testing, Prototyping) without turning the hero into a dense syllabus.",
-      "Give skeptical learners a risk-free secondary path ('Meet the Mentors') alongside primary enrollment.",
-    ],
-    explorations: [
-      {
-        label: "Option A — Instructor Portrait Hero + Discount Banner",
-        approach:
-          "Classic course-sales landing page anchored on promotional pricing and countdown urgency.",
-        verdict: "Rejected",
-        rationale:
-          "Positioned Yusr like a mass-market discount course rather than a credible product design studio and mentorship community.",
-      },
-      {
-        label: "Option B — Long Syllabus Accordion Above the Fold",
-        approach:
-          "List every lecture module immediately in the top viewport.",
-        verdict: "Rejected",
-        rationale:
-          "Overwhelmed first-time visitors before establishing why Yusr's case-study approach matters.",
-      },
-      {
-        label: "Option C — Live Interactive Process Widget + Dual Proof Hero",
-        approach:
-          "Pair crisp Arabic outcome bullets on the right with a Figma-inspired interactive UX Process card on the left and a scrolling skill marquee anchored below.",
-        verdict: "Chosen",
-        rationale:
-          "Shows—rather than just tells—how Yusr teaches real product design thinking from Discover to Test.",
-      },
-    ],
-    designDecisions: [
-      {
-        title: "Interactive 'ux-process.fig' Preview Card in the Hero",
-        rationale:
-          "Speaks directly to designers' native mental model—highlighting Discover, Define, Ideate, Model, and Test inside a live Figma-styled window.",
-      },
-      {
-        title: "Value-First Checklist Over Hype Claims",
-        rationale:
-          "Calls out exact differentiators (portfolios that show thinking, not just pretty shots; real hiring partner pathways; practitioner mentors).",
-      },
-      {
-        title: "Dual CTA Split ('Start Your Journey' + 'Meet the Mentors')",
-        rationale:
-          "Respects hesitant visitors who validate instructor credibility before committing to cohort enrollment.",
-      },
-    ],
-    systemsAndHandoff: {
-      headline: "Bridging Design Thinking and Vibe Coding in Practice",
-      body: "Beyond designing the web showcase, I mentor designers inside Yusr Academy on converting Figma components into live prototypes using AI-assisted coding workflows—proving how engineering literacy elevates product designers.",
-      highlights: [
-        "Unified dark emerald token system (#060F0F canvas, #52B285 primary action, crisp RTL type scale).",
-        "Modular skill marquee surfacing core disciplines without hero clutter.",
-        "Live mentoring integration bridging Figma systems to shippable prototypes.",
-      ],
-    },
-    outcomeAndNextSteps: {
-      shippedReality: [
-        "Launched live at yusr-academy.com as Yusr Academy's Arabic UX education flagship.",
-        "Actively mentoring learners inside the platform on practical UX flows and AI-assisted Vibe Coding prototyping.",
-      ],
-      nextMetricsToTrack: [
-        "Conversion split between 'Start Your Journey' and 'Meet the Mentors' hero clicks.",
-        "Portfolio quality progression of learners completing real-problem case studies vs UI-only tracks.",
-        "Enrollment completion rates from landing visit to program registration.",
-      ],
-    },
-    media: {
-      layout: "desktop",
-      bgImage: "/images/projects/yusr-academy-bg.webp",
-      posterSrc: "/images/projects/yusr-academy-poster.webp",
-      videoSrc: "/videos/projects/yusr-academy-tour.mp4",
-    },
-    liveLinks: [
-      {
-        type: "web",
-        label: "Live Website",
-        href: "https://www.yusr-academy.com/",
       },
     ],
   },

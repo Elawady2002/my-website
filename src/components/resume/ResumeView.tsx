@@ -9,13 +9,14 @@ import { siteConfig } from "@/data/site";
 
 const CORE_SKILLS = [
   "Product Design",
-  "UX Architecture",
+  "Field User Research",
+  "AI & Voice UX",
+  "Two-Sided Marketplaces",
+  "Information Architecture",
   "Design Systems (Figma Variables)",
-  "Interaction & Prototyping",
-  "User Flows",
   "Arabic RTL & Bilingual UX",
-  "Flutter / Front-end Fluency",
-  "AI-Assisted Prototyping",
+  "Flutter & AI Vibe-Coding Prototyping",
+  "Web Performance Collaboration",
 ] as const;
 
 export function ResumeView() {
