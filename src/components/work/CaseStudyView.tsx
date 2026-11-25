@@ -1,9 +1,50 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { StylizedText, StylizedWords } from "@/components/ui/StylizedText";
 import type { CaseStudyDetail, CaseStudyLiveLink } from "@/data/caseStudies";
+
+function LiveLinkIcon({ type }: { type: CaseStudyLiveLink["type"] }) {
+  if (type === "appStore") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        className="w-[15px] h-[15px] shrink-0"
+      >
+        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+      </svg>
+    );
+  }
+  if (type === "googlePlay") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        className="w-[15px] h-[15px] shrink-0"
+      >
+        <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+      className="w-[15px] h-[15px] shrink-0"
+    >
+      <circle cx="12" cy="12" r="9.5" />
+      <ellipse cx="12" cy="12" rx="4.2" ry="9.5" />
+      <path d="M2.8 12h18.4M4.5 7.5h15M4.5 16.5h15" />
+    </svg>
+  );
+}
 
 function LiveLinkBadge({ link }: { link: CaseStudyLiveLink }) {
   return (
@@ -11,10 +52,10 @@ function LiveLinkBadge({ link }: { link: CaseStudyLiveLink }) {
       href={link.href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex h-10 items-center gap-2 rounded-full bg-[#f34213] px-5 text-[12px] font-medium uppercase tracking-[0.06em] text-[#0b0b0b] transition-colors hover:bg-[#ff5629]"
+      className="voy-glass inline-flex items-center gap-2 h-[38px] sm:h-[42px] px-4 sm:px-5 rounded-full text-[#e7e1d7]/85 text-[12.5px] sm:text-[13.5px] font-normal tracking-[-0.01em] whitespace-nowrap transition-[transform,color,background-color,border-color,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1.5px] active:scale-[0.97]"
     >
+      <LiveLinkIcon type={link.type} />
       <span>{link.label}</span>
-      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
     </a>
   );
 }
@@ -31,7 +72,7 @@ function SectionHeading({
       <span className="text-[12px] tabular-nums tracking-[0.08em] text-[#f34213]">
         {number}
       </span>
-      <h2 className="text-[14px] uppercase tracking-[0.06em] text-[#e7e1d7]/85">
+      <h2 className="text-[13px] sm:text-[14px] uppercase tracking-[0.06em] text-[#e7e1d7]/85">
         <StylizedText text={title} />
       </h2>
     </div>
@@ -47,7 +88,7 @@ export function CaseStudyView({
 }) {
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-[#e7e1d7]">
-      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-4 pb-8 md:px-6 md:pt-5 md:pb-10 flex items-center justify-between gap-2 pointer-events-none bg-gradient-to-b from-[#0b0b0b] via-[#0b0b0b]/80 to-transparent">
+      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-4 pb-8 md:px-6 md:pt-5 md:pb-10 flex items-center justify-between pointer-events-none bg-gradient-to-b from-[#0b0b0b] via-[#0b0b0b]/80 to-transparent">
         <Link
           href="/"
           className="voy-glass group pointer-events-auto inline-flex h-[44px] md:h-[50px] items-center gap-2.5 rounded-[14px] px-4 md:px-5 text-[12px] md:text-[13.5px] uppercase tracking-[0.04em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-all duration-200"
@@ -58,25 +99,9 @@ export function CaseStudyView({
           />
           <span>Back to Portfolio</span>
         </Link>
-
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <Link
-            href="/#work"
-            className="voy-glass hidden sm:inline-flex h-[44px] md:h-[50px] items-center gap-2 rounded-[14px] px-4 md:px-5 text-[12px] md:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/80 hover:text-white hover:border-white/25 transition-colors"
-          >
-            <span>All Case Studies</span>
-          </Link>
-          <Link
-            href="/#contact"
-            className="voy-glass inline-flex h-[44px] md:h-[50px] items-center gap-2 rounded-[14px] px-4 md:px-5 text-[12px] md:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-colors"
-          >
-            <span>Connect</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-[#f34213]" aria-hidden="true" />
-          </Link>
-        </div>
       </header>
 
-      <main className="px-4 sm:px-6 pt-28 sm:pt-36 pb-20 sm:pb-28 max-w-[1320px] mx-auto">
+      <main className="px-4 sm:px-6 pt-28 sm:pt-36 pb-20 sm:pb-28 max-w-[1280px] mx-auto">
         {/* Hero Block */}
         <section aria-label={`${study.title} overview`} className="pb-12 sm:pb-16">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] uppercase tracking-[0.08em]">
@@ -91,26 +116,21 @@ export function CaseStudyView({
             <StylizedText text={study.title} />
           </h1>
 
-          <p className="mt-6 max-w-[840px] text-[19px] sm:text-[24px] leading-[1.45] font-normal text-[#e7e1d7]/85">
+          <p className="mt-6 max-w-[820px] text-[19px] sm:text-[24px] leading-[1.45] font-normal text-[#e7e1d7]/85">
             {study.subtitle}
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            {study.liveLinks.map((link) => (
-              <LiveLinkBadge key={link.href} link={link} />
-            ))}
-            <a
-              href="#explorations"
-              className="voy-glass inline-flex h-10 items-center gap-2 rounded-full px-5 text-[12px] uppercase tracking-[0.06em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-colors"
-            >
-              <span>Jump to Trade-offs</span>
-              <ArrowRight className="h-3.5 w-3.5 text-[#f34213]" aria-hidden="true" />
-            </a>
-          </div>
+          {study.liveLinks.length > 0 ? (
+            <div className="mt-8 flex flex-wrap items-center gap-2.5">
+              {study.liveLinks.map((link) => (
+                <LiveLinkBadge key={link.href} link={link} />
+              ))}
+            </div>
+          ) : null}
 
-          {/* 4-Column Metadata Strip */}
+          {/* Centered 4-Column Metadata Strip */}
           <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-y border-[#e7e1d7]/15">
-            <div className="py-5 sm:pr-6 border-b sm:border-b lg:border-b-0 lg:border-r border-[#e7e1d7]/15">
+            <div className="flex flex-col items-center justify-center text-center py-6 px-5 border-b sm:border-r lg:border-b-0 border-[#e7e1d7]/15">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/45">
                 ROLE
               </p>
@@ -118,7 +138,7 @@ export function CaseStudyView({
                 {study.role}
               </p>
             </div>
-            <div className="py-5 sm:pl-6 lg:px-6 border-b sm:border-b lg:border-b-0 lg:border-r border-[#e7e1d7]/15">
+            <div className="flex flex-col items-center justify-center text-center py-6 px-5 border-b lg:border-r lg:border-b-0 border-[#e7e1d7]/15">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/45">
                 PLATFORM & MARKET
               </p>
@@ -126,7 +146,7 @@ export function CaseStudyView({
                 {study.platform} · {study.market}
               </p>
             </div>
-            <div className="py-5 sm:pr-6 lg:px-6 border-b sm:border-b-0 lg:border-r border-[#e7e1d7]/15">
+            <div className="flex flex-col items-center justify-center text-center py-6 px-5 border-b sm:border-b-0 sm:border-r border-[#e7e1d7]/15">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/45">
                 STATUS
               </p>
@@ -134,48 +154,12 @@ export function CaseStudyView({
                 {study.status}
               </p>
             </div>
-            <div className="py-5 sm:pl-6">
+            <div className="flex flex-col items-center justify-center text-center py-6 px-5">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/45">
                 CORE FOCUS
               </p>
               <p className="mt-2 text-[14px] leading-[1.5] text-[#e7e1d7]">
                 {study.timeline}
-              </p>
-            </div>
-          </div>
-
-          {/* 4-Column Executive TL;DR Strip */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-5">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
-                TL;DR · PROBLEM
-              </p>
-              <p className="mt-2.5 text-[14px] leading-[1.6] text-[#e7e1d7]/80">
-                {study.summary.problemBrief}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-5">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
-                TL;DR · OWNERSHIP
-              </p>
-              <p className="mt-2.5 text-[14px] leading-[1.6] text-[#e7e1d7]/80">
-                {study.summary.roleScope}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-5">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
-                TL;DR · OUTCOME
-              </p>
-              <p className="mt-2.5 text-[14px] leading-[1.6] text-[#e7e1d7]/80">
-                {study.summary.keyOutcome}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-5">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
-                TL;DR · DELIVERABLES
-              </p>
-              <p className="mt-2.5 text-[14px] leading-[1.6] text-[#e7e1d7]/80">
-                {study.summary.deliverables}
               </p>
             </div>
           </div>
@@ -191,7 +175,7 @@ export function CaseStudyView({
               src={study.media.bgImage}
               alt=""
               fill
-              sizes="(max-width: 1320px) 100vw, 1320px"
+              sizes="(max-width: 1280px) 100vw, 1280px"
               className="object-cover opacity-35 pointer-events-none select-none"
             />
             <div
@@ -250,22 +234,22 @@ export function CaseStudyView({
         {/* 01 Context & Problem */}
         <section className="py-12 sm:py-16 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <SectionHeading number="01" title="CONTEXT & PROBLEM" />
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-8 space-y-8">
             <p className="text-[16px] sm:text-[18px] leading-[1.7] text-[#e7e1d7]/80">
               {study.context}
             </p>
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-6 sm:p-7 space-y-4">
+            <div className="border-t border-[#e7e1d7]/12 pt-7 space-y-4">
               <h3 className="text-[20px] sm:text-[24px] leading-[1.3] font-normal text-[#e7e1d7]">
                 {study.problem.headline}
               </h3>
               <p className="text-[15px] sm:text-[16px] leading-[1.7] text-[#e7e1d7]/75">
                 {study.problem.body}
               </p>
-              <ul className="pt-2 space-y-2.5">
+              <ul className="pt-2 space-y-3 border-t border-[#e7e1d7]/10">
                 {study.problem.painPoints.map((point) => (
                   <li
                     key={point}
-                    className="flex items-start gap-3 text-[14.5px] sm:text-[15px] leading-[1.6] text-[#e7e1d7]/85"
+                    className="flex items-start gap-3 pt-2 text-[14.5px] sm:text-[15px] leading-[1.6] text-[#e7e1d7]/85"
                   >
                     <span
                       aria-hidden="true"
@@ -282,8 +266,8 @@ export function CaseStudyView({
         {/* 02 Why It Mattered */}
         <section className="py-12 sm:py-16 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <SectionHeading number="02" title="WHY IT MATTERED" />
-          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-6">
+          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+            <div className="border-t border-[#e7e1d7]/12 pt-5 md:border-t-0 md:pt-0">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/45">
                 USER IMPACT
               </p>
@@ -291,7 +275,7 @@ export function CaseStudyView({
                 {study.whyItMattered.userImpact}
               </p>
             </div>
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-6">
+            <div className="border-t border-[#e7e1d7]/12 pt-5 md:border-t-0 md:pt-0 md:border-l md:border-[#e7e1d7]/12 md:pl-10">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/45">
                 BUSINESS STAKES
               </p>
@@ -305,22 +289,20 @@ export function CaseStudyView({
         {/* 03 Constraints & Discovery */}
         <section className="py-12 sm:py-16 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <SectionHeading number="03" title="CONSTRAINTS & DISCOVERY" />
-          <div className="lg:col-span-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {study.constraints.map((constraint, idx) => (
-                <div
-                  key={constraint}
-                  className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-5"
-                >
-                  <span className="text-[11px] tabular-nums tracking-[0.08em] text-[#f34213]">
-                    CONSTRAINT 0{idx + 1}
-                  </span>
-                  <p className="mt-2 text-[14.5px] sm:text-[15px] leading-[1.6] text-[#e7e1d7]/85">
-                    {constraint}
-                  </p>
-                </div>
-              ))}
-            </div>
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
+            {study.constraints.map((constraint, idx) => (
+              <div
+                key={constraint}
+                className="border-t border-[#e7e1d7]/12 pt-4"
+              >
+                <span className="text-[11px] tabular-nums tracking-[0.08em] text-[#f34213]">
+                  0{idx + 1}
+                </span>
+                <p className="mt-2 text-[14.5px] sm:text-[15px] leading-[1.6] text-[#e7e1d7]/85">
+                  {constraint}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -330,34 +312,22 @@ export function CaseStudyView({
           className="scroll-mt-24 py-12 sm:py-16 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12"
         >
           <SectionHeading number="04" title="EXPLORATIONS & TRADE-OFFS" />
-          <div className="lg:col-span-8 space-y-4">
+          <div className="lg:col-span-8 divide-y divide-[#e7e1d7]/12">
             {study.explorations.map((exp) => {
               const isChosen = exp.verdict === "Chosen";
               return (
-                <div
-                  key={exp.label}
-                  className={`rounded-2xl border p-6 transition-colors ${
-                    isChosen
-                      ? "border-[#f34213]/45 bg-[#191210]"
-                      : "border-[#e7e1d7]/12 bg-[#121110]"
-                  }`}
-                >
+                <div key={exp.label} className="py-6 first:pt-0 last:pb-0">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h3 className="text-[16px] sm:text-[18px] font-medium text-[#e7e1d7]">
                       {exp.label}
                     </h3>
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.07em] font-medium ${
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.07em] font-medium ${
                         isChosen
-                          ? "bg-[#f34213] text-[#0b0b0b]"
-                          : "bg-white/[0.06] text-[#e7e1d7]/65"
+                          ? "border border-[#f34213]/45 bg-[#f34213]/[0.06] text-[#f34213]"
+                          : "border border-[#e7e1d7]/15 text-[#e7e1d7]/55"
                       }`}
                     >
-                      {isChosen ? (
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                      )}
                       {exp.verdict}
                     </span>
                   </div>
@@ -378,12 +348,9 @@ export function CaseStudyView({
         {/* 05 Key Design Decisions */}
         <section className="py-12 sm:py-16 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <SectionHeading number="05" title="KEY DESIGN DECISIONS" />
-          <div className="lg:col-span-8 space-y-5">
+          <div className="lg:col-span-8 divide-y divide-[#e7e1d7]/12">
             {study.designDecisions.map((decision, idx) => (
-              <div
-                key={decision.title}
-                className="border-b border-[#e7e1d7]/12 pb-5 last:border-b-0 last:pb-0"
-              >
+              <div key={decision.title} className="py-5 first:pt-0 last:pb-0">
                 <div className="flex items-baseline gap-3">
                   <span className="text-[12px] tabular-nums text-[#f34213]">
                     0{idx + 1}
@@ -410,11 +377,11 @@ export function CaseStudyView({
             <p className="text-[15px] sm:text-[16px] leading-[1.7] text-[#e7e1d7]/80">
               {study.systemsAndHandoff.body}
             </p>
-            <ul className="space-y-2.5 pt-1">
+            <ul className="space-y-2.5 pt-2 border-t border-[#e7e1d7]/12">
               {study.systemsAndHandoff.highlights.map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-3 text-[14.5px] sm:text-[15px] leading-[1.6] text-[#e7e1d7]/85"
+                  className="flex items-start gap-3 pt-1 text-[14.5px] sm:text-[15px] leading-[1.6] text-[#e7e1d7]/85"
                 >
                   <span
                     aria-hidden="true"
@@ -430,20 +397,20 @@ export function CaseStudyView({
         {/* 07 Shipped Outcome & Next Iterations */}
         <section className="py-12 sm:py-16 border-t border-[#e7e1d7]/15 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <SectionHeading number="07" title="OUTCOME & NEXT STEPS" />
-          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-6 space-y-3">
+          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+            <div className="space-y-3">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#f34213]">
                 SHIPPED REALITY
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-3 border-t border-[#e7e1d7]/12 pt-4">
                 {study.outcomeAndNextSteps.shippedReality.map((item) => (
                   <li
                     key={item}
-                    className="flex items-start gap-2.5 text-[14.5px] leading-[1.6] text-[#e7e1d7]/85"
+                    className="flex items-start gap-3 text-[14.5px] leading-[1.6] text-[#e7e1d7]/85"
                   >
-                    <CheckCircle2
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[#f34213]"
+                    <span
                       aria-hidden="true"
+                      className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f34213]"
                     />
                     <span>{item}</span>
                   </li>
@@ -451,19 +418,19 @@ export function CaseStudyView({
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-[#e7e1d7]/12 bg-[#121110] p-6 space-y-3">
+            <div className="space-y-3 md:border-l md:border-[#e7e1d7]/12 md:pl-10">
               <p className="text-[11px] uppercase tracking-[0.08em] text-[#e7e1d7]/55">
                 V2 METRICS TO INSTRUMENT
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-3 border-t border-[#e7e1d7]/12 pt-4">
                 {study.outcomeAndNextSteps.nextMetricsToTrack.map((metric) => (
                   <li
                     key={metric}
-                    className="flex items-start gap-2.5 text-[14.5px] leading-[1.6] text-[#e7e1d7]/80"
+                    className="flex items-start gap-3 text-[14.5px] leading-[1.6] text-[#e7e1d7]/80"
                   >
                     <span
                       aria-hidden="true"
-                      className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#e7e1d7]/50"
+                      className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#e7e1d7]/45"
                     />
                     <span>{metric}</span>
                   </li>
@@ -473,19 +440,20 @@ export function CaseStudyView({
           </div>
         </section>
 
-        {/* Next Case Study Footer Navigation */}
+        {/* Minimal Editorial Next Case Study Link */}
         <section
           aria-label="Next case study"
-          className="pt-12 sm:pt-16 border-t border-[#e7e1d7]/15 space-y-8"
+          className="border-t border-[#e7e1d7]/15"
         >
           <Link
             href={`/work/${nextStudy.slug}`}
-            className="group block rounded-[22px] border border-[#e7e1d7]/15 bg-[#121110] p-6 sm:p-10 transition-colors hover:border-[#f34213]/60"
+            className="group block py-10 sm:py-14 transition-opacity hover:opacity-95"
           >
             <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] uppercase tracking-[0.08em] text-[#e7e1d7]/55">
               <span>NEXT CASE STUDY · {nextStudy.number}</span>
               <span className="inline-flex items-center gap-1.5 text-[#f34213]">
-                Explore <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                Explore{" "}
+                <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </span>
             </div>
             <h2 className="mt-3 text-[clamp(1.85rem,4.4vw,3.6rem)] leading-[0.98] tracking-[-0.03em] font-normal uppercase text-[#e7e1d7]">
@@ -495,24 +463,6 @@ export function CaseStudyView({
               {nextStudy.subtitle}
             </p>
           </Link>
-
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Link
-              href="/#work"
-              className="voy-glass inline-flex h-11 items-center gap-2 rounded-full px-6 text-[12.5px] uppercase tracking-[0.05em] text-[#e7e1d7] hover:text-white hover:border-white/25 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 text-[#f34213]" aria-hidden="true" />
-              <span>Back to All Work</span>
-            </Link>
-
-            <Link
-              href="/#contact"
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f34213] px-6 text-[12.5px] font-medium uppercase tracking-[0.05em] text-[#0b0b0b] hover:bg-[#ff5629] transition-colors"
-            >
-              <span>Book an Intro Call</span>
-              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
         </section>
       </main>
     </div>

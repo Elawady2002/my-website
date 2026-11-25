@@ -43,13 +43,6 @@ export function ResumeView() {
         </Link>
 
         <div className="flex items-center gap-2 pointer-events-auto">
-          <Link
-            href="/#work"
-            className="voy-glass hidden sm:inline-flex h-[44px] md:h-[50px] items-center gap-2 rounded-[14px] px-4 md:px-5 text-[12px] md:text-[13px] uppercase tracking-[0.05em] text-[#e7e1d7]/80 hover:text-white hover:border-white/25 transition-colors"
-          >
-            <span>Case Studies</span>
-          </Link>
-
           <button
             type="button"
             onClick={() => window.print()}

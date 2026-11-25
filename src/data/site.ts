@@ -94,7 +94,7 @@ export interface CertificateItem {
 
 export const siteConfig = {
   domain: "ABDULLAH ELAWADY",
-  edition: "PRODUCT DESIGN · 2026",
+  edition: "PRODUCT DESIGNER · 2026",
   greeting: "SENIOR PRODUCT DESIGNER",
   tagline:
     "I design end-to-end mobile & web products—turning complex user problems into clear, shippable experiences.",

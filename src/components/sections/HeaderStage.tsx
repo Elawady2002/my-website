@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { Download } from "lucide-react";
 import { InfoSection } from "@/components/sections/InfoSection";
 import { StylizedText } from "@/components/ui/StylizedText";
 import { siteConfig } from "@/data/site";
@@ -315,14 +317,18 @@ export function HeaderStage() {
             animation:
               "heroFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both",
           }}
-          className="pt-6 flex items-center justify-between text-[12px] sm:text-[14px] font-normal uppercase tracking-[0.04em] text-[#e7e1d7]"
+          className="pt-6 flex items-center justify-between gap-4 text-[12px] sm:text-[14px] font-normal uppercase tracking-[0.04em] text-[#e7e1d7]"
         >
-          <span className="inline-block">
-            <StylizedText text={siteConfig.domain} />
-          </span>
           <span className="inline-block">
             <StylizedText text={siteConfig.edition} />
           </span>
+          <Link
+            href={siteConfig.resumeHref}
+            className="voy-glass inline-flex h-[38px] sm:h-[42px] items-center gap-2 rounded-full px-4 sm:px-5 text-[11.5px] sm:text-[13px] font-normal uppercase tracking-[0.04em] text-[#e7e1d7]/85 transition-[transform,color,background-color,border-color] duration-200 ease-out hover:text-white hover:border-white/25 hover:!bg-white/[0.08] hover:-translate-y-[1px] active:scale-[0.97]"
+          >
+            <Download className="h-3.5 w-3.5 text-[#f34213] shrink-0" aria-hidden="true" />
+            <span>Download Resume</span>
+          </Link>
         </div>
 
         <div className="mt-auto pt-36 sm:pt-44">
